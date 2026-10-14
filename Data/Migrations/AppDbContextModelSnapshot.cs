@@ -1173,6 +1173,56 @@ namespace StudentManagement.Data.Migrations
                     b.ToTable("GiangVien", (string)null);
                 });
 
+            modelBuilder.Entity("StudentManagement.Modules.Students.Entities.LichSuHocTap", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("GhiChu")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("LyDo")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateOnly>("NgayHieuLuc")
+                        .HasColumnType("date");
+
+                    b.Property<int>("SinhVienId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SoQuyetDinh")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("TrangThaiCu")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("TrangThaiMoi")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SinhVienId");
+
+                    b.ToTable("LichSuHocTap", (string)null);
+                });
+
             modelBuilder.Entity("StudentManagement.Modules.Students.Entities.LopHanhChinh", b =>
                 {
                     b.Property<int>("Id")
@@ -1226,12 +1276,27 @@ namespace StudentManagement.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CCCD")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int?>("ChuyenNganhId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("DiaChi")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
 
                     b.Property<string>("Email")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("GioiTinh")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("HoTen")
                         .IsRequired()
@@ -1265,6 +1330,10 @@ namespace StudentManagement.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CCCD");
+
+                    b.HasIndex("ChuyenNganhId");
 
                     b.HasIndex("LopHanhChinhId");
 
@@ -1570,6 +1639,15 @@ namespace StudentManagement.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("StudentManagement.Modules.Students.Entities.LichSuHocTap", b =>
+                {
+                    b.HasOne("StudentManagement.Modules.Students.Entities.SinhVien", null)
+                        .WithMany()
+                        .HasForeignKey("SinhVienId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("StudentManagement.Modules.Students.Entities.LopHanhChinh", b =>
                 {
                     b.HasOne("StudentManagement.Modules.Students.Entities.GiangVien", null)
@@ -1586,6 +1664,11 @@ namespace StudentManagement.Data.Migrations
 
             modelBuilder.Entity("StudentManagement.Modules.Students.Entities.SinhVien", b =>
                 {
+                    b.HasOne("StudentManagement.Modules.Academic.Entities.ChuyenNganh", null)
+                        .WithMany()
+                        .HasForeignKey("ChuyenNganhId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("StudentManagement.Modules.Students.Entities.LopHanhChinh", null)
                         .WithMany()
                         .HasForeignKey("LopHanhChinhId")
