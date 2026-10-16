@@ -7,7 +7,7 @@ public static class CoursesModule
     /// <summary>Đăng ký service của module Courses.</summary>
     public static IServiceCollection AddCoursesModule(this IServiceCollection services)
     {
-        services.AddScoped<ICourseService, CourseService>();
+        services.AddScoped<IMonHocService, MonHocService>();
         return services;
     }
 }
