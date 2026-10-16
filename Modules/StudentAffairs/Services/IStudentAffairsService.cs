@@ -7,8 +7,10 @@ public interface IStudentAffairsService
 {
     // SA-01 Nhập điểm rèn luyện
     Task<object?> NhapDiemRenLuyenAsync(DiemRenLuyenRequest request);
+    Task<object?> GetDiemRenLuyenAsync(int? sinhVienId, int? hocKyId);
     // SA-02 Tính học phí theo học kỳ
     Task<object?> TinhHocPhiAsync(int hocKyId);
+    Task<object?> GetHocPhiAsync(int? sinhVienId, int? hocKyId);
     // SA-03 Xác nhận thanh toán học phí
     Task<object?> ThanhToanAsync(int id);
     // SA-04 Quản lý miễn giảm
