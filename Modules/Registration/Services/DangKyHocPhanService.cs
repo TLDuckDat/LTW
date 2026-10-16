@@ -6,6 +6,7 @@ using StudentManagement.Modules.Academic.Entities;
 using StudentManagement.Modules.Auth.Entities;
 using StudentManagement.Modules.Courses.Dtos;
 using StudentManagement.Modules.Courses.Entities;
+using StudentManagement.Modules.Grades.Entities;
 using StudentManagement.Modules.Registration.Dtos;
 using StudentManagement.Modules.Registration.Entities;
 using StudentManagement.Modules.Students.Entities;
@@ -120,6 +121,37 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
 
         await _db.SaveChangesAsync();
         await transaction.CommitAsync();
+        return ToDto(dangKy);
+    }
+
+    // REG-04 Hủy đăng ký: chỉ đổi trạng thái để giữ lịch sử; giải phóng chỗ trong lớp
+    public async Task<DangKyDto?> HuyDangKyAsync(int dangKyId, int? chiSinhVienId)
+    {
+        var dangKy = await _db.Set<DangKyHocPhan>().FirstOrDefaultAsync(x => x.Id == dangKyId);
+        if (dangKy is null || (chiSinhVienId is not null && dangKy.SinhVienId != chiSinhVienId)) return null;
+
+        if (dangKy.TrangThai == TrangThaiDangKy.DaHuy)
+            throw new InvalidOperationException("Lượt đăng ký này đã được hủy trước đó.");
+
+        var lop = await _db.Set<LopHocPhan>().AsNoTracking().FirstAsync(x => x.Id == dangKy.LopHocPhanId);
+        if (lop.TrangThai != TrangThaiLopHocPhan.MoDangKy)
+            throw new InvalidOperationException("Lớp học phần đã bắt đầu học, kết thúc hoặc bị hủy, không thể hủy đăng ký.");
+        if (await _db.Set<DiemHocPhan>().AnyAsync(x => x.DangKyHocPhanId == dangKyId))
+            throw new InvalidOperationException("Lượt đăng ký đã có điểm, không thể hủy.");
+
+        // Sinh viên tự hủy phải trong thời gian của đợt đăng ký; phòng đào tạo không bị giới hạn này
+        if (chiSinhVienId is not null)
+        {
+            var bay = DateTime.Now;
+            var trongDot = await _db.Set<DotDangKy>().AnyAsync(x =>
+                x.HocKyId == lop.HocKyId && x.TrangThai == TrangThaiDotDangKy.DangMo
+                && x.NgayBatDau <= bay && bay <= x.NgayKetThuc);
+            if (!trongDot)
+                throw new InvalidOperationException("Đã ngoài thời gian đăng ký, sinh viên không thể tự hủy. Hãy liên hệ phòng đào tạo.");
+        }
+
+        dangKy.TrangThai = TrangThaiDangKy.DaHuy;
+        await _db.SaveChangesAsync();
         return ToDto(dangKy);
     }
 

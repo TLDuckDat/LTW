@@ -14,4 +14,7 @@ public interface IDangKyHocPhanService
 
     // REG-03
     Task<DangKyDto?> DangKyAsync(int sinhVienId, int lopHocPhanId);
+
+    // REG-04: chiSinhVienId != null thì chỉ hủy được lượt đăng ký của sinh viên đó (sinh viên tự hủy)
+    Task<DangKyDto?> HuyDangKyAsync(int dangKyId, int? chiSinhVienId);
 }

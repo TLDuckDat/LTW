@@ -54,6 +54,31 @@ public class DangKyHocPhanController(IDangKyHocPhanService service) : Controller
         }
     }
 
+    // REG-04 Hủy đăng ký học phần (id là mã lượt đăng ký)
+    [HttpDelete("{id:int}")]
+    public async Task<ActionResult<ApiResponse<DangKyDto>>> HuyDangKy(int id)
+    {
+        int? chiSinhVienId = null;
+        if (!LaNhanVien)
+        {
+            var (sinhVienId, loi) = await XacDinhSinhVienAsync(null);
+            if (loi is not null) return loi;
+            chiSinhVienId = sinhVienId;
+        }
+
+        try
+        {
+            var result = await _service.HuyDangKyAsync(id, chiSinhVienId);
+            return result is null
+                ? NotFound(ApiResponse<DangKyDto>.Fail("Không tìm thấy lượt đăng ký."))
+                : Ok(ApiResponse<DangKyDto>.Ok(result, "Đã hủy đăng ký học phần."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<DangKyDto>.Fail(ex.Message));
+        }
+    }
+
     /// <summary>
     /// Xác định sinh viên được thao tác. Trả về lỗi 400/403 khi thiếu hoặc không được phép.
     /// </summary>
