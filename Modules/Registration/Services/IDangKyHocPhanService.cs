@@ -19,6 +19,10 @@ public interface IDangKyHocPhanService
     Task<DaDangKyDto?> GetDaDangKyAsync(int sinhVienId, int? hocKyId);
     Task<ThoiKhoaBieuDto?> GetThoiKhoaBieuAsync(int sinhVienId, int? hocKyId);
 
+    // REG-07
+    Task<PagedResult<SiSoLopDto>> GetSiSoAsync(SiSoQuery query);
+    Task<SiSoLopDto?> CapNhatSiSoToiDaAsync(int lopHocPhanId, int siSoToiDa);
+
     // REG-04: chiSinhVienId != null thì chỉ hủy được lượt đăng ký của sinh viên đó (sinh viên tự hủy)
     Task<DangKyDto?> HuyDangKyAsync(int dangKyId, int? chiSinhVienId);
 }

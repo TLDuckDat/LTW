@@ -78,22 +78,42 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
         if (await _db.Set<LopHocPhan>().AnyAsync(x => x.Ma == ma && x.Id != id))
             throw new InvalidOperationException($"Mã lớp học phần '{ma}' đã tồn tại.");
 
-        var daDangKy = await DemDangKyAsync(id);
-        if (request.SiSoToiDa < daDangKy)
-            throw new InvalidOperationException($"Sĩ số tối đa không được nhỏ hơn số sinh viên đã đăng ký ({daDangKy}).");
-
-        // Sĩ số phải vừa với mọi phòng đã xếp lịch cho lớp
-        var sucChuaNhoNhat = await _db.Set<LichHoc>()
-            .Where(l => l.LopHocPhanId == id && l.PhongHocId != null)
-            .Join(_db.Set<PhongHoc>(), l => l.PhongHocId, p => p.Id, (l, p) => (int?)p.SucChua)
-            .MinAsync();
-        if (sucChuaNhoNhat is not null && request.SiSoToiDa > sucChuaNhoNhat)
-            throw new InvalidOperationException($"Sĩ số tối đa vượt sức chứa phòng đã xếp ({sucChuaNhoNhat}).");
+        await KiemTraSiSoToiDaAsync(id, request.SiSoToiDa);
 
         entity.Ma = ma;
         entity.SiSoToiDa = request.SiSoToiDa;
         await _db.SaveChangesAsync();
         return await GetByIdAsync(id);
+    }
+
+    // CRS-02, REG-07 Chỉ cập nhật sĩ số tối đa của lớp
+    public async Task<LopHocPhanDto?> CapNhatSiSoToiDaAsync(int id, int siSoToiDa)
+    {
+        var entity = await _db.Set<LopHocPhan>().FindAsync(id);
+        if (entity is null) return null;
+
+        if (entity.TrangThai is TrangThaiLopHocPhan.DaHuy or TrangThaiLopHocPhan.DaKetThuc)
+            throw new InvalidOperationException("Lớp học phần đã hủy hoặc kết thúc, không thể chỉnh sửa.");
+        await KiemTraSiSoToiDaAsync(id, siSoToiDa);
+
+        entity.SiSoToiDa = siSoToiDa;
+        await _db.SaveChangesAsync();
+        return await GetByIdAsync(id);
+    }
+
+    // Sĩ số tối đa không nhỏ hơn số đã đăng ký và không vượt sức chứa của mọi phòng đã xếp cho lớp
+    private async Task KiemTraSiSoToiDaAsync(int id, int siSoToiDa)
+    {
+        var daDangKy = await DemDangKyAsync(id);
+        if (siSoToiDa < daDangKy)
+            throw new InvalidOperationException($"Sĩ số tối đa không được nhỏ hơn số sinh viên đã đăng ký ({daDangKy}).");
+
+        var sucChuaNhoNhat = await _db.Set<LichHoc>()
+            .Where(l => l.LopHocPhanId == id && l.PhongHocId != null)
+            .Join(_db.Set<PhongHoc>(), l => l.PhongHocId, p => p.Id, (l, p) => (int?)p.SucChua)
+            .MinAsync();
+        if (sucChuaNhoNhat is not null && siSoToiDa > sucChuaNhoNhat)
+            throw new InvalidOperationException($"Sĩ số tối đa vượt sức chứa phòng đã xếp ({sucChuaNhoNhat}).");
     }
 
     // CRS-02 Xóa lớp học phần chưa có sinh viên đăng ký (lịch học xóa theo lớp)
@@ -186,21 +206,36 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
         var dangKyNguon = await _db.Set<DangKyHocPhan>()
             .Where(x => x.LopHocPhanId == nguon.Id && x.TrangThai == TrangThaiDangKy.DaDangKy)
             .ToListAsync();
-        // Cặp (sinh viên, lớp) là duy nhất, sinh viên đã có dòng ở lớp đích thì không chuyển nữa
-        var svDaCoOLopDich = (await _db.Set<DangKyHocPhan>()
+        // Cặp (sinh viên, lớp) là duy nhất nên mỗi sinh viên ở lớp nguồn có ba trường hợp:
+        // đã đăng ký còn hiệu lực ở lớp đích (trùng), có dòng đã hủy ở lớp đích (dùng lại dòng đó),
+        // hoặc chưa có dòng nào (chuyển thẳng dòng sang lớp đích)
+        var dongLopDich = (await _db.Set<DangKyHocPhan>()
                 .Where(x => x.LopHocPhanId == dich.Id)
-                .Select(x => x.SinhVienId)
                 .ToListAsync())
-            .ToHashSet();
-        var canChuyen = dangKyNguon.Where(x => !svDaCoOLopDich.Contains(x.SinhVienId)).ToList();
-        var trung = dangKyNguon.Except(canChuyen).ToList();
+            .ToDictionary(x => x.SinhVienId);
+        var trung = dangKyNguon
+            .Where(x => dongLopDich.TryGetValue(x.SinhVienId, out var d) && d.TrangThai == TrangThaiDangKy.DaDangKy)
+            .ToList();
+        var canChuyen = dangKyNguon.Except(trung).ToList();
 
         var daDangKyDich = await DemDangKyAsync(dich.Id);
         if (daDangKyDich + canChuyen.Count > dich.SiSoToiDa)
             throw new InvalidOperationException(
                 $"Lớp đích không đủ chỗ: còn {dich.SiSoToiDa - daDangKyDich} chỗ, cần chuyển {canChuyen.Count} sinh viên.");
 
-        foreach (var d in canChuyen) d.LopHocPhanId = dich.Id;
+        foreach (var d in canChuyen)
+        {
+            if (dongLopDich.TryGetValue(d.SinhVienId, out var dongCu))
+            {
+                dongCu.TrangThai = TrangThaiDangKy.DaDangKy;
+                dongCu.LoaiDangKy = d.LoaiDangKy;
+                d.TrangThai = TrangThaiDangKy.DaHuy;
+            }
+            else
+            {
+                d.LopHocPhanId = dich.Id;
+            }
+        }
         foreach (var d in trung) d.TrangThai = TrangThaiDangKy.DaHuy;
         nguon.TrangThai = TrangThaiLopHocPhan.DaHuy;
         await _db.SaveChangesAsync();

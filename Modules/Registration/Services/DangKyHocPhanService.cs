@@ -6,6 +6,7 @@ using StudentManagement.Modules.Academic.Entities;
 using StudentManagement.Modules.Auth.Entities;
 using StudentManagement.Modules.Courses.Dtos;
 using StudentManagement.Modules.Courses.Entities;
+using StudentManagement.Modules.Courses.Services;
 using StudentManagement.Modules.Grades.Entities;
 using StudentManagement.Modules.Registration.Dtos;
 using StudentManagement.Modules.Registration.Entities;
@@ -13,10 +14,15 @@ using StudentManagement.Modules.Students.Entities;
 
 namespace StudentManagement.Modules.Registration.Services;
 
-public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKien) : IDangKyHocPhanService
+public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKien, ILopHocPhanService lopHocPhan)
+    : IDangKyHocPhanService
 {
+    /// <summary>Lớp đạt từ ngưỡng này của sĩ số tối đa được coi là gần đầy.</summary>
+    private const double NguongGanDay = 0.9;
+
     private readonly AppDbContext _db = db;
     private readonly IDieuKienDangKyService _dieuKien = dieuKien;
+    private readonly ILopHocPhanService _lopHocPhan = lopHocPhan;
 
     public Task<int?> GetSinhVienIdCuaTaiKhoanAsync(int taiKhoanId)
         => _db.Set<TaiKhoan>().AsNoTracking()
@@ -175,6 +181,69 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
             .OrderBy(x => x.Thu).ThenBy(x => x.TietBatDau)
             .ToList();
         return new ThoiKhoaBieuDto(sinhVienId, daDangKy.HocKyId, buoi);
+    }
+
+    // REG-07 Theo dõi sĩ số: số đã đăng ký được đếm trực tiếp từ các lượt đăng ký còn hiệu lực
+    // nên luôn khớp với thao tác đăng ký/hủy/gộp lớp, không cần cột đếm riêng
+    public async Task<PagedResult<SiSoLopDto>> GetSiSoAsync(SiSoQuery query)
+    {
+        var trang = new PagedResult<SiSoLopDto> { Items = [], Page = query.Page, PageSize = query.PageSize };
+        var hocKyId = await XacDinhHocKyAsync(query.HocKyId);
+        if (hocKyId is null) return trang;
+
+        var q = from l in _db.Set<LopHocPhan>().AsNoTracking()
+                join m in _db.Set<MonHoc>() on l.MonHocId equals m.Id
+                where l.HocKyId == hocKyId && l.TrangThai != TrangThaiLopHocPhan.DaHuy
+                select new
+                {
+                    Lop = l,
+                    Mon = m,
+                    DaDangKy = _db.Set<DangKyHocPhan>()
+                        .Count(d => d.LopHocPhanId == l.Id && d.TrangThai == TrangThaiDangKy.DaDangKy)
+                };
+        if (query.MonHocId is not null) q = q.Where(x => x.Mon.Id == query.MonHocId);
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var s = query.Search.Trim();
+            q = q.Where(x => x.Lop.Ma.Contains(s) || x.Mon.Ma.Contains(s) || x.Mon.Ten.Contains(s));
+        }
+        q = query.TinhTrang switch
+        {
+            TinhTrangSiSo.Day => q.Where(x => x.DaDangKy >= x.Lop.SiSoToiDa),
+            TinhTrangSiSo.GanDay => q.Where(x => x.DaDangKy < x.Lop.SiSoToiDa && x.DaDangKy >= x.Lop.SiSoToiDa * NguongGanDay),
+            TinhTrangSiSo.ConCho => q.Where(x => x.DaDangKy < x.Lop.SiSoToiDa * NguongGanDay),
+            _ => q
+        };
+
+        trang.TotalCount = await q.CountAsync();
+        var cacDong = await q.OrderBy(x => x.Mon.Ma).ThenBy(x => x.Lop.Ma)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync();
+        trang.Items = cacDong.Select(x => ToSiSoDto(x.Lop, x.Mon, x.DaDangKy)).ToList();
+        return trang;
+    }
+
+    // REG-07 Cập nhật sĩ số tối đa của lớp (không nhỏ hơn số đã đăng ký, vừa sức chứa phòng)
+    public async Task<SiSoLopDto?> CapNhatSiSoToiDaAsync(int lopHocPhanId, int siSoToiDa)
+    {
+        var capNhat = await _lopHocPhan.CapNhatSiSoToiDaAsync(lopHocPhanId, siSoToiDa);
+        if (capNhat is null) return null;
+
+        var mon = await _db.Set<MonHoc>().AsNoTracking().FirstAsync(x => x.Id == capNhat.MonHocId);
+        var lop = await _db.Set<LopHocPhan>().AsNoTracking().FirstAsync(x => x.Id == lopHocPhanId);
+        return ToSiSoDto(lop, mon, capNhat.SiSoHienTai);
+    }
+
+    private static SiSoLopDto ToSiSoDto(LopHocPhan lop, MonHoc mon, int daDangKy)
+    {
+        var tyLe = lop.SiSoToiDa > 0 ? (double)daDangKy / lop.SiSoToiDa : 1;
+        var tinhTrang = daDangKy >= lop.SiSoToiDa ? TinhTrangSiSo.Day
+            : tyLe >= NguongGanDay ? TinhTrangSiSo.GanDay
+            : TinhTrangSiSo.ConCho;
+        return new SiSoLopDto(
+            lop.Id, lop.Ma, mon.Ma, mon.Ten, lop.TrangThai.ToString(), lop.SiSoToiDa, daDangKy,
+            Math.Max(0, lop.SiSoToiDa - daDangKy), Math.Round(tyLe, 4), tinhTrang.ToString());
     }
 
     // REG-04 Hủy đăng ký: chỉ đổi trạng thái để giữ lịch sử; giải phóng chỗ trong lớp

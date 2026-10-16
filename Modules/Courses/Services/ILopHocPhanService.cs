@@ -13,6 +13,8 @@ public interface ILopHocPhanService
     Task<LopHocPhanDto?> UpdateAsync(int id, LopHocPhanUpdateRequest request);
     Task<bool> DeleteAsync(int id);
 
+    Task<LopHocPhanDto?> CapNhatSiSoToiDaAsync(int id, int siSoToiDa);
+
     // CRS-03
     Task<LopHocPhanDto?> PhanCongGiangVienAsync(int id, PhanCongGiangVienRequest request);
 

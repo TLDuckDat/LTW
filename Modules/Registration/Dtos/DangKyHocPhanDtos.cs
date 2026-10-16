@@ -87,3 +87,38 @@ public class HocKyQuery
     public int? SinhVienId { get; set; }
     public int? HocKyId { get; set; }
 }
+
+/// <summary>Tình trạng sĩ số của lớp học phần.</summary>
+public enum TinhTrangSiSo
+{
+    /// <summary>Còn nhiều chỗ (dưới 90%).</summary>
+    ConCho,
+    /// <summary>Từ 90% sĩ số tối đa trở lên nhưng chưa đầy.</summary>
+    GanDay,
+    /// <summary>Đã đủ sĩ số.</summary>
+    Day
+}
+
+/// <summary>Bộ lọc theo dõi sĩ số lớp học phần. Bỏ trống HocKyId để lấy học kỳ đang đăng ký.</summary>
+public class SiSoQuery : StudentManagement.Common.PagedQuery
+{
+    public int? HocKyId { get; set; }
+    public int? MonHocId { get; set; }
+    public TinhTrangSiSo? TinhTrang { get; set; }
+}
+
+/// <summary>Sĩ số hiện tại của một lớp học phần.</summary>
+public record SiSoLopDto(
+    int LopHocPhanId,
+    string MaLop,
+    string MaMonHoc,
+    string TenMonHoc,
+    string TrangThaiLop,
+    int SiSoToiDa,
+    int DaDangKy,
+    int ConCho,
+    double TyLeLapDay,
+    string TinhTrang);
+
+/// <summary>Cập nhật sĩ số tối đa của lớp học phần.</summary>
+public record CapNhatSiSoRequest([Range(1, 1000)] int SiSoToiDa);

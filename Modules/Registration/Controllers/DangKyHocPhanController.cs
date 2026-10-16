@@ -80,6 +80,30 @@ public class DangKyHocPhanController(IDangKyHocPhanService service) : Controller
             : Ok(ApiResponse<ThoiKhoaBieuDto>.Ok(result));
     }
 
+    // REG-07 Theo dõi sĩ số các lớp học phần trong học kỳ (lọc lớp đầy/gần đầy)
+    [Authorize(Roles = "Admin,PhongDaoTao")]
+    [HttpGet("si-so")]
+    public async Task<ActionResult<ApiResponse<PagedResult<SiSoLopDto>>>> GetSiSo([FromQuery] SiSoQuery query)
+        => Ok(ApiResponse<PagedResult<SiSoLopDto>>.Ok(await _service.GetSiSoAsync(query)));
+
+    // REG-07 Cập nhật sĩ số tối đa của lớp học phần
+    [Authorize(Roles = "Admin,PhongDaoTao")]
+    [HttpPut("si-so/{lopHocPhanId:int}")]
+    public async Task<ActionResult<ApiResponse<SiSoLopDto>>> CapNhatSiSo(int lopHocPhanId, [FromBody] CapNhatSiSoRequest request)
+    {
+        try
+        {
+            var result = await _service.CapNhatSiSoToiDaAsync(lopHocPhanId, request.SiSoToiDa);
+            return result is null
+                ? NotFound(ApiResponse<SiSoLopDto>.Fail("Không tìm thấy lớp học phần."))
+                : Ok(ApiResponse<SiSoLopDto>.Ok(result, "Đã cập nhật sĩ số tối đa."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<SiSoLopDto>.Fail(ex.Message));
+        }
+    }
+
     // REG-04 Hủy đăng ký học phần (id là mã lượt đăng ký)
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<DangKyDto>>> HuyDangKy(int id)
