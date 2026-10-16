@@ -8,6 +8,7 @@ public static class CoursesModule
     public static IServiceCollection AddCoursesModule(this IServiceCollection services)
     {
         services.AddScoped<IMonHocService, MonHocService>();
+        services.AddScoped<ILopHocPhanService, LopHocPhanService>();
         return services;
     }
 }
