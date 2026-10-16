@@ -5,12 +5,14 @@ using StudentManagement.Modules.Academic.Entities;
 using StudentManagement.Modules.Courses.Dtos;
 using StudentManagement.Modules.Courses.Entities;
 using StudentManagement.Modules.Registration.Entities;
+using StudentManagement.Modules.Students.Entities;
 
 namespace StudentManagement.Modules.Courses.Services;
 
-public class LopHocPhanService(AppDbContext db) : ILopHocPhanService
+public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : ILopHocPhanService
 {
     private readonly AppDbContext _db = db;
+    private readonly IXungDotLichService _xungDot = xungDot;
 
     // CRS-02 Danh sách lớp học phần, lọc theo học kỳ/môn/giảng viên/trạng thái
     public async Task<PagedResult<LopHocPhanDto>> GetPagedAsync(LopHocPhanQuery query)
@@ -113,6 +115,30 @@ public class LopHocPhanService(AppDbContext db) : ILopHocPhanService
             throw new InvalidOperationException("Không thể xóa lớp học phần đang có dữ liệu liên quan.");
         }
         return true;
+    }
+
+    // CRS-03 Phân công (hoặc bỏ phân công) giảng viên cho lớp, chặn khi giảng viên trùng giờ giảng
+    public async Task<LopHocPhanDto?> PhanCongGiangVienAsync(int id, PhanCongGiangVienRequest request)
+    {
+        var entity = await _db.Set<LopHocPhan>().FindAsync(id);
+        if (entity is null) return null;
+
+        if (entity.TrangThai is TrangThaiLopHocPhan.DaHuy or TrangThaiLopHocPhan.DaKetThuc)
+            throw new InvalidOperationException("Lớp học phần đã hủy hoặc kết thúc, không thể phân công giảng viên.");
+
+        if (request.GiangVienId is { } giangVienId)
+        {
+            if (!await _db.Set<GiangVien>().AnyAsync(x => x.Id == giangVienId))
+                throw new InvalidOperationException("Giảng viên không tồn tại.");
+
+            var xungDot = await _xungDot.TimXungDotGiangVienAsync(entity, giangVienId);
+            if (xungDot.Count > 0)
+                throw new InvalidOperationException("Giảng viên bị trùng lịch giảng: " + string.Join(" ", xungDot.Select(x => x.ThongBao)));
+        }
+
+        entity.GiangVienId = request.GiangVienId;
+        await _db.SaveChangesAsync();
+        return await GetByIdAsync(id);
     }
 
     private Task<int> DemDangKyAsync(int lopHocPhanId)

@@ -30,6 +30,9 @@ public record LopHocPhanUpdateRequest(
     [Required, MaxLength(30)] string Ma,
     [Range(1, 1000)] int SiSoToiDa);
 
+/// <summary>Phân công giảng viên cho lớp; GiangVienId = null để bỏ phân công.</summary>
+public record PhanCongGiangVienRequest(int? GiangVienId);
+
 /// <summary>Bộ lọc danh sách lớp học phần.</summary>
 public class LopHocPhanQuery : StudentManagement.Common.PagedQuery
 {

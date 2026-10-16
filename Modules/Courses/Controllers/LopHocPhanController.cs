@@ -62,6 +62,24 @@ public class LopHocPhanController(ILopHocPhanService service) : ControllerBase
         }
     }
 
+    // CRS-03 Phân công giảng viên cho lớp học phần
+    [Authorize(Roles = "Admin,PhongDaoTao")]
+    [HttpPut("{id:int}/giang-vien")]
+    public async Task<ActionResult<ApiResponse<LopHocPhanDto>>> PhanCongGiangVien(int id, [FromBody] PhanCongGiangVienRequest request)
+    {
+        try
+        {
+            var result = await _service.PhanCongGiangVienAsync(id, request);
+            return result is null
+                ? NotFound(ApiResponse<LopHocPhanDto>.Fail("Không tìm thấy lớp học phần."))
+                : Ok(ApiResponse<LopHocPhanDto>.Ok(result, "Đã cập nhật phân công giảng viên."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<LopHocPhanDto>.Fail(ex.Message));
+        }
+    }
+
     // CRS-02 Xóa lớp học phần
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{id:int}")]
