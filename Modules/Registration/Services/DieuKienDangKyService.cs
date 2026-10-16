@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using StudentManagement.Data;
+using StudentManagement.Modules.Academic.Entities;
 using StudentManagement.Modules.Courses.Entities;
 using StudentManagement.Modules.Grades.Entities;
 using StudentManagement.Modules.Registration.Entities;
@@ -18,7 +19,7 @@ public class DieuKienDangKyService(AppDbContext db) : IDieuKienDangKyService
     private readonly AppDbContext _db = db;
 
     private sealed record DangKyDaCo(
-        int LopHocPhanId, string MaLop, int MonHocId, string MaMon, int SoTinChi, int HocKyId, bool DaDat);
+        int LopHocPhanId, string MaLop, int MonHocId, string MaMon, int SoTinChi, int HocKyId, DateOnly NgayBatDauHocKy, bool DaDat);
 
     private sealed record Buoi(int LopHocPhanId, int Thu, int TietBatDau, int SoTiet)
     {
@@ -51,13 +52,17 @@ public class DieuKienDangKyService(AppDbContext db) : IDieuKienDangKyService
             from dk in _db.Set<DangKyHocPhan>().AsNoTracking()
             join l in _db.Set<LopHocPhan>() on dk.LopHocPhanId equals l.Id
             join m in _db.Set<MonHoc>() on l.MonHocId equals m.Id
+            join hk in _db.Set<HocKy>() on l.HocKyId equals hk.Id
             join d in _db.Set<DiemHocPhan>() on dk.Id equals d.DangKyHocPhanId into nhomDiem
             from d in nhomDiem.DefaultIfEmpty()
             where dk.SinhVienId == sinhVienId && dk.TrangThai == TrangThaiDangKy.DaDangKy
                   && l.TrangThai != TrangThaiLopHocPhan.DaHuy
-            select new DangKyDaCo(l.Id, l.Ma, l.MonHocId, m.Ma, m.SoTinChi, l.HocKyId,
+            select new DangKyDaCo(l.Id, l.Ma, l.MonHocId, m.Ma, m.SoTinChi, l.HocKyId, hk.NgayBatDau,
                 d != null && d.DaKhoa && d.DiemTongKet >= DiemDat))
             .ToListAsync();
+        var ngayBatDauHocKy = await _db.Set<HocKy>().AsNoTracking()
+            .Where(x => hocKyIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.NgayBatDau);
         var monDaDat = daCo.Where(x => x.DaDat).Select(x => x.MonHocId).ToHashSet();
 
         var tinChiMon = await _db.Set<MonHoc>().AsNoTracking()
@@ -88,6 +93,13 @@ public class DieuKienDangKyService(AppDbContext db) : IDieuKienDangKyService
         foreach (var lop in cacLop)
         {
             var lyDo = ketQua[lop.Id].LyDo;
+
+            // Loại đăng ký theo các lượt học môn này ở học kỳ trước: chưa học -> học mới,
+            // đã có lượt đạt -> học cải thiện, còn lại (không đạt hoặc chưa có điểm) -> học lại
+            var luotTruoc = daCo.Where(x => x.MonHocId == lop.MonHocId && x.NgayBatDauHocKy < ngayBatDauHocKy[lop.HocKyId]).ToList();
+            ketQua[lop.Id].LoaiDangKy = luotTruoc.Count == 0 ? LoaiDangKy.HocMoi
+                : luotTruoc.Any(x => x.DaDat) ? LoaiDangKy.HocCaiThien
+                : LoaiDangKy.HocLai;
 
             if (sinhVien.TrangThai != TrangThaiSinhVien.DangHoc)
                 lyDo.Add("Sinh viên không ở trạng thái đang học nên không được đăng ký học phần.");

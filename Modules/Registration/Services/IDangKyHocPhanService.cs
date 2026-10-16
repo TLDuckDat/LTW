@@ -12,8 +12,8 @@ public interface IDangKyHocPhanService
     // REG-02
     Task<PagedResult<LopMoDto>?> GetLopMoAsync(int sinhVienId, LopMoQuery query);
 
-    // REG-03
-    Task<DangKyDto?> DangKyAsync(int sinhVienId, int lopHocPhanId);
+    // REG-03, REG-06: loại đăng ký (học mới/học lại/học cải thiện) tự xác định theo lịch sử học
+    Task<DangKyDto?> DangKyAsync(int sinhVienId, int lopHocPhanId, bool xacNhanHocCaiThien = false);
 
     // REG-05
     Task<DaDangKyDto?> GetDaDangKyAsync(int sinhVienId, int? hocKyId);

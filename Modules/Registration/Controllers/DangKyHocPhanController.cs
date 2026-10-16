@@ -43,7 +43,7 @@ public class DangKyHocPhanController(IDangKyHocPhanService service) : Controller
 
         try
         {
-            var result = await _service.DangKyAsync(sinhVienId!.Value, request.LopHocPhanId);
+            var result = await _service.DangKyAsync(sinhVienId!.Value, request.LopHocPhanId, request.XacNhanHocCaiThien);
             return result is null
                 ? NotFound(ApiResponse<DangKyDto>.Fail("Không tìm thấy sinh viên hoặc lớp học phần."))
                 : StatusCode(StatusCodes.Status201Created, ApiResponse<DangKyDto>.Ok(result, "Đăng ký học phần thành công."));

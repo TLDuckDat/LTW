@@ -93,7 +93,7 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
     }
 
     // REG-03 Đăng ký học phần: kiểm tra toàn bộ điều kiện rồi mới ghi, trong một giao dịch
-    public async Task<DangKyDto?> DangKyAsync(int sinhVienId, int lopHocPhanId)
+    public async Task<DangKyDto?> DangKyAsync(int sinhVienId, int lopHocPhanId, bool xacNhanHocCaiThien = false)
     {
         // Serializable để hai sinh viên cùng đăng ký chỗ cuối cùng không cùng vượt sĩ số
         await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -107,6 +107,8 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
         var kiemTra = ketQua[lop.Id];
         if (!kiemTra.DuDieuKien)
             throw new DangKyKhongHopLeException(kiemTra.LyDo);
+        if (kiemTra.LoaiDangKy == LoaiDangKy.HocCaiThien && !xacNhanHocCaiThien)
+            throw new DangKyKhongHopLeException(["Môn học này đã đạt, đăng ký học cải thiện cần xác nhận (xacNhanHocCaiThien = true)."]);
 
         // Cặp (sinh viên, lớp) là duy nhất: đăng ký lại sau khi đã hủy thì dùng lại dòng cũ
         var dangKy = await _db.Set<DangKyHocPhan>()

@@ -14,11 +14,13 @@ public record DangKyDto(
 
 /// <summary>
 /// Yêu cầu đăng ký học phần. Sinh viên đăng nhập có thể bỏ trống SinhVienId (mặc định là chính mình);
-/// phòng đào tạo đăng ký hộ phải truyền SinhVienId.
+/// phòng đào tạo đăng ký hộ phải truyền SinhVienId. Môn đã đạt chỉ được đăng ký (học cải thiện)
+/// khi XacNhanHocCaiThien = true.
 /// </summary>
 public record DangKyRequest(
     int? SinhVienId,
-    [Range(1, int.MaxValue)] int LopHocPhanId);
+    [Range(1, int.MaxValue)] int LopHocPhanId,
+    bool XacNhanHocCaiThien = false);
 
 /// <summary>Bộ lọc danh sách lớp học phần mở đăng ký. Bỏ trống HocKyId để lấy học kỳ đang đăng ký.</summary>
 public class LopMoQuery : StudentManagement.Common.PagedQuery
