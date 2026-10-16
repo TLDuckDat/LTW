@@ -15,4 +15,8 @@ public interface ILopHocPhanService
 
     // CRS-03
     Task<LopHocPhanDto?> PhanCongGiangVienAsync(int id, PhanCongGiangVienRequest request);
+
+    // CRS-07
+    Task<LopHocPhanDto?> HuyAsync(int id);
+    Task<GopLopResultDto?> GopAsync(int id, GopLopRequest request);
 }

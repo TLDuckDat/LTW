@@ -80,6 +80,42 @@ public class LopHocPhanController(ILopHocPhanService service) : ControllerBase
         }
     }
 
+    // CRS-07 Hủy lớp học phần
+    [Authorize(Roles = "Admin,PhongDaoTao")]
+    [HttpPost("{id:int}/huy")]
+    public async Task<ActionResult<ApiResponse<LopHocPhanDto>>> Huy(int id)
+    {
+        try
+        {
+            var result = await _service.HuyAsync(id);
+            return result is null
+                ? NotFound(ApiResponse<LopHocPhanDto>.Fail("Không tìm thấy lớp học phần."))
+                : Ok(ApiResponse<LopHocPhanDto>.Ok(result, "Đã hủy lớp học phần."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<LopHocPhanDto>.Fail(ex.Message));
+        }
+    }
+
+    // CRS-07 Gộp lớp học phần vào lớp đích
+    [Authorize(Roles = "Admin,PhongDaoTao")]
+    [HttpPost("{id:int}/gop")]
+    public async Task<ActionResult<ApiResponse<GopLopResultDto>>> Gop(int id, [FromBody] GopLopRequest request)
+    {
+        try
+        {
+            var result = await _service.GopAsync(id, request);
+            return result is null
+                ? NotFound(ApiResponse<GopLopResultDto>.Fail("Không tìm thấy lớp học phần nguồn hoặc lớp đích."))
+                : Ok(ApiResponse<GopLopResultDto>.Ok(result, "Đã gộp lớp học phần."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<GopLopResultDto>.Fail(ex.Message));
+        }
+    }
+
     // CRS-02 Xóa lớp học phần
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{id:int}")]

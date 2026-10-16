@@ -33,6 +33,12 @@ public record LopHocPhanUpdateRequest(
 /// <summary>Phân công giảng viên cho lớp; GiangVienId = null để bỏ phân công.</summary>
 public record PhanCongGiangVienRequest(int? GiangVienId);
 
+/// <summary>Gộp lớp hiện tại vào lớp đích cùng môn, cùng học kỳ.</summary>
+public record GopLopRequest([Range(1, int.MaxValue)] int LopDichId);
+
+/// <summary>Kết quả gộp lớp.</summary>
+public record GopLopResultDto(LopHocPhanDto LopDich, int SoSinhVienChuyen, int SoSinhVienTrung);
+
 /// <summary>Bộ lọc danh sách lớp học phần.</summary>
 public class LopHocPhanQuery : StudentManagement.Common.PagedQuery
 {

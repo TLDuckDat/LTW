@@ -4,6 +4,7 @@ using StudentManagement.Data;
 using StudentManagement.Modules.Academic.Entities;
 using StudentManagement.Modules.Courses.Dtos;
 using StudentManagement.Modules.Courses.Entities;
+using StudentManagement.Modules.Grades.Entities;
 using StudentManagement.Modules.Registration.Entities;
 using StudentManagement.Modules.Students.Entities;
 
@@ -140,6 +141,78 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
         await _db.SaveChangesAsync();
         return await GetByIdAsync(id);
     }
+
+    // CRS-07 Hủy lớp học phần: hủy các lượt đăng ký còn hiệu lực, giữ lại dữ liệu để tra cứu
+    public async Task<LopHocPhanDto?> HuyAsync(int id)
+    {
+        var entity = await _db.Set<LopHocPhan>().FindAsync(id);
+        if (entity is null) return null;
+
+        if (entity.TrangThai == TrangThaiLopHocPhan.DaHuy)
+            throw new InvalidOperationException("Lớp học phần đã được hủy trước đó.");
+        if (entity.TrangThai == TrangThaiLopHocPhan.DaKetThuc)
+            throw new InvalidOperationException("Lớp học phần đã kết thúc, không thể hủy.");
+        if (await CoDiemAsync(id))
+            throw new InvalidOperationException("Lớp học phần đã có điểm, không thể hủy.");
+
+        var dangKy = await _db.Set<DangKyHocPhan>()
+            .Where(x => x.LopHocPhanId == id && x.TrangThai == TrangThaiDangKy.DaDangKy)
+            .ToListAsync();
+        foreach (var d in dangKy) d.TrangThai = TrangThaiDangKy.DaHuy;
+
+        entity.TrangThai = TrangThaiLopHocPhan.DaHuy;
+        await _db.SaveChangesAsync();
+        return await GetByIdAsync(id);
+    }
+
+    // CRS-07 Gộp lớp: chuyển sinh viên sang lớp đích rồi hủy lớp nguồn
+    public async Task<GopLopResultDto?> GopAsync(int id, GopLopRequest request)
+    {
+        var nguon = await _db.Set<LopHocPhan>().FindAsync(id);
+        var dich = await _db.Set<LopHocPhan>().FindAsync(request.LopDichId);
+        if (nguon is null || dich is null) return null;
+
+        if (nguon.Id == dich.Id)
+            throw new InvalidOperationException("Không thể gộp một lớp vào chính nó.");
+        if (nguon.TrangThai != TrangThaiLopHocPhan.MoDangKy || dich.TrangThai != TrangThaiLopHocPhan.MoDangKy)
+            throw new InvalidOperationException("Chỉ gộp được hai lớp học phần đang mở đăng ký.");
+        if (nguon.MonHocId != dich.MonHocId)
+            throw new InvalidOperationException("Hai lớp học phần không cùng môn học.");
+        if (nguon.HocKyId != dich.HocKyId)
+            throw new InvalidOperationException("Hai lớp học phần không cùng học kỳ.");
+        if (await CoDiemAsync(nguon.Id))
+            throw new InvalidOperationException("Lớp nguồn đã có điểm, không thể gộp.");
+
+        var dangKyNguon = await _db.Set<DangKyHocPhan>()
+            .Where(x => x.LopHocPhanId == nguon.Id && x.TrangThai == TrangThaiDangKy.DaDangKy)
+            .ToListAsync();
+        // Cặp (sinh viên, lớp) là duy nhất, sinh viên đã có dòng ở lớp đích thì không chuyển nữa
+        var svDaCoOLopDich = (await _db.Set<DangKyHocPhan>()
+                .Where(x => x.LopHocPhanId == dich.Id)
+                .Select(x => x.SinhVienId)
+                .ToListAsync())
+            .ToHashSet();
+        var canChuyen = dangKyNguon.Where(x => !svDaCoOLopDich.Contains(x.SinhVienId)).ToList();
+        var trung = dangKyNguon.Except(canChuyen).ToList();
+
+        var daDangKyDich = await DemDangKyAsync(dich.Id);
+        if (daDangKyDich + canChuyen.Count > dich.SiSoToiDa)
+            throw new InvalidOperationException(
+                $"Lớp đích không đủ chỗ: còn {dich.SiSoToiDa - daDangKyDich} chỗ, cần chuyển {canChuyen.Count} sinh viên.");
+
+        foreach (var d in canChuyen) d.LopHocPhanId = dich.Id;
+        foreach (var d in trung) d.TrangThai = TrangThaiDangKy.DaHuy;
+        nguon.TrangThai = TrangThaiLopHocPhan.DaHuy;
+        await _db.SaveChangesAsync();
+
+        return new GopLopResultDto((await GetByIdAsync(dich.Id))!, canChuyen.Count, trung.Count);
+    }
+
+    private Task<bool> CoDiemAsync(int lopHocPhanId)
+        => (from dk in _db.Set<DangKyHocPhan>()
+            join d in _db.Set<DiemHocPhan>() on dk.Id equals d.DangKyHocPhanId
+            where dk.LopHocPhanId == lopHocPhanId
+            select d.Id).AnyAsync();
 
     private Task<int> DemDangKyAsync(int lopHocPhanId)
         => _db.Set<DangKyHocPhan>()
