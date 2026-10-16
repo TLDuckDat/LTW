@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using StudentManagement.Modules.Auth.Entities;
+using StudentManagement.Modules.Students.Entities;
 
 namespace StudentManagement.Modules.Auth.Configurations;
 
@@ -15,5 +16,7 @@ public class TaiKhoanConfiguration : IEntityTypeConfiguration<TaiKhoan>
         builder.Property(x => x.HoTen).HasMaxLength(100).IsRequired();
         builder.Property(x => x.VaiTro).HasConversion<string>().HasMaxLength(30);
         builder.HasIndex(x => x.TenDangNhap).IsUnique();
+        builder.HasIndex(x => x.SinhVienId).IsUnique();
+        builder.HasOne<SinhVien>().WithMany().HasForeignKey(x => x.SinhVienId).OnDelete(DeleteBehavior.Restrict);
     }
 }

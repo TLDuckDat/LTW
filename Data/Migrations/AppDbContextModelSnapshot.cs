@@ -357,6 +357,9 @@ namespace StudentManagement.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<int?>("SinhVienId")
+                        .HasColumnType("int");
+
                     b.Property<string>("TenDangNhap")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -371,6 +374,10 @@ namespace StudentManagement.Data.Migrations
                         .HasColumnType("nvarchar(30)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SinhVienId")
+                        .IsUnique()
+                        .HasFilter("[SinhVienId] IS NOT NULL");
 
                     b.HasIndex("TenDangNhap")
                         .IsUnique();
@@ -1327,6 +1334,14 @@ namespace StudentManagement.Data.Migrations
                         .WithMany()
                         .HasForeignKey("TaiKhoanId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("StudentManagement.Modules.Auth.Entities.TaiKhoan", b =>
+                {
+                    b.HasOne("StudentManagement.Modules.Students.Entities.SinhVien", null)
+                        .WithMany()
+                        .HasForeignKey("SinhVienId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("StudentManagement.Modules.Courses.Entities.LichHoc", b =>
