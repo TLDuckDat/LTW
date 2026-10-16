@@ -54,6 +54,32 @@ public class DangKyHocPhanController(IDangKyHocPhanService service) : Controller
         }
     }
 
+    // REG-05 Danh sách học phần đã đăng ký trong học kỳ
+    [HttpGet("da-dang-ky")]
+    public async Task<ActionResult<ApiResponse<DaDangKyDto>>> GetDaDangKy([FromQuery] HocKyQuery query)
+    {
+        var (sinhVienId, loi) = await XacDinhSinhVienAsync(query.SinhVienId);
+        if (loi is not null) return loi;
+
+        var result = await _service.GetDaDangKyAsync(sinhVienId!.Value, query.HocKyId);
+        return result is null
+            ? NotFound(ApiResponse<DaDangKyDto>.Fail("Không tìm thấy sinh viên."))
+            : Ok(ApiResponse<DaDangKyDto>.Ok(result));
+    }
+
+    // REG-05 Thời khóa biểu của sinh viên trong học kỳ
+    [HttpGet("thoi-khoa-bieu")]
+    public async Task<ActionResult<ApiResponse<ThoiKhoaBieuDto>>> GetThoiKhoaBieu([FromQuery] HocKyQuery query)
+    {
+        var (sinhVienId, loi) = await XacDinhSinhVienAsync(query.SinhVienId);
+        if (loi is not null) return loi;
+
+        var result = await _service.GetThoiKhoaBieuAsync(sinhVienId!.Value, query.HocKyId);
+        return result is null
+            ? NotFound(ApiResponse<ThoiKhoaBieuDto>.Fail("Không tìm thấy sinh viên."))
+            : Ok(ApiResponse<ThoiKhoaBieuDto>.Ok(result));
+    }
+
     // REG-04 Hủy đăng ký học phần (id là mã lượt đăng ký)
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<DangKyDto>>> HuyDangKy(int id)

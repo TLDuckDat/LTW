@@ -124,6 +124,57 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
         return ToDto(dangKy);
     }
 
+    // REG-05 Học phần đã đăng ký (còn hiệu lực) trong học kỳ, kèm lịch học và tổng tín chỉ
+    public async Task<DaDangKyDto?> GetDaDangKyAsync(int sinhVienId, int? hocKyId)
+    {
+        if (!await _db.Set<SinhVien>().AnyAsync(x => x.Id == sinhVienId)) return null;
+
+        var hocKy = await XacDinhHocKyAsync(hocKyId);
+        if (hocKy is null) return new DaDangKyDto(sinhVienId, null, 0, []);
+
+        var cacDong = await (
+            from dk in _db.Set<DangKyHocPhan>().AsNoTracking()
+            join l in _db.Set<LopHocPhan>() on dk.LopHocPhanId equals l.Id
+            join m in _db.Set<MonHoc>() on l.MonHocId equals m.Id
+            join g in _db.Set<GiangVien>() on l.GiangVienId equals g.Id into giangVien
+            from g in giangVien.DefaultIfEmpty()
+            where dk.SinhVienId == sinhVienId && dk.TrangThai == TrangThaiDangKy.DaDangKy
+                  && l.HocKyId == hocKy && l.TrangThai != TrangThaiLopHocPhan.DaHuy
+            orderby m.Ma
+            select new { DangKy = dk, Lop = l, Mon = m, TenGiangVien = g == null ? null : g.HoTen })
+            .ToListAsync();
+
+        var lopIds = cacDong.Select(x => x.Lop.Id).ToList();
+        var lich = (await (
+                from l in _db.Set<LichHoc>().AsNoTracking()
+                join p in _db.Set<PhongHoc>() on l.PhongHocId equals p.Id into phong
+                from p in phong.DefaultIfEmpty()
+                where lopIds.Contains(l.LopHocPhanId)
+                orderby l.Thu, l.TietBatDau
+                select new LichHocDto(l.Id, l.LopHocPhanId, l.Thu, l.TietBatDau, l.SoTiet, l.PhongHocId, p == null ? null : p.Ma))
+                .ToListAsync())
+            .ToLookup(x => x.LopHocPhanId);
+
+        var hocPhan = cacDong.Select(x => new HocPhanDaDangKyDto(
+            x.DangKy.Id, x.Lop.Id, x.Lop.Ma, x.Mon.Ma, x.Mon.Ten, x.Mon.SoTinChi, x.TenGiangVien,
+            x.DangKy.LoaiDangKy.ToString(), x.Lop.TrangThai.ToString(), lich[x.Lop.Id].ToList())).ToList();
+        return new DaDangKyDto(sinhVienId, hocKy, hocPhan.Sum(x => x.SoTinChi), hocPhan);
+    }
+
+    // REG-05 Thời khóa biểu của sinh viên: các buổi học của những lớp đã đăng ký
+    public async Task<ThoiKhoaBieuDto?> GetThoiKhoaBieuAsync(int sinhVienId, int? hocKyId)
+    {
+        var daDangKy = await GetDaDangKyAsync(sinhVienId, hocKyId);
+        if (daDangKy is null) return null;
+
+        var buoi = daDangKy.HocPhan
+            .SelectMany(h => h.LichHoc.Select(l => new BuoiHocDto(
+                l.Thu, l.TietBatDau, l.SoTiet, l.MaPhong, h.LopHocPhanId, h.MaLop, h.MaMonHoc, h.TenMonHoc, h.TenGiangVien)))
+            .OrderBy(x => x.Thu).ThenBy(x => x.TietBatDau)
+            .ToList();
+        return new ThoiKhoaBieuDto(sinhVienId, daDangKy.HocKyId, buoi);
+    }
+
     // REG-04 Hủy đăng ký: chỉ đổi trạng thái để giữ lịch sử; giải phóng chỗ trong lớp
     public async Task<DangKyDto?> HuyDangKyAsync(int dangKyId, int? chiSinhVienId)
     {

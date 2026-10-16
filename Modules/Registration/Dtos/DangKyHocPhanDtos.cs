@@ -47,3 +47,41 @@ public record LopMoDto(
     bool DuDieuKien,
     string LoaiDangKy,
     IReadOnlyList<string> LyDoKhongDuDieuKien);
+
+/// <summary>Học phần sinh viên đã đăng ký kèm lịch học.</summary>
+public record HocPhanDaDangKyDto(
+    int DangKyId,
+    int LopHocPhanId,
+    string MaLop,
+    string MaMonHoc,
+    string TenMonHoc,
+    int SoTinChi,
+    string? TenGiangVien,
+    string LoaiDangKy,
+    string TrangThaiLop,
+    IReadOnlyList<LichHocDto> LichHoc);
+
+/// <summary>Danh sách học phần đã đăng ký của sinh viên trong một học kỳ.</summary>
+public record DaDangKyDto(int SinhVienId, int? HocKyId, int TongSoTinChi, IReadOnlyList<HocPhanDaDangKyDto> HocPhan);
+
+/// <summary>Một buổi học trong thời khóa biểu của sinh viên.</summary>
+public record BuoiHocDto(
+    int Thu,
+    int TietBatDau,
+    int SoTiet,
+    string? MaPhong,
+    int LopHocPhanId,
+    string MaLop,
+    string MaMonHoc,
+    string TenMonHoc,
+    string? TenGiangVien);
+
+/// <summary>Thời khóa biểu của sinh viên trong một học kỳ, sắp theo thứ rồi tiết.</summary>
+public record ThoiKhoaBieuDto(int SinhVienId, int? HocKyId, IReadOnlyList<BuoiHocDto> Buoi);
+
+/// <summary>Học kỳ cần xem; bỏ trống để lấy học kỳ hiện hành.</summary>
+public class HocKyQuery
+{
+    public int? SinhVienId { get; set; }
+    public int? HocKyId { get; set; }
+}
