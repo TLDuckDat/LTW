@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using StudentManagement.Modules.Courses.Dtos;
 
 namespace StudentManagement.Modules.Registration.Dtos;
 
@@ -18,3 +19,31 @@ public record DangKyDto(
 public record DangKyRequest(
     int? SinhVienId,
     [Range(1, int.MaxValue)] int LopHocPhanId);
+
+/// <summary>Bộ lọc danh sách lớp học phần mở đăng ký. Bỏ trống HocKyId để lấy học kỳ đang đăng ký.</summary>
+public class LopMoQuery : StudentManagement.Common.PagedQuery
+{
+    public int? SinhVienId { get; set; }
+    public int? HocKyId { get; set; }
+    public int? MonHocId { get; set; }
+}
+
+/// <summary>Lớp học phần đang mở kèm tình trạng đăng ký của sinh viên.</summary>
+public record LopMoDto(
+    int Id,
+    string Ma,
+    int HocKyId,
+    int MonHocId,
+    string MaMonHoc,
+    string TenMonHoc,
+    int SoTinChi,
+    int? GiangVienId,
+    string? TenGiangVien,
+    int SiSoToiDa,
+    int SiSoHienTai,
+    int ConCho,
+    IReadOnlyList<LichHocDto> LichHoc,
+    bool DaDangKy,
+    bool DuDieuKien,
+    string LoaiDangKy,
+    IReadOnlyList<string> LyDoKhongDuDieuKien);

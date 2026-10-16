@@ -21,6 +21,19 @@ public class DangKyHocPhanController(IDangKyHocPhanService service) : Controller
 
     private bool LaNhanVien => User.IsInRole("Admin") || User.IsInRole("PhongDaoTao");
 
+    // REG-02 Lớp học phần đang mở đăng ký, kèm điều kiện đăng ký của sinh viên
+    [HttpGet("lop-mo")]
+    public async Task<ActionResult<ApiResponse<PagedResult<LopMoDto>>>> GetLopMo([FromQuery] LopMoQuery query)
+    {
+        var (sinhVienId, loi) = await XacDinhSinhVienAsync(query.SinhVienId);
+        if (loi is not null) return loi;
+
+        var result = await _service.GetLopMoAsync(sinhVienId!.Value, query);
+        return result is null
+            ? NotFound(ApiResponse<PagedResult<LopMoDto>>.Fail("Không tìm thấy sinh viên hoặc học kỳ."))
+            : Ok(ApiResponse<PagedResult<LopMoDto>>.Ok(result));
+    }
+
     // REG-03 Đăng ký học phần (kiểm tra đợt, sĩ số, tiên quyết, trùng lịch, tín chỉ)
     [HttpPost]
     public async Task<ActionResult<ApiResponse<DangKyDto>>> DangKy([FromBody] DangKyRequest request)
@@ -49,7 +62,7 @@ public class DangKyHocPhanController(IDangKyHocPhanService service) : Controller
         if (LaNhanVien)
         {
             return sinhVienIdYeuCau is null
-                ? (null, BadRequest(ApiResponse<object>.Fail("Cần truyền sinhVienId khi đăng ký thay sinh viên.")))
+                ? (null, BadRequest(ApiResponse<object>.Fail("Cần truyền sinhVienId khi thao tác thay sinh viên.")))
                 : (sinhVienIdYeuCau, null);
         }
 
