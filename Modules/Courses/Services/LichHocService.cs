@@ -5,12 +5,13 @@ using StudentManagement.Modules.Courses.Entities;
 
 namespace StudentManagement.Modules.Courses.Services;
 
-public class LichHocService(AppDbContext db) : ILichHocService
+public class LichHocService(AppDbContext db, IXungDotLichService xungDot) : ILichHocService
 {
     /// <summary>Số tiết tối đa trong một ngày.</summary>
     public const int SoTietMotNgay = 12;
 
     private readonly AppDbContext _db = db;
+    private readonly IXungDotLichService _xungDot = xungDot;
 
     public async Task<IReadOnlyList<LichHocDto>?> GetByLopAsync(int lopHocPhanId)
     {
@@ -28,6 +29,7 @@ public class LichHocService(AppDbContext db) : ILichHocService
         if (lop is null) return null;
 
         await KiemTraHopLeAsync(lop, request);
+        await ChanXungDotAsync(lop, request, null);
 
         var entity = new LichHoc
         {
@@ -50,6 +52,7 @@ public class LichHocService(AppDbContext db) : ILichHocService
         if (lop is null || entity is null) return null;
 
         await KiemTraHopLeAsync(lop, request);
+        await ChanXungDotAsync(lop, request, lichHocId);
 
         entity.Thu = request.Thu;
         entity.TietBatDau = request.TietBatDau;
@@ -57,6 +60,17 @@ public class LichHocService(AppDbContext db) : ILichHocService
         entity.PhongHocId = request.PhongHocId;
         await _db.SaveChangesAsync();
         return await ProjectToDto(_db.Set<LichHoc>().AsNoTracking().Where(x => x.Id == lichHocId)).FirstAsync();
+    }
+
+    // CRS-06 Kiểm tra xung đột phòng/giảng viên/lớp cho buổi học dự kiến, không lưu dữ liệu
+    public async Task<KiemTraXungDotDto?> KiemTraXungDotAsync(int lopHocPhanId, LichHocRequest request, int? lichHocId)
+    {
+        var lop = await _db.Set<LopHocPhan>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == lopHocPhanId);
+        if (lop is null) return null;
+
+        var xungDot = await _xungDot.TimXungDotAsync(
+            lop, lop.GiangVienId, request.PhongHocId, request.Thu, request.TietBatDau, request.SoTiet, lichHocId);
+        return new KiemTraXungDotDto(xungDot.Count > 0, xungDot);
     }
 
     // CRS-05 Xóa buổi học
@@ -84,6 +98,14 @@ public class LichHocService(AppDbContext db) : ILichHocService
         if (phong.SucChua < lop.SiSoToiDa)
             throw new InvalidOperationException(
                 $"Phòng {phong.Ma} chỉ chứa {phong.SucChua} chỗ, nhỏ hơn sĩ số tối đa của lớp ({lop.SiSoToiDa}).");
+    }
+
+    private async Task ChanXungDotAsync(LopHocPhan lop, LichHocRequest request, int? lichHocId)
+    {
+        var xungDot = await _xungDot.TimXungDotAsync(
+            lop, lop.GiangVienId, request.PhongHocId, request.Thu, request.TietBatDau, request.SoTiet, lichHocId);
+        if (xungDot.Count > 0)
+            throw new InvalidOperationException("Xung đột lịch học: " + string.Join(" ", xungDot.Select(x => x.ThongBao)));
     }
 
     private IQueryable<LichHocDto> ProjectToDto(IQueryable<LichHoc> q)

@@ -10,6 +10,7 @@ public static class CoursesModule
         services.AddScoped<IMonHocService, MonHocService>();
         services.AddScoped<ILopHocPhanService, LopHocPhanService>();
         services.AddScoped<IPhongHocService, PhongHocService>();
+        services.AddScoped<IXungDotLichService, XungDotLichService>();
         services.AddScoped<ILichHocService, LichHocService>();
         return services;
     }

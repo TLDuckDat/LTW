@@ -59,6 +59,18 @@ public class LichHocController(ILichHocService service) : ControllerBase
         }
     }
 
+    // CRS-06 Kiểm tra xung đột phòng/giảng viên trước khi xếp (lichHocId: buổi đang sửa, nếu có)
+    [Authorize(Roles = "Admin,PhongDaoTao")]
+    [HttpPost("kiem-tra-xung-dot")]
+    public async Task<ActionResult<ApiResponse<KiemTraXungDotDto>>> KiemTraXungDot(
+        int lopHocPhanId, [FromBody] LichHocRequest request, [FromQuery] int? lichHocId)
+    {
+        var result = await _service.KiemTraXungDotAsync(lopHocPhanId, request, lichHocId);
+        return result is null
+            ? NotFound(ApiResponse<KiemTraXungDotDto>.Fail("Không tìm thấy lớp học phần."))
+            : Ok(ApiResponse<KiemTraXungDotDto>.Ok(result));
+    }
+
     // CRS-05 Xóa buổi học
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{lichHocId:int}")]
