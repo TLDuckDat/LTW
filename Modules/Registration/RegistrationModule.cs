@@ -8,6 +8,8 @@ public static class RegistrationModule
     public static IServiceCollection AddRegistrationModule(this IServiceCollection services)
     {
         services.AddScoped<IDotDangKyService, DotDangKyService>();
+        services.AddScoped<IDieuKienDangKyService, DieuKienDangKyService>();
+        services.AddScoped<IDangKyHocPhanService, DangKyHocPhanService>();
         return services;
     }
 }
