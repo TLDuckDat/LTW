@@ -56,10 +56,10 @@ public class NganhService(AppDbContext db) : INganhService
         };
     }
 
-    public async Task<NganhDto?> GetByIdAsync(int id)
+    public async Task<NganhDto> GetByIdAsync(int id)
     {
         var ng = await _db.Set<Nganh>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        if (ng is null) return null;
+        if (ng is null) throw AppException.NotFound("ngành đào tạo");
 
         var khoa = await _db.Set<Khoa>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == ng.KhoaId);
         return new NganhDto(ng.Id, ng.Ma, ng.Ten, ng.KhoaId, khoa?.Ten, ng.CreatedAt, ng.UpdatedAt);
@@ -68,10 +68,10 @@ public class NganhService(AppDbContext db) : INganhService
     public async Task<NganhDto> CreateAsync(NganhRequest request)
     {
         if (await _db.Set<Nganh>().AnyAsync(x => x.Ma == request.Ma))
-            throw new InvalidOperationException($"Mã ngành '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã ngành '{request.Ma}' đã tồn tại.");
 
         if (!await _db.Set<Khoa>().AnyAsync(x => x.Id == request.KhoaId))
-            throw new InvalidOperationException($"Khoa với Id {request.KhoaId} không tồn tại.");
+            throw AppException.Conflict($"Khoa với Id {request.KhoaId} không tồn tại.");
 
         var ng = new Nganh
         {
@@ -87,16 +87,16 @@ public class NganhService(AppDbContext db) : INganhService
         return new NganhDto(ng.Id, ng.Ma, ng.Ten, ng.KhoaId, khoa?.Ten, ng.CreatedAt, ng.UpdatedAt);
     }
 
-    public async Task<NganhDto?> UpdateAsync(int id, NganhRequest request)
+    public async Task<NganhDto> UpdateAsync(int id, NganhRequest request)
     {
         var ng = await _db.Set<Nganh>().FindAsync(id);
-        if (ng is null) return null;
+        if (ng is null) throw AppException.NotFound("ngành đào tạo");
 
         if (await _db.Set<Nganh>().AnyAsync(x => x.Ma == request.Ma && x.Id != id))
-            throw new InvalidOperationException($"Mã ngành '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã ngành '{request.Ma}' đã tồn tại.");
 
         if (!await _db.Set<Khoa>().AnyAsync(x => x.Id == request.KhoaId))
-            throw new InvalidOperationException($"Khoa với Id {request.KhoaId} không tồn tại.");
+            throw AppException.Conflict($"Khoa với Id {request.KhoaId} không tồn tại.");
 
         ng.Ma = request.Ma.Trim();
         ng.Ten = request.Ten.Trim();
@@ -108,10 +108,10 @@ public class NganhService(AppDbContext db) : INganhService
         return new NganhDto(ng.Id, ng.Ma, ng.Ten, ng.KhoaId, khoa?.Ten, ng.CreatedAt, ng.UpdatedAt);
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
         var ng = await _db.Set<Nganh>().FindAsync(id);
-        if (ng is null) return false;
+        if (ng is null) throw AppException.NotFound("ngành đào tạo");
 
         _db.Remove(ng);
         try
@@ -120,9 +120,7 @@ public class NganhService(AppDbContext db) : INganhService
         }
         catch (DbUpdateException)
         {
-            throw new InvalidOperationException("Không thể xóa ngành đang có chuyên ngành, lớp hành chính hoặc sinh viên liên quan.");
+            throw AppException.Conflict("Không thể xóa ngành đang có chuyên ngành, lớp hành chính hoặc sinh viên liên quan.");
         }
-
-        return true;
     }
 }

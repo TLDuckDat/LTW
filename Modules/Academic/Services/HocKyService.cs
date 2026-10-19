@@ -58,10 +58,10 @@ public class HocKyService(AppDbContext db) : IHocKyService
         };
     }
 
-    public async Task<HocKyDto?> GetByIdAsync(int id)
+    public async Task<HocKyDto> GetByIdAsync(int id)
     {
         var hk = await _db.Set<HocKy>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        if (hk is null) return null;
+        if (hk is null) throw AppException.NotFound("học kỳ");
 
         var namHoc = await _db.Set<NamHoc>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == hk.NamHocId);
         return new HocKyDto(hk.Id, hk.Ten, hk.SoThuTu, hk.NamHocId, namHoc?.Ten, hk.NgayBatDau, hk.NgayKetThuc, hk.CreatedAt, hk.UpdatedAt);
@@ -70,13 +70,13 @@ public class HocKyService(AppDbContext db) : IHocKyService
     public async Task<HocKyDto> CreateAsync(HocKyRequest request)
     {
         if (request.NgayKetThuc <= request.NgayBatDau)
-            throw new InvalidOperationException("Ngày kết thúc học kỳ phải sau ngày bắt đầu.");
+            throw AppException.Conflict("Ngày kết thúc học kỳ phải sau ngày bắt đầu.");
 
         if (!await _db.Set<NamHoc>().AnyAsync(x => x.Id == request.NamHocId))
-            throw new InvalidOperationException($"Năm học với Id {request.NamHocId} không tồn tại.");
+            throw AppException.Conflict($"Năm học với Id {request.NamHocId} không tồn tại.");
 
         if (await _db.Set<HocKy>().AnyAsync(x => x.NamHocId == request.NamHocId && x.SoThuTu == request.SoThuTu))
-            throw new InvalidOperationException($"Học kỳ số {request.SoThuTu} đã tồn tại trong năm học này.");
+            throw AppException.Conflict($"Học kỳ số {request.SoThuTu} đã tồn tại trong năm học này.");
 
         var hk = new HocKy
         {
@@ -94,19 +94,19 @@ public class HocKyService(AppDbContext db) : IHocKyService
         return new HocKyDto(hk.Id, hk.Ten, hk.SoThuTu, hk.NamHocId, namHoc?.Ten, hk.NgayBatDau, hk.NgayKetThuc, hk.CreatedAt, hk.UpdatedAt);
     }
 
-    public async Task<HocKyDto?> UpdateAsync(int id, HocKyRequest request)
+    public async Task<HocKyDto> UpdateAsync(int id, HocKyRequest request)
     {
         var hk = await _db.Set<HocKy>().FindAsync(id);
-        if (hk is null) return null;
+        if (hk is null) throw AppException.NotFound("học kỳ");
 
         if (request.NgayKetThuc <= request.NgayBatDau)
-            throw new InvalidOperationException("Ngày kết thúc học kỳ phải sau ngày bắt đầu.");
+            throw AppException.Conflict("Ngày kết thúc học kỳ phải sau ngày bắt đầu.");
 
         if (!await _db.Set<NamHoc>().AnyAsync(x => x.Id == request.NamHocId))
-            throw new InvalidOperationException($"Năm học với Id {request.NamHocId} không tồn tại.");
+            throw AppException.Conflict($"Năm học với Id {request.NamHocId} không tồn tại.");
 
         if (await _db.Set<HocKy>().AnyAsync(x => x.NamHocId == request.NamHocId && x.SoThuTu == request.SoThuTu && x.Id != id))
-            throw new InvalidOperationException($"Học kỳ số {request.SoThuTu} đã tồn tại trong năm học này.");
+            throw AppException.Conflict($"Học kỳ số {request.SoThuTu} đã tồn tại trong năm học này.");
 
         hk.Ten = request.Ten.Trim();
         hk.SoThuTu = request.SoThuTu;
@@ -120,10 +120,10 @@ public class HocKyService(AppDbContext db) : IHocKyService
         return new HocKyDto(hk.Id, hk.Ten, hk.SoThuTu, hk.NamHocId, namHoc?.Ten, hk.NgayBatDau, hk.NgayKetThuc, hk.CreatedAt, hk.UpdatedAt);
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
         var hk = await _db.Set<HocKy>().FindAsync(id);
-        if (hk is null) return false;
+        if (hk is null) throw AppException.NotFound("học kỳ");
 
         _db.Remove(hk);
         try
@@ -132,9 +132,7 @@ public class HocKyService(AppDbContext db) : IHocKyService
         }
         catch (DbUpdateException)
         {
-            throw new InvalidOperationException("Không thể xóa học kỳ đang có đợt đăng ký, lớp học phần hoặc điểm liên quan.");
+            throw AppException.Conflict("Không thể xóa học kỳ đang có đợt đăng ký, lớp học phần hoặc điểm liên quan.");
         }
-
-        return true;
     }
 }

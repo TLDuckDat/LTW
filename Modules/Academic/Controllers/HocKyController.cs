@@ -6,76 +6,35 @@ using StudentManagement.Modules.Academic.Services;
 
 namespace StudentManagement.Modules.Academic.Controllers;
 
-[ApiController]
 [Route("api/hoc-ky")]
 [Tags("Academic")]
-public class HocKyController(IHocKyService service) : ControllerBase
+public class HocKyController(IHocKyService service) : ApiControllerBase
 {
-    private readonly IHocKyService _service = service;
-
     // EDU-03 Danh sách học kỳ (lọc theo năm học)
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<PagedResult<HocKyDto>>>> GetPaged([FromQuery] HocKyFilterQuery query)
-        => Ok(ApiResponse<PagedResult<HocKyDto>>.Ok(await _service.GetPagedAsync(query)));
+    public Task<ActionResult<ApiResponse<PagedResult<HocKyDto>>>> GetPaged([FromQuery] HocKyFilterQuery query) =>
+        Execute(() => service.GetPagedAsync(query));
 
     // EDU-03 Chi tiết học kỳ
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<ApiResponse<HocKyDto>>> GetById(int id)
-    {
-        var result = await _service.GetByIdAsync(id);
-        return result is null
-            ? NotFound(ApiResponse<HocKyDto>.Fail("Không tìm thấy học kỳ."))
-            : Ok(ApiResponse<HocKyDto>.Ok(result));
-    }
+    public Task<ActionResult<ApiResponse<HocKyDto>>> GetById(int id) =>
+        Execute(() => service.GetByIdAsync(id));
 
     // EDU-03 Thêm học kỳ
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
-    public async Task<ActionResult<ApiResponse<HocKyDto>>> Create([FromBody] HocKyRequest request)
-    {
-        try
-        {
-            var result = await _service.CreateAsync(request);
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, ApiResponse<HocKyDto>.Ok(result, "Đã tạo học kỳ."));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ApiResponse<HocKyDto>.Fail(ex.Message));
-        }
-    }
+    public Task<ActionResult<ApiResponse<HocKyDto>>> Create([FromBody] HocKyRequest request) =>
+        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo học kỳ.");
 
     // EDU-03 Cập nhật học kỳ
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}")]
-    public async Task<ActionResult<ApiResponse<HocKyDto>>> Update(int id, [FromBody] HocKyRequest request)
-    {
-        try
-        {
-            var result = await _service.UpdateAsync(id, request);
-            return result is null
-                ? NotFound(ApiResponse<HocKyDto>.Fail("Không tìm thấy học kỳ."))
-                : Ok(ApiResponse<HocKyDto>.Ok(result, "Đã cập nhật học kỳ."));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ApiResponse<HocKyDto>.Fail(ex.Message));
-        }
-    }
+    public Task<ActionResult<ApiResponse<HocKyDto>>> Update(int id, [FromBody] HocKyRequest request) =>
+        Execute(() => service.UpdateAsync(id, request), message: "Đã cập nhật học kỳ.");
 
     // EDU-03 Xóa học kỳ
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{id:int}")]
-    public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
-    {
-        try
-        {
-            return await _service.DeleteAsync(id)
-                ? Ok(ApiResponse<object>.Ok(null, "Đã xóa học kỳ."))
-                : NotFound(ApiResponse<object>.Fail("Không tìm thấy học kỳ."));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ApiResponse<object>.Fail(ex.Message));
-        }
-    }
+    public Task<ActionResult<ApiResponse<object>>> Delete(int id) =>
+        Execute(() => service.DeleteAsync(id), "Đã xóa học kỳ.");
 }

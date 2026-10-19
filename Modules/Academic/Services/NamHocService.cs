@@ -37,19 +37,19 @@ public class NamHocService(AppDbContext db) : INamHocService
         };
     }
 
-    public async Task<NamHocDto?> GetByIdAsync(int id)
+    public async Task<NamHocDto> GetByIdAsync(int id)
     {
         var nh = await _db.Set<NamHoc>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        return nh is null ? null : new NamHocDto(nh.Id, nh.Ten, nh.NgayBatDau, nh.NgayKetThuc, nh.CreatedAt, nh.UpdatedAt);
+        return nh is null ? throw AppException.NotFound("năm học") : new NamHocDto(nh.Id, nh.Ten, nh.NgayBatDau, nh.NgayKetThuc, nh.CreatedAt, nh.UpdatedAt);
     }
 
     public async Task<NamHocDto> CreateAsync(NamHocRequest request)
     {
         if (request.NgayKetThuc <= request.NgayBatDau)
-            throw new InvalidOperationException("Ngày kết thúc năm học phải sau ngày bắt đầu.");
+            throw AppException.Conflict("Ngày kết thúc năm học phải sau ngày bắt đầu.");
 
         if (await _db.Set<NamHoc>().AnyAsync(x => x.Ten == request.Ten))
-            throw new InvalidOperationException($"Năm học '{request.Ten}' đã tồn tại.");
+            throw AppException.Conflict($"Năm học '{request.Ten}' đã tồn tại.");
 
         var nh = new NamHoc
         {
@@ -64,16 +64,16 @@ public class NamHocService(AppDbContext db) : INamHocService
         return new NamHocDto(nh.Id, nh.Ten, nh.NgayBatDau, nh.NgayKetThuc, nh.CreatedAt, nh.UpdatedAt);
     }
 
-    public async Task<NamHocDto?> UpdateAsync(int id, NamHocRequest request)
+    public async Task<NamHocDto> UpdateAsync(int id, NamHocRequest request)
     {
         var nh = await _db.Set<NamHoc>().FindAsync(id);
-        if (nh is null) return null;
+        if (nh is null) throw AppException.NotFound("năm học");
 
         if (request.NgayKetThuc <= request.NgayBatDau)
-            throw new InvalidOperationException("Ngày kết thúc năm học phải sau ngày bắt đầu.");
+            throw AppException.Conflict("Ngày kết thúc năm học phải sau ngày bắt đầu.");
 
         if (await _db.Set<NamHoc>().AnyAsync(x => x.Ten == request.Ten && x.Id != id))
-            throw new InvalidOperationException($"Năm học '{request.Ten}' đã tồn tại.");
+            throw AppException.Conflict($"Năm học '{request.Ten}' đã tồn tại.");
 
         nh.Ten = request.Ten.Trim();
         nh.NgayBatDau = request.NgayBatDau;
@@ -84,10 +84,10 @@ public class NamHocService(AppDbContext db) : INamHocService
         return new NamHocDto(nh.Id, nh.Ten, nh.NgayBatDau, nh.NgayKetThuc, nh.CreatedAt, nh.UpdatedAt);
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
         var nh = await _db.Set<NamHoc>().FindAsync(id);
-        if (nh is null) return false;
+        if (nh is null) throw AppException.NotFound("năm học");
 
         _db.Remove(nh);
         try
@@ -96,9 +96,7 @@ public class NamHocService(AppDbContext db) : INamHocService
         }
         catch (DbUpdateException)
         {
-            throw new InvalidOperationException("Không thể xóa năm học đang có học kỳ liên quan.");
+            throw AppException.Conflict("Không thể xóa năm học đang có học kỳ liên quan.");
         }
-
-        return true;
     }
 }

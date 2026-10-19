@@ -72,10 +72,10 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
     }
 
     // EDU-04: Chi tiết CTĐT kèm danh sách môn học
-    public async Task<ChuongTrinhDaoTaoDetailDto?> GetByIdAsync(int id)
+    public async Task<ChuongTrinhDaoTaoDetailDto> GetByIdAsync(int id)
     {
         var ctdt = await _db.Set<ChuongTrinhDaoTao>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        if (ctdt is null) return null;
+        if (ctdt is null) throw AppException.NotFound("chương trình đào tạo");
 
         var nganh = await _db.Set<Nganh>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == ctdt.NganhId);
 
@@ -105,10 +105,10 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
     public async Task<ChuongTrinhDaoTaoDto> CreateAsync(ChuongTrinhDaoTaoRequest request)
     {
         if (await _db.Set<ChuongTrinhDaoTao>().AnyAsync(x => x.Ma == request.Ma))
-            throw new InvalidOperationException($"Mã chương trình đào tạo '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã chương trình đào tạo '{request.Ma}' đã tồn tại.");
 
         if (!await _db.Set<Nganh>().AnyAsync(x => x.Id == request.NganhId))
-            throw new InvalidOperationException($"Ngành với Id {request.NganhId} không tồn tại.");
+            throw AppException.Conflict($"Ngành với Id {request.NganhId} không tồn tại.");
         KiemTraDieuKienTotNghiep(request);
 
         var ctdt = new ChuongTrinhDaoTao
@@ -128,21 +128,21 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
     }
 
     // EDU-04: Cập nhật CTĐT
-    public async Task<ChuongTrinhDaoTaoDto?> UpdateAsync(int id, ChuongTrinhDaoTaoRequest request)
+    public async Task<ChuongTrinhDaoTaoDto> UpdateAsync(int id, ChuongTrinhDaoTaoRequest request)
     {
         var ctdt = await _db.Set<ChuongTrinhDaoTao>().FindAsync(id);
-        if (ctdt is null) return null;
+        if (ctdt is null) throw AppException.NotFound("chương trình đào tạo");
 
         if (await _db.Set<ChuongTrinhDaoTao>().AnyAsync(x => x.Ma == request.Ma && x.Id != id))
-            throw new InvalidOperationException($"Mã chương trình đào tạo '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã chương trình đào tạo '{request.Ma}' đã tồn tại.");
 
         if (!await _db.Set<Nganh>().AnyAsync(x => x.Id == request.NganhId))
-            throw new InvalidOperationException($"Ngành với Id {request.NganhId} không tồn tại.");
+            throw AppException.Conflict($"Ngành với Id {request.NganhId} không tồn tại.");
         KiemTraDieuKienTotNghiep(request);
 
         var tinChiBatBuoc = await TongTinChiBatBuocAsync(id);
         if (request.TongSoTinChi > 0 && request.TongSoTinChi < tinChiBatBuoc)
-            throw new InvalidOperationException(
+            throw AppException.Conflict(
                 $"Tổng số tín chỉ ({request.TongSoTinChi}) không được nhỏ hơn tổng tín chỉ các môn bắt buộc ({tinChiBatBuoc}).");
 
         ctdt.Ma = request.Ma.Trim();
@@ -162,12 +162,12 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
     private static void KiemTraDieuKienTotNghiep(ChuongTrinhDaoTaoRequest request)
     {
         if (request.YeuCauThucTap == true && request.DiemThucTapToiThieu is null)
-            throw new InvalidOperationException("Chương trình bắt buộc thực tập phải có điểm thực tập tối thiểu.");
+            throw AppException.Conflict("Chương trình bắt buộc thực tập phải có điểm thực tập tối thiểu.");
         if (request.YeuCauKhoaLuan == true && request.DiemBaoVeToiThieu is null)
-            throw new InvalidOperationException("Chương trình bắt buộc khóa luận phải có điểm bảo vệ tối thiểu.");
+            throw AppException.Conflict("Chương trình bắt buộc khóa luận phải có điểm bảo vệ tối thiểu.");
         if (new[] { request.CpaToiThieu, request.DiemThucTapToiThieu, request.DiemBaoVeToiThieu }
             .Any(x => x is not null && decimal.Round(x.Value, 2) != x.Value))
-            throw new InvalidOperationException("CPA và điểm tối thiểu chỉ được có tối đa 2 chữ số thập phân.");
+            throw AppException.Conflict("CPA và điểm tối thiểu chỉ được có tối đa 2 chữ số thập phân.");
     }
 
     private static void GanThongTin(ChuongTrinhDaoTao ctdt, ChuongTrinhDaoTaoRequest request)
@@ -198,15 +198,15 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
         if (ctdt.TongSoTinChi <= 0) return;
         var tong = await TongTinChiBatBuocAsync(ctdt.Id, monHoc.Id) + monHoc.SoTinChi;
         if (tong > ctdt.TongSoTinChi)
-            throw new InvalidOperationException(
+            throw AppException.Conflict(
                 $"Tổng tín chỉ môn bắt buộc ({tong}) vượt tổng số tín chỉ của chương trình ({ctdt.TongSoTinChi}).");
     }
 
     // EDU-04: Xóa CTĐT
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
         var ctdt = await _db.Set<ChuongTrinhDaoTao>().FindAsync(id);
-        if (ctdt is null) return false;
+        if (ctdt is null) throw AppException.NotFound("chương trình đào tạo");
 
         _db.Remove(ctdt);
         try
@@ -215,10 +215,8 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
         }
         catch (DbUpdateException)
         {
-            throw new InvalidOperationException("Không thể xóa chương trình đào tạo đang có dữ liệu sinh viên hoặc đăng ký liên quan.");
+            throw AppException.Conflict("Không thể xóa chương trình đào tạo đang có dữ liệu sinh viên hoặc đăng ký liên quan.");
         }
-
-        return true;
     }
 
     // ==========================================
@@ -262,14 +260,14 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
     {
         var ctdt = await _db.Set<ChuongTrinhDaoTao>().FindAsync(chuongTrinhDaoTaoId);
         if (ctdt is null)
-            throw new InvalidOperationException($"Chương trình đào tạo với Id {chuongTrinhDaoTaoId} không tồn tại.");
+            throw AppException.Conflict($"Chương trình đào tạo với Id {chuongTrinhDaoTaoId} không tồn tại.");
 
         var monHoc = await _db.Set<MonHoc>().FindAsync(request.MonHocId);
         if (monHoc is null)
-            throw new InvalidOperationException($"Môn học với Id {request.MonHocId} không tồn tại.");
+            throw AppException.Conflict($"Môn học với Id {request.MonHocId} không tồn tại.");
 
         if (await _db.Set<ChuongTrinhDaoTaoMonHoc>().AnyAsync(x => x.ChuongTrinhDaoTaoId == chuongTrinhDaoTaoId && x.MonHocId == request.MonHocId))
-            throw new InvalidOperationException($"Môn học '{monHoc.Ten}' đã có trong chương trình đào tạo này.");
+            throw AppException.Conflict($"Môn học '{monHoc.Ten}' đã có trong chương trình đào tạo này.");
 
         var item = new ChuongTrinhDaoTaoMonHoc
         {
@@ -301,11 +299,11 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
     }
 
     // Cập nhật thông tin môn học trong CTĐT
-    public async Task<MonHocTrongCtdtDto?> CapNhatMonHocAsync(int chuongTrinhDaoTaoId, int monHocId, CapNhatMonHocTrongCtdtRequest request)
+    public async Task<MonHocTrongCtdtDto> CapNhatMonHocAsync(int chuongTrinhDaoTaoId, int monHocId, CapNhatMonHocTrongCtdtRequest request)
     {
         var item = await _db.Set<ChuongTrinhDaoTaoMonHoc>()
             .FirstOrDefaultAsync(x => x.ChuongTrinhDaoTaoId == chuongTrinhDaoTaoId && x.MonHocId == monHocId);
-        if (item is null) return null;
+        if (item is null) throw AppException.NotFound("môn học trong chương trình đào tạo này");
 
         var ctdt = await _db.Set<ChuongTrinhDaoTao>().FindAsync(chuongTrinhDaoTaoId);
         var monHoc = await _db.Set<MonHoc>().FindAsync(monHocId);
@@ -334,14 +332,13 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
     }
 
     // Gỡ môn học khỏi CTĐT
-    public async Task<bool> XoaMonHocAsync(int chuongTrinhDaoTaoId, int monHocId)
+    public async Task XoaMonHocAsync(int chuongTrinhDaoTaoId, int monHocId)
     {
         var item = await _db.Set<ChuongTrinhDaoTaoMonHoc>()
             .FirstOrDefaultAsync(x => x.ChuongTrinhDaoTaoId == chuongTrinhDaoTaoId && x.MonHocId == monHocId);
-        if (item is null) return false;
+        if (item is null) throw AppException.NotFound("môn học trong chương trình đào tạo này");
 
         _db.Remove(item);
         await _db.SaveChangesAsync();
-        return true;
     }
 }

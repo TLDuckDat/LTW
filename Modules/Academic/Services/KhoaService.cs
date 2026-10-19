@@ -31,16 +31,16 @@ public class KhoaService(AppDbContext db) : IKhoaService
         return new PagedResult<KhoaDto> { Items = items, Page = query.Page, PageSize = query.PageSize, TotalCount = total };
     }
 
-    public async Task<KhoaDto?> GetByIdAsync(int id)
+    public async Task<KhoaDto> GetByIdAsync(int id)
     {
         var entity = await _db.Set<Khoa>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        return entity is null ? null : ToDto(entity);
+        return entity is null ? throw AppException.NotFound("khoa") : ToDto(entity);
     }
 
     public async Task<KhoaDto> CreateAsync(KhoaRequest request)
     {
         if (await _db.Set<Khoa>().AnyAsync(x => x.Ma == request.Ma))
-            throw new InvalidOperationException($"Mã khoa '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã khoa '{request.Ma}' đã tồn tại.");
 
         var entity = new Khoa { Ma = request.Ma, Ten = request.Ten, MoTa = request.MoTa };
         _db.Add(entity);
@@ -48,13 +48,13 @@ public class KhoaService(AppDbContext db) : IKhoaService
         return ToDto(entity);
     }
 
-    public async Task<KhoaDto?> UpdateAsync(int id, KhoaRequest request)
+    public async Task<KhoaDto> UpdateAsync(int id, KhoaRequest request)
     {
         var entity = await _db.Set<Khoa>().FindAsync(id);
-        if (entity is null) return null;
+        if (entity is null) throw AppException.NotFound("khoa");
 
         if (await _db.Set<Khoa>().AnyAsync(x => x.Ma == request.Ma && x.Id != id))
-            throw new InvalidOperationException($"Mã khoa '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã khoa '{request.Ma}' đã tồn tại.");
 
         entity.Ma = request.Ma;
         entity.Ten = request.Ten;
@@ -63,10 +63,10 @@ public class KhoaService(AppDbContext db) : IKhoaService
         return ToDto(entity);
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
         var entity = await _db.Set<Khoa>().FindAsync(id);
-        if (entity is null) return false;
+        if (entity is null) throw AppException.NotFound("khoa");
 
         // Khóa ngoại dùng Restrict: còn Bộ môn/Ngành tham chiếu thì SQL Server từ chối xóa.
         _db.Remove(entity);
@@ -76,9 +76,8 @@ public class KhoaService(AppDbContext db) : IKhoaService
         }
         catch (DbUpdateException)
         {
-            throw new InvalidOperationException("Không thể xóa khoa đang có dữ liệu liên quan.");
+            throw AppException.Conflict("Không thể xóa khoa đang có dữ liệu liên quan.");
         }
-        return true;
     }
 
     private static KhoaDto ToDto(Khoa x) => new(x.Id, x.Ma, x.Ten, x.MoTa, x.CreatedAt, x.UpdatedAt);

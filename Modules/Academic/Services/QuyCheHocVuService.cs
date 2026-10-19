@@ -42,22 +42,22 @@ public class QuyCheHocVuService(AppDbContext db) : IQuyCheHocVuService
         };
     }
 
-    public async Task<QuyCheHocVuDto?> GetByIdAsync(int id)
+    public async Task<QuyCheHocVuDto> GetByIdAsync(int id)
     {
         var qc = await _db.Set<QuyCheHocVu>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        return qc is null ? null : new QuyCheHocVuDto(qc.Id, qc.Ma, qc.Ten, qc.GiaTri, qc.DonVi, qc.MoTa, qc.ApDungTuKhoa, qc.CreatedAt, qc.UpdatedAt);
+        return qc is null ? throw AppException.NotFound("quy chế học vụ") : new QuyCheHocVuDto(qc.Id, qc.Ma, qc.Ten, qc.GiaTri, qc.DonVi, qc.MoTa, qc.ApDungTuKhoa, qc.CreatedAt, qc.UpdatedAt);
     }
 
-    public async Task<QuyCheHocVuDto?> GetByMaAsync(string ma)
+    public async Task<QuyCheHocVuDto> GetByMaAsync(string ma)
     {
         var qc = await _db.Set<QuyCheHocVu>().AsNoTracking().FirstOrDefaultAsync(x => x.Ma == ma);
-        return qc is null ? null : new QuyCheHocVuDto(qc.Id, qc.Ma, qc.Ten, qc.GiaTri, qc.DonVi, qc.MoTa, qc.ApDungTuKhoa, qc.CreatedAt, qc.UpdatedAt);
+        return qc is null ? throw AppException.NotFound($"quy chế với mã '{ma}'") : new QuyCheHocVuDto(qc.Id, qc.Ma, qc.Ten, qc.GiaTri, qc.DonVi, qc.MoTa, qc.ApDungTuKhoa, qc.CreatedAt, qc.UpdatedAt);
     }
 
     public async Task<QuyCheHocVuDto> CreateAsync(QuyCheHocVuRequest request)
     {
         if (await _db.Set<QuyCheHocVu>().AnyAsync(x => x.Ma == request.Ma))
-            throw new InvalidOperationException($"Mã quy chế '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã quy chế '{request.Ma}' đã tồn tại.");
 
         var qc = new QuyCheHocVu
         {
@@ -75,13 +75,13 @@ public class QuyCheHocVuService(AppDbContext db) : IQuyCheHocVuService
         return new QuyCheHocVuDto(qc.Id, qc.Ma, qc.Ten, qc.GiaTri, qc.DonVi, qc.MoTa, qc.ApDungTuKhoa, qc.CreatedAt, qc.UpdatedAt);
     }
 
-    public async Task<QuyCheHocVuDto?> UpdateAsync(int id, QuyCheHocVuRequest request)
+    public async Task<QuyCheHocVuDto> UpdateAsync(int id, QuyCheHocVuRequest request)
     {
         var qc = await _db.Set<QuyCheHocVu>().FindAsync(id);
-        if (qc is null) return null;
+        if (qc is null) throw AppException.NotFound("quy chế học vụ");
 
         if (await _db.Set<QuyCheHocVu>().AnyAsync(x => x.Ma == request.Ma && x.Id != id))
-            throw new InvalidOperationException($"Mã quy chế '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã quy chế '{request.Ma}' đã tồn tại.");
 
         qc.Ma = request.Ma.Trim();
         qc.Ten = request.Ten.Trim();
@@ -95,13 +95,12 @@ public class QuyCheHocVuService(AppDbContext db) : IQuyCheHocVuService
         return new QuyCheHocVuDto(qc.Id, qc.Ma, qc.Ten, qc.GiaTri, qc.DonVi, qc.MoTa, qc.ApDungTuKhoa, qc.CreatedAt, qc.UpdatedAt);
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
         var qc = await _db.Set<QuyCheHocVu>().FindAsync(id);
-        if (qc is null) return false;
+        if (qc is null) throw AppException.NotFound("quy chế học vụ");
 
         _db.Remove(qc);
         await _db.SaveChangesAsync();
-        return true;
     }
 }

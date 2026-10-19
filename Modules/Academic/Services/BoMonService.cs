@@ -56,10 +56,10 @@ public class BoMonService(AppDbContext db) : IBoMonService
         };
     }
 
-    public async Task<BoMonDto?> GetByIdAsync(int id)
+    public async Task<BoMonDto> GetByIdAsync(int id)
     {
         var bm = await _db.Set<BoMon>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        if (bm is null) return null;
+        if (bm is null) throw AppException.NotFound("bộ môn");
 
         var khoa = await _db.Set<Khoa>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == bm.KhoaId);
         return new BoMonDto(bm.Id, bm.Ma, bm.Ten, bm.KhoaId, khoa?.Ten, bm.CreatedAt, bm.UpdatedAt);
@@ -68,10 +68,10 @@ public class BoMonService(AppDbContext db) : IBoMonService
     public async Task<BoMonDto> CreateAsync(BoMonRequest request)
     {
         if (await _db.Set<BoMon>().AnyAsync(x => x.Ma == request.Ma))
-            throw new InvalidOperationException($"Mã bộ môn '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã bộ môn '{request.Ma}' đã tồn tại.");
 
         if (!await _db.Set<Khoa>().AnyAsync(x => x.Id == request.KhoaId))
-            throw new InvalidOperationException($"Khoa với Id {request.KhoaId} không tồn tại.");
+            throw AppException.Conflict($"Khoa với Id {request.KhoaId} không tồn tại.");
 
         var bm = new BoMon
         {
@@ -87,16 +87,16 @@ public class BoMonService(AppDbContext db) : IBoMonService
         return new BoMonDto(bm.Id, bm.Ma, bm.Ten, bm.KhoaId, khoa?.Ten, bm.CreatedAt, bm.UpdatedAt);
     }
 
-    public async Task<BoMonDto?> UpdateAsync(int id, BoMonRequest request)
+    public async Task<BoMonDto> UpdateAsync(int id, BoMonRequest request)
     {
         var bm = await _db.Set<BoMon>().FindAsync(id);
-        if (bm is null) return null;
+        if (bm is null) throw AppException.NotFound("bộ môn");
 
         if (await _db.Set<BoMon>().AnyAsync(x => x.Ma == request.Ma && x.Id != id))
-            throw new InvalidOperationException($"Mã bộ môn '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã bộ môn '{request.Ma}' đã tồn tại.");
 
         if (!await _db.Set<Khoa>().AnyAsync(x => x.Id == request.KhoaId))
-            throw new InvalidOperationException($"Khoa với Id {request.KhoaId} không tồn tại.");
+            throw AppException.Conflict($"Khoa với Id {request.KhoaId} không tồn tại.");
 
         bm.Ma = request.Ma.Trim();
         bm.Ten = request.Ten.Trim();
@@ -108,10 +108,10 @@ public class BoMonService(AppDbContext db) : IBoMonService
         return new BoMonDto(bm.Id, bm.Ma, bm.Ten, bm.KhoaId, khoa?.Ten, bm.CreatedAt, bm.UpdatedAt);
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
         var bm = await _db.Set<BoMon>().FindAsync(id);
-        if (bm is null) return false;
+        if (bm is null) throw AppException.NotFound("bộ môn");
 
         _db.Remove(bm);
         try
@@ -120,9 +120,7 @@ public class BoMonService(AppDbContext db) : IBoMonService
         }
         catch (DbUpdateException)
         {
-            throw new InvalidOperationException("Không thể xóa bộ môn đang có giảng viên hoặc dữ liệu liên quan.");
+            throw AppException.Conflict("Không thể xóa bộ môn đang có giảng viên hoặc dữ liệu liên quan.");
         }
-
-        return true;
     }
 }

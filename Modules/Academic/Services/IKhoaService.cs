@@ -7,8 +7,8 @@ namespace StudentManagement.Modules.Academic.Services;
 public interface IKhoaService
 {
     Task<PagedResult<KhoaDto>> GetPagedAsync(PagedQuery query);
-    Task<KhoaDto?> GetByIdAsync(int id);
+    Task<KhoaDto> GetByIdAsync(int id);
     Task<KhoaDto> CreateAsync(KhoaRequest request);
-    Task<KhoaDto?> UpdateAsync(int id, KhoaRequest request);
-    Task<bool> DeleteAsync(int id);
+    Task<KhoaDto> UpdateAsync(int id, KhoaRequest request);
+    Task DeleteAsync(int id);
 }
