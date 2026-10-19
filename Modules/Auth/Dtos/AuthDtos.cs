@@ -13,14 +13,22 @@ public record ChangePasswordRequest(
     [Required, StringLength(72)] string MatKhauCu,
     [Required, MinLength(8), StringLength(72)] string MatKhauMoi);
 
-/// <summary>Phản hồi đăng nhập.</summary>
+/// <summary>
+/// Phản hồi đăng nhập/làm mới phiên. Token (access, ngắn hạn) gửi kèm header Authorization;
+/// RefreshToken (dài hạn, dùng một lần) gửi tới POST /api/auth/refresh để lấy cặp token mới khi Token hết hạn.
+/// </summary>
 public record LoginResponse(
     string Token,
     DateTime ExpiresAt,
     int TaiKhoanId,
     string TenDangNhap,
     string HoTen,
-    string VaiTro);
+    string VaiTro,
+    string RefreshToken,
+    DateTime RefreshTokenExpiresAt);
+
+/// <summary>Refresh token nhận được từ lần đăng nhập hoặc làm mới gần nhất.</summary>
+public record RefreshTokenRequest([Required, StringLength(200)] string RefreshToken);
 
 /// <summary>Phản hồi thông tin tài khoản.</summary>
 public record AccountDto(
@@ -63,6 +71,20 @@ public record ActivityLogDto(
     string TenDangNhap,
     string HanhDong,
     bool ThanhCong,
+    string? PhuongThuc,
+    string? DuongDan,
+    int? MaPhanHoi,
+    string? ChiTiet,
     string? DiaChiIp,
     string? UserAgent,
     DateTime ThoiGian);
+
+/// <summary>Lọc nhật ký; HanhDong lọc theo tiền tố (ví dụ "SinhVien." hoặc "Login"), thời gian theo UTC.</summary>
+public class ActivityLogQuery : StudentManagement.Common.PagedQuery
+{
+    public int? TaiKhoanId { get; set; }
+    public string? HanhDong { get; set; }
+    public bool? ThanhCong { get; set; }
+    public DateTime? TuNgay { get; set; }
+    public DateTime? DenNgay { get; set; }
+}
