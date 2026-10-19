@@ -28,7 +28,11 @@ public record AccountDto(
     string HoTen,
     string VaiTro,
     bool DaKhoa,
-    DateTime NgayTao);
+    DateTime NgayTao,
+    int? SinhVienId);
+
+/// <summary>Liên kết tài khoản với hồ sơ sinh viên; SinhVienId = null để gỡ liên kết.</summary>
+public record LinkStudentRequest(int? SinhVienId);
 
 /// <summary>Thông tin một hoạt động được ghi nhận.</summary>
 public record ActivityLogDto(

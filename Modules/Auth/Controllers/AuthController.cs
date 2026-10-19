@@ -75,6 +75,23 @@ public class AuthController(IAuthService service) : ControllerBase
         }
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpPut("accounts/{id:int}/sinh-vien")]
+    public async Task<ActionResult<ApiResponse<AccountDto>>> LinkStudent(int id, [FromBody] LinkStudentRequest request)
+    {
+        try
+        {
+            var result = await _service.LinkStudentAsync(id, request);
+            return result is null
+                ? NotFound(ApiResponse<AccountDto>.Fail("Không tìm thấy tài khoản."))
+                : Ok(ApiResponse<AccountDto>.Ok(result, "Đã cập nhật liên kết sinh viên."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<AccountDto>.Fail(ex.Message));
+        }
+    }
+
     private bool TryGetCurrentAccountId(out int taiKhoanId) =>
         int.TryParse(User.FindFirst("sub")?.Value, NumberStyles.None, CultureInfo.InvariantCulture, out taiKhoanId);
 }

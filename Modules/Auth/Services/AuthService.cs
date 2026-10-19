@@ -9,6 +9,7 @@ using StudentManagement.Common;
 using StudentManagement.Data;
 using StudentManagement.Modules.Auth.Dtos;
 using StudentManagement.Modules.Auth.Entities;
+using StudentManagement.Modules.Students.Entities;
 
 namespace StudentManagement.Modules.Auth.Services;
 
@@ -114,7 +115,8 @@ public class AuthService(AppDbContext db, IOptions<JwtSettings> jwtOptions, ILog
                 x.HoTen,
                 x.VaiTro.ToString(),
                 x.DaKhoa,
-                x.CreatedAt))
+                x.CreatedAt,
+                x.SinhVienId))
             .ToListAsync();
 
         return new PagedResult<AccountDto>
@@ -179,6 +181,27 @@ public class AuthService(AppDbContext db, IOptions<JwtSettings> jwtOptions, ILog
         return ToAccountDto(account);
     }
 
+    public async Task<AccountDto?> LinkStudentAsync(int id, LinkStudentRequest request)
+    {
+        var account = await _db.Set<TaiKhoan>().FirstOrDefaultAsync(x => x.Id == id);
+        if (account is null)
+            return null;
+
+        if (request.SinhVienId is { } sinhVienId)
+        {
+            if (account.VaiTro != VaiTro.SinhVien)
+                throw new InvalidOperationException("Chỉ liên kết sinh viên cho tài khoản có vai trò SinhVien.");
+            if (!await _db.Set<SinhVien>().AnyAsync(x => x.Id == sinhVienId))
+                throw new InvalidOperationException("Sinh viên không tồn tại.");
+            if (await _db.Set<TaiKhoan>().AnyAsync(x => x.SinhVienId == sinhVienId && x.Id != id))
+                throw new InvalidOperationException("Sinh viên đã được liên kết với tài khoản khác.");
+        }
+
+        account.SinhVienId = request.SinhVienId;
+        await _db.SaveChangesAsync();
+        return ToAccountDto(account);
+    }
+
     private static bool HasValidBcryptPassword(string password) =>
         !string.IsNullOrEmpty(password) && Encoding.UTF8.GetByteCount(password) <= 72;
 
@@ -212,5 +235,6 @@ public class AuthService(AppDbContext db, IOptions<JwtSettings> jwtOptions, ILog
         account.HoTen,
         account.VaiTro.ToString(),
         account.DaKhoa,
-        account.CreatedAt);
+        account.CreatedAt,
+        account.SinhVienId);
 }

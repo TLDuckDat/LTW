@@ -7,7 +7,9 @@ public static class RegistrationModule
     /// <summary>Đăng ký service của module Registration.</summary>
     public static IServiceCollection AddRegistrationModule(this IServiceCollection services)
     {
-        services.AddScoped<IRegistrationService, RegistrationService>();
+        services.AddScoped<IDotDangKyService, DotDangKyService>();
+        services.AddScoped<IDieuKienDangKyService, DieuKienDangKyService>();
+        services.AddScoped<IDangKyHocPhanService, DangKyHocPhanService>();
         return services;
     }
 }
