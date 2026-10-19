@@ -28,7 +28,38 @@ dotnet user-secrets set "Jwt:Secret" "<chuỗi ngẫu nhiên tối thiểu 32 by
 
 Môi trường khác bắt buộc cấu hình qua biến môi trường `Jwt__Secret`.
 
-Tài khoản mặc định: `admin` / `Admin@123`. Admin tạo các tài khoản khác qua `POST /api/auth/accounts`.
+Tài khoản mẫu do seed tạo (Admin tạo thêm tài khoản qua `POST /api/auth/accounts`):
+
+| Tài khoản | Mật khẩu | Vai trò | Ghi chú |
+|---|---|---|---|
+| `admin` | `Admin@123` | Admin | |
+| `pdt` | `Pdt@1234` | PhongDaoTao | |
+| `gv001` | `Gv@12345` | GiangVien | Dạy lớp IT002-01 học kỳ hiện tại |
+| `sv001` | `Sv@12345` | SinhVien | Đã đạt IT001 → đăng ký được IT002 |
+| `sv002` | `Sv@12345` | SinhVien | Trượt IT001 → bị chặn IT002 (tiên quyết), học lại IT001 |
+
+Ngày tháng trong seed tính theo ngày chạy: học kỳ hiện tại có đợt đăng ký **đang mở**, học kỳ trước có điểm đã khóa.
+Seed chỉ chạy khi CSDL còn trống; muốn seed lại thì xóa CSDL (`dotnet ef database drop`) rồi chạy app.
+
+**CORS**: origin của frontend khai báo trong `Cors:AllowedOrigins`. Development đã cho phép `http://localhost:3000`, `:5173`, `:4200`.
+
+### Đăng nhập, refresh token và nhật ký
+
+- `POST /api/auth/login` trả `token` (access token, **60 phút**, `Jwt:ExpiryMinutes`) và `refreshToken` (**7 ngày**, `Jwt:RefreshTokenDays`).
+  Gửi `Authorization: Bearer <token>` cho mọi API.
+- Khi access token hết hạn (API trả 401): gọi `POST /api/auth/refresh` với `{ "refreshToken": "..." }` để nhận cặp token **mới**.
+  Refresh token chỉ dùng được **một lần**: luôn lưu lại cặp mới. Dùng lại token cũ bị coi là token bị đánh cắp và **mọi phiên**
+  của tài khoản bị thu hồi, nên frontend chỉ được gọi refresh một lần tại một thời điểm (các request khác chờ kết quả).
+- `POST /api/auth/logout` (gửi refresh token) đăng xuất phiên hiện tại; `POST /api/auth/logout-all` đăng xuất mọi thiết bị.
+  Đổi/đặt lại mật khẩu, đổi vai trò hoặc bị khóa tài khoản đều làm mọi token cũ hết hiệu lực.
+- **Chống dò mật khẩu**: sai quá **5 lần trong 30 phút** với cùng một tên đăng nhập thì bị chặn (429), kể cả khi nhập đúng,
+  đến khi lần sai cũ nhất trong 5 lần quá 30 phút. Đăng nhập đúng xóa bộ đếm; Admin đặt lại mật khẩu hoặc khóa rồi mở khóa
+  tài khoản thì gỡ chặn ngay.
+- **Nhật ký** (`GET /api/auth/activity-logs`, chỉ Admin): đăng nhập, làm mới phiên, đăng xuất và **mọi thao tác ghi**
+  (POST/PUT/PATCH/DELETE) của người đã đăng nhập, kể cả bị từ chối (403) hay lỗi (500): người thực hiện, hành động
+  (`SinhVien.Delete`...), đường dẫn, tham số, mã phản hồi, IP, chi tiết nghiệp vụ. Không lưu body request (mật khẩu).
+  Lọc theo `taiKhoanId`, `hanhDong` (tiền tố, ví dụ `HocPhi.`), `thanhCong`, `tuNgay`, `denNgay`, `search`.
+  Service ghi thêm chi tiết qua `NhatKyContext.Ghi("...")` (ví dụ "vai trò SinhVien -> GiangVien").
 
 ## 2. Migration
 
@@ -59,8 +90,10 @@ dotnet ef migrations remove
 | Graduation | GRAD | `/api/tot-nghiep` | ThucTap, DeTaiKhoaLuan, HoiDongBaoVe, XetTotNghiep, enum KetQuaXetTotNghiep |
 | Reports | RPT | `/api/bao-cao`, `/api/thong-bao` | ThongBao (báo cáo không có bảng riêng) |
 
-Các phương thức chưa làm đều `throw new NotImplementedException("TODO")` kèm comment mã task, ví dụ `// REG-03 Đăng ký học phần`.
-Tìm toàn bộ việc còn lại: tìm kiếm chuỗi `NotImplementedException` trong solution.
+Các API tự phục vụ của sinh viên/giảng viên nằm dưới `.../toi` (ví dụ `/api/diem/toi/bang-diem`, `/api/giang-vien/toi/lop-hoc-phan`).
+
+Tham số nghiệp vụ (đơn giá tín chỉ, tín chỉ tối đa, ngưỡng cảnh báo, ngưỡng học bổng...) đọc từ bảng quy chế `/api/quy-che`;
+danh sách mã và giá trị mặc định ở `Modules/Academic/Services/QuyCheThamSo.cs` (`MaQuyChe`).
 
 ## 4. Cấu trúc một module
 
@@ -82,6 +115,9 @@ Modules/<Module>/
 - Tham chiếu thực thể **module khác chỉ bằng Id**, không có navigation property. Khóa ngoại vẫn tạo trong CSDL:
   `builder.HasOne<SinhVien>().WithMany().HasForeignKey(x => x.SinhVienId).OnDelete(DeleteBehavior.Restrict);`
 - Mọi phản hồi bọc trong `ApiResponse<T>` (`Success`, `Message`, `Data`); danh sách dùng `PagedQuery` + `PagedResult<T>`.
+- Xử lý lỗi: Controller kế thừa `ApiControllerBase`, mỗi action là `Execute(() => service.XxxAsync(...))`.
+  Service ném `AppException.NotFound/BadRequest/Conflict/Forbidden(...)` cho lỗi nghiệp vụ; **không** trả `null`/`false`
+  và không dùng `InvalidOperationException`. Lỗi khác (bug) thành 500, vẫn đúng định dạng `ApiResponse` nhờ `GlobalExceptionHandler`.
 
 ## 5. Thêm một chức năng mới theo mẫu Khoa
 
@@ -105,3 +141,18 @@ Ví dụ làm CRUD cho **BoMon** (task ACA-02):
 - Commit message bắt đầu bằng mã task: `REG-03 Kiểm tra trùng lịch khi đăng ký`.
 - Tạo Pull Request vào `develop`, cần ít nhất 1 người review; `dotnet build` phải thành công.
 - Migration: mỗi PR tối đa một migration, rebase lên `develop` mới nhất trước khi tạo.
+  **Không sửa tay `AppDbContextModelSnapshot.cs`**: thay đổi model luôn đi qua `dotnet ef migrations add`, nếu không CSDL sẽ thiếu bảng/cột
+  mà `has-pending-model-changes` vẫn báo không có gì thay đổi.
+- Chạy `dotnet test` trước khi tạo PR.
+
+## 7. Kiểm thử
+
+```bash
+dotnet test
+```
+
+Project `tests/StudentManagement.Tests`:
+- `Unit/`: hàm tính toán thuần (quy đổi điểm, GPA, xếp loại, phân trang).
+- `Integration/`: chạy app thật trên một CSDL LocalDB riêng tên ngẫu nhiên (tự migrate + seed, xóa khi xong), gọi API như client.
+  Mỗi test tự tạo dữ liệu riêng nên không phụ thuộc thứ tự chạy. Không có LocalDB thì đặt biến môi trường `TEST_SQL_SERVER`,
+  ví dụ `localhost,1433;User Id=sa;Password=...` cho SQL Server trong Docker.
