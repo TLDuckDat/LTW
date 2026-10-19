@@ -11,7 +11,7 @@ public class DiemRenLuyenConfiguration : IEntityTypeConfiguration<DiemRenLuyen>
 {
     public void Configure(EntityTypeBuilder<DiemRenLuyen> builder)
     {
-        builder.ToTable("DiemRenLuyen");
+        builder.ToTable("DiemRenLuyen", t => t.HasCheckConstraint("CK_DiemRenLuyen_Diem", "[Diem] BETWEEN 0 AND 100"));
         builder.Property(x => x.XepLoai).HasMaxLength(30);
         builder.HasIndex(x => new { x.SinhVienId, x.HocKyId }).IsUnique();
         builder.HasOne<SinhVien>().WithMany().HasForeignKey(x => x.SinhVienId).OnDelete(DeleteBehavior.Restrict);

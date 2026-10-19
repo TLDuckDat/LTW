@@ -11,7 +11,8 @@ public class HocBongConfiguration : IEntityTypeConfiguration<HocBong>
 {
     public void Configure(EntityTypeBuilder<HocBong> builder)
     {
-        builder.ToTable("HocBong");
+        builder.ToTable("HocBong", t => t.HasCheckConstraint("CK_HocBong_SoTien", "[SoTien] >= 0"));
+        builder.HasIndex(x => new { x.SinhVienId, x.HocKyId, x.Ten }).IsUnique();
         builder.Property(x => x.Ten).HasMaxLength(200).IsRequired();
         builder.Property(x => x.SoTien).HasPrecision(18, 2);
         builder.HasOne<SinhVien>().WithMany().HasForeignKey(x => x.SinhVienId).OnDelete(DeleteBehavior.Restrict);

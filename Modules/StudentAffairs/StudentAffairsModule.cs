@@ -7,7 +7,11 @@ public static class StudentAffairsModule
     /// <summary>Đăng ký service của module StudentAffairs.</summary>
     public static IServiceCollection AddStudentAffairsModule(this IServiceCollection services)
     {
-        services.AddScoped<IStudentAffairsService, StudentAffairsService>();
+        services.AddScoped<IDiemRenLuyenService, DiemRenLuyenService>();
+        services.AddScoped<IHocPhiService, HocPhiService>();
+        services.AddScoped<IMienGiamService, MienGiamService>();
+        services.AddScoped<IHocBongService, HocBongService>();
+        services.AddScoped<IKhenThuongKyLuatService, KhenThuongKyLuatService>();
         return services;
     }
 }
