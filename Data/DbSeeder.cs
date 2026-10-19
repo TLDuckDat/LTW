@@ -11,10 +11,22 @@ public static class DbSeeder
 {
     public static async Task SeedAsync(AppDbContext db)
     {
+        var adminUser = await db.Set<TaiKhoan>().FirstOrDefaultAsync(x => x.TenDangNhap == "admin");
+        if (adminUser != null && adminUser.MatKhauHash == "CHANGE_ME")
+        {
+            adminUser.MatKhauHash = BCrypt.Net.BCrypt.HashPassword("Admin@123");
+            await db.SaveChangesAsync();
+        }
+
         if (await db.Set<Khoa>().AnyAsync()) return;
 
-        // TODO AUTH-01: thay bằng hash thật (BCrypt/PasswordHasher) khi làm đăng nhập.
-        db.Add(new TaiKhoan { TenDangNhap = "admin", MatKhauHash = "CHANGE_ME", HoTen = "Quản trị viên", VaiTro = VaiTro.Admin });
+        // AUTH: Hash mật khẩu bằng BCrypt
+        var adminPasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123");
+        if (adminUser == null)
+        {
+            db.Add(new TaiKhoan { TenDangNhap = "admin", MatKhauHash = adminPasswordHash, HoTen = "Quản trị viên", VaiTro = VaiTro.Admin });
+        }
+
 
         var cntt = new Khoa { Ma = "CNTT", Ten = "Khoa Công nghệ thông tin" };
         var kt = new Khoa { Ma = "KT", Ten = "Khoa Kinh tế" };

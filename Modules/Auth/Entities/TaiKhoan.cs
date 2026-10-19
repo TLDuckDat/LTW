@@ -10,4 +10,5 @@ public class TaiKhoan : BaseEntity
     public string HoTen { get; set; } = string.Empty;
     public VaiTro VaiTro { get; set; } = VaiTro.Admin;
     public bool DaKhoa { get; set; }
+    public int? SinhVienId { get; set; } // -> Students.SinhVien (khác module: chỉ giữ Id); chỉ dùng cho vai trò SinhVien
 }
