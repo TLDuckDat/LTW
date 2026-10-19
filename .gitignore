@@ -480,3 +480,22 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# ---- Ghi chú riêng của dự án ----
+# Cấu hình và bí mật cục bộ (không đưa lên repo)
+appsettings.Local.json
+appsettings.*.Local.json
+secrets.json
+*.secrets.json
+# Cơ sở dữ liệu cục bộ
+*.db
+*.sqlite
+*.sqlite3
+# Thiết lập riêng của công cụ AI (file dùng chung .claude/settings.json vẫn được theo dõi)
+.claude/settings.local.json
+# Rác của hệ điều hành
+.DS_Store
+Thumbs.db
+desktop.ini
+# Kết quả chạy test
+TestResults/
