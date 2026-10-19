@@ -30,6 +30,20 @@ public abstract class ApiControllerBase : ControllerBase
         }
     }
 
+    /// <summary>Như trên, nhưng thông báo phụ thuộc kết quả (ví dụ "Đã khóa" / "Đã mở khóa").</summary>
+    protected async Task<ActionResult<ApiResponse<T>>> Execute<T>(Func<Task<T>> action, Func<T, string> message)
+    {
+        try
+        {
+            var result = await action();
+            return Ok(ApiResponse<T>.Ok(result, message(result)));
+        }
+        catch (AppException ex)
+        {
+            return StatusCode(ex.StatusCode, ApiResponse<T>.Fail(ex.Message));
+        }
+    }
+
     /// <summary>Chạy action không có dữ liệu trả về, ví dụ hủy hoặc xóa; chỉ trả thông báo.</summary>
     protected async Task<ActionResult<ApiResponse<object>>> Execute(Func<Task> action, string message)
     {

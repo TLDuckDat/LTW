@@ -7,6 +7,7 @@ using StudentManagement.Common;
 using StudentManagement.Data;
 using StudentManagement.Modules.Academic;
 using StudentManagement.Modules.Auth;
+using StudentManagement.Modules.Auth.Services;
 using StudentManagement.Modules.Courses;
 using StudentManagement.Modules.Grades;
 using StudentManagement.Modules.Graduation;
@@ -41,6 +42,8 @@ if (string.IsNullOrWhiteSpace(jwt.Issuer) || string.IsNullOrWhiteSpace(jwt.Audie
     throw new InvalidOperationException("Jwt:Issuer và Jwt:Audience không được để trống.");
 if (jwt.ExpiryMinutes <= 0)
     throw new InvalidOperationException("Jwt:ExpiryMinutes phải lớn hơn 0.");
+if (jwt.RefreshTokenDays <= 0)
+    throw new InvalidOperationException("Jwt:RefreshTokenDays phải lớn hơn 0.");
 
 builder.Services.Configure<JwtSettings>(options =>
 {
@@ -48,6 +51,7 @@ builder.Services.Configure<JwtSettings>(options =>
     options.Issuer = jwt.Issuer;
     options.Audience = jwt.Audience;
     options.ExpiryMinutes = jwt.ExpiryMinutes;
+    options.RefreshTokenDays = jwt.RefreshTokenDays;
 });
 
 // 3. Authentication + Authorization
@@ -106,11 +110,22 @@ builder.Services.AddAuthorization(options =>
         .Build();
 });
 
-// 4. Controllers
+// 4. CORS cho frontend: danh sách origin trong cấu hình
+const string CorsPolicy = "Frontend";
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options => options.AddPolicy(CorsPolicy, policy => policy
+    .WithOrigins(allowedOrigins)
+    .AllowAnyHeader()
+    .AllowAnyMethod()));
+
+// 5. Controllers + xử lý lỗi chung (mọi lỗi đều trả về ApiResponse)
 builder.Services.AddControllers();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddScoped<NhatKyContext>();
+builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 
-// 5. Swagger (kèm nút Authorize để gửi JWT)
+// 6. Swagger (kèm nút Authorize để gửi JWT)
 builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -125,7 +140,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// 6. Đăng ký các Modules
+// 7. Đăng ký các Modules
 builder.Services
     .AddAuthModule()
     .AddStudentsModule()
@@ -138,6 +153,8 @@ builder.Services
     .AddReportsModule();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
@@ -154,8 +171,14 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors(CorsPolicy);
+// Đặt trước xác thực để ghi được cả các lần bị từ chối (401/403); người dùng đã được xác thực khi request quay ra
+app.UseMiddleware<NhatKyHoatDongMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+/// <summary>Khai báo để project test dùng được WebApplicationFactory&lt;Program&gt;.</summary>
+public partial class Program;

@@ -13,6 +13,14 @@ public class AppException(int statusCode, string message) : Exception(message)
     public static AppException BadRequest(string message) =>
         new(StatusCodes.Status400BadRequest, message);
 
+    /// <summary>401: thông tin xác thực không đúng (sai mật khẩu, token không hợp lệ).</summary>
+    public static AppException Unauthorized(string message) =>
+        new(StatusCodes.Status401Unauthorized, message);
+
+    /// <summary>403: đã đăng nhập nhưng không có quyền với dữ liệu này (ví dụ lớp không được phân công).</summary>
+    public static AppException Forbidden(string message) =>
+        new(StatusCodes.Status403Forbidden, message);
+
     /// <summary>404 với thông báo "Không tìm thấy {doiTuong}.", ví dụ NotFound("đề tài").</summary>
     public static AppException NotFound(string doiTuong) =>
         new(StatusCodes.Status404NotFound, $"Không tìm thấy {doiTuong}.");
