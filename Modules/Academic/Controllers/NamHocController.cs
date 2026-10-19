@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Common;
 using StudentManagement.Modules.Academic.Dtos;
@@ -28,6 +29,7 @@ public class NamHocController(INamHocService service) : ControllerBase
     }
 
     // EDU-03 Thêm năm học
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<NamHocDto>>> Create([FromBody] NamHocRequest request)
     {
@@ -43,6 +45,7 @@ public class NamHocController(INamHocService service) : ControllerBase
     }
 
     // EDU-03 Cập nhật năm học
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ApiResponse<NamHocDto>>> Update(int id, [FromBody] NamHocRequest request)
     {
@@ -60,6 +63,7 @@ public class NamHocController(INamHocService service) : ControllerBase
     }
 
     // EDU-03 Xóa năm học
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {

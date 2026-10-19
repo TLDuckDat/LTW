@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Common;
 using StudentManagement.Modules.Academic.Dtos;
@@ -29,6 +30,7 @@ public class KhoaController(IKhoaService service) : ControllerBase
     }
 
     // ACA-01 Thêm khoa
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<KhoaDto>>> Create([FromBody] KhoaRequest request)
     {
@@ -44,6 +46,7 @@ public class KhoaController(IKhoaService service) : ControllerBase
     }
 
     // ACA-01 Cập nhật khoa
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ApiResponse<KhoaDto>>> Update(int id, [FromBody] KhoaRequest request)
     {
@@ -61,6 +64,7 @@ public class KhoaController(IKhoaService service) : ControllerBase
     }
 
     // ACA-01 Xóa khoa
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {

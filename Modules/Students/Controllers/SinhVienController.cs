@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Common;
 using StudentManagement.Modules.Students.Dtos;
@@ -6,6 +7,7 @@ using StudentManagement.Modules.Students.Services;
 namespace StudentManagement.Modules.Students.Controllers;
 
 [ApiController]
+[Authorize(Roles = "Admin,PhongDaoTao,GiangVien")]
 [Route("api/sinh-vien")]
 [Tags("Students")]
 public class SinhVienController(ISinhVienService service) : ControllerBase
@@ -28,6 +30,7 @@ public class SinhVienController(ISinhVienService service) : ControllerBase
     }
 
     // STU-01: Thêm mới sinh viên
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<SinhVienDto>>> Create([FromBody] CreateSinhVienRequest request)
     {
@@ -43,6 +46,7 @@ public class SinhVienController(ISinhVienService service) : ControllerBase
     }
 
     // STU-01: Cập nhật thông tin sinh viên
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ApiResponse<SinhVienDto>>> Update(int id, [FromBody] UpdateSinhVienRequest request)
     {
@@ -60,6 +64,7 @@ public class SinhVienController(ISinhVienService service) : ControllerBase
     }
 
     // STU-01: Xóa sinh viên
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {
@@ -77,6 +82,7 @@ public class SinhVienController(ISinhVienService service) : ControllerBase
     }
 
     // STU-04: Chuyển lớp hành chính cho sinh viên
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}/chuyen-lop")]
     public async Task<ActionResult<ApiResponse<object>>> ChuyenLop(int id, [FromBody] int? lopHanhChinhId)
     {
@@ -94,6 +100,7 @@ public class SinhVienController(ISinhVienService service) : ControllerBase
     }
 
     // STU-06: Đổi trạng thái học tập
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}/trang-thai")]
     public async Task<ActionResult<ApiResponse<SinhVienDto>>> ChangeStatus(int id, [FromBody] ChangeStatusRequest request)
     {
@@ -104,6 +111,7 @@ public class SinhVienController(ISinhVienService service) : ControllerBase
     }
 
     // STU-07: Tiếp nhận bảo lưu
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost("{id:int}/bao-luu")]
     public async Task<ActionResult<ApiResponse<SinhVienDto>>> BaoLuu(int id, [FromBody] BaoLuuRequest request)
     {
@@ -121,6 +129,7 @@ public class SinhVienController(ISinhVienService service) : ControllerBase
     }
 
     // STU-07: Buộc thôi học / xin thôi học
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost("{id:int}/thoi-hoc")]
     public async Task<ActionResult<ApiResponse<SinhVienDto>>> ThoiHoc(int id, [FromBody] ThoiHocRequest request)
     {
@@ -138,6 +147,7 @@ public class SinhVienController(ISinhVienService service) : ControllerBase
     }
 
     // STU-07: Phục hồi / quay lại học tập sau bảo lưu
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost("{id:int}/quay-lai-hoc")]
     public async Task<ActionResult<ApiResponse<SinhVienDto>>> QuayLaiHoc(int id, [FromQuery] string? ghiChu)
     {

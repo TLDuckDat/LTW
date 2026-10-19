@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Common;
 using StudentManagement.Modules.Academic.Dtos;
@@ -28,6 +29,7 @@ public class NganhController(INganhService service) : ControllerBase
     }
 
     // EDU-02 Thêm ngành
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<NganhDto>>> Create([FromBody] NganhRequest request)
     {
@@ -43,6 +45,7 @@ public class NganhController(INganhService service) : ControllerBase
     }
 
     // EDU-02 Cập nhật ngành
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ApiResponse<NganhDto>>> Update(int id, [FromBody] NganhRequest request)
     {
@@ -60,6 +63,7 @@ public class NganhController(INganhService service) : ControllerBase
     }
 
     // EDU-02 Xóa ngành
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {

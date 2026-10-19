@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Common;
 using StudentManagement.Modules.Academic.Dtos;
@@ -28,6 +29,7 @@ public class HocKyController(IHocKyService service) : ControllerBase
     }
 
     // EDU-03 Thêm học kỳ
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<HocKyDto>>> Create([FromBody] HocKyRequest request)
     {
@@ -43,6 +45,7 @@ public class HocKyController(IHocKyService service) : ControllerBase
     }
 
     // EDU-03 Cập nhật học kỳ
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ApiResponse<HocKyDto>>> Update(int id, [FromBody] HocKyRequest request)
     {
@@ -60,6 +63,7 @@ public class HocKyController(IHocKyService service) : ControllerBase
     }
 
     // EDU-03 Xóa học kỳ
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {

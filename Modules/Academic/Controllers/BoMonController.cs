@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Common;
 using StudentManagement.Modules.Academic.Dtos;
@@ -28,6 +29,7 @@ public class BoMonController(IBoMonService service) : ControllerBase
     }
 
     // EDU-01 Thêm bộ môn
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<BoMonDto>>> Create([FromBody] BoMonRequest request)
     {
@@ -43,6 +45,7 @@ public class BoMonController(IBoMonService service) : ControllerBase
     }
 
     // EDU-01 Cập nhật bộ môn
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ApiResponse<BoMonDto>>> Update(int id, [FromBody] BoMonRequest request)
     {
@@ -60,6 +63,7 @@ public class BoMonController(IBoMonService service) : ControllerBase
     }
 
     // EDU-01 Xóa bộ môn
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {

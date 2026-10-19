@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Common;
 using StudentManagement.Modules.Academic.Dtos;
@@ -32,6 +33,7 @@ public class ChuongTrinhDaoTaoController(IChuongTrinhDaoTaoService service) : Co
     }
 
     // Thêm CTĐT
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<ChuongTrinhDaoTaoDto>>> Create([FromBody] ChuongTrinhDaoTaoRequest request)
     {
@@ -47,6 +49,7 @@ public class ChuongTrinhDaoTaoController(IChuongTrinhDaoTaoService service) : Co
     }
 
     // Cập nhật CTĐT
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ApiResponse<ChuongTrinhDaoTaoDto>>> Update(int id, [FromBody] ChuongTrinhDaoTaoRequest request)
     {
@@ -64,6 +67,7 @@ public class ChuongTrinhDaoTaoController(IChuongTrinhDaoTaoService service) : Co
     }
 
     // Xóa CTĐT
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {
@@ -89,6 +93,7 @@ public class ChuongTrinhDaoTaoController(IChuongTrinhDaoTaoService service) : Co
         => Ok(ApiResponse<List<MonHocTrongCtdtDto>>.Ok(await _service.GetDanhSachMonHocAsync(id, hocKyGoiY)));
 
     // Thêm môn học vào CTĐT
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost("{id:int}/mon-hoc")]
     public async Task<ActionResult<ApiResponse<MonHocTrongCtdtDto>>> ThemMonHoc(int id, [FromBody] ThemMonHocVaoCtdtRequest request)
     {
@@ -104,6 +109,7 @@ public class ChuongTrinhDaoTaoController(IChuongTrinhDaoTaoService service) : Co
     }
 
     // Cập nhật thông tin môn học trong CTĐT (đổi kỳ gợi ý, đổi bắt buộc/tự chọn)
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}/mon-hoc/{monHocId:int}")]
     public async Task<ActionResult<ApiResponse<MonHocTrongCtdtDto>>> CapNhatMonHoc(int id, int monHocId, [FromBody] CapNhatMonHocTrongCtdtRequest request)
     {
@@ -121,6 +127,7 @@ public class ChuongTrinhDaoTaoController(IChuongTrinhDaoTaoService service) : Co
     }
 
     // Gỡ môn học khỏi CTĐT
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{id:int}/mon-hoc/{monHocId:int}")]
     public async Task<ActionResult<ApiResponse<object>>> XoaMonHoc(int id, int monHocId)
     {

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Common;
 using StudentManagement.Modules.Academic.Dtos;
@@ -38,6 +39,7 @@ public class QuyCheHocVuController(IQuyCheHocVuService service) : ControllerBase
     }
 
     // EDU-06 Thêm quy chế
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<QuyCheHocVuDto>>> Create([FromBody] QuyCheHocVuRequest request)
     {
@@ -53,6 +55,7 @@ public class QuyCheHocVuController(IQuyCheHocVuService service) : ControllerBase
     }
 
     // EDU-06 Cập nhật quy chế
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ApiResponse<QuyCheHocVuDto>>> Update(int id, [FromBody] QuyCheHocVuRequest request)
     {
@@ -70,6 +73,7 @@ public class QuyCheHocVuController(IQuyCheHocVuService service) : ControllerBase
     }
 
     // EDU-06 Xóa quy chế
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {

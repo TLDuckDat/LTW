@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Common;
 using StudentManagement.Modules.StudentAffairs.Dtos;
@@ -6,6 +7,7 @@ using StudentManagement.Modules.StudentAffairs.Services;
 namespace StudentManagement.Modules.StudentAffairs.Controllers;
 
 [ApiController]
+[Authorize(Roles = "Admin,PhongDaoTao")]
 [Route("api/cong-tac-sinh-vien")]
 [Tags("StudentAffairs")]
 public class StudentAffairsController(IStudentAffairsService service) : ControllerBase

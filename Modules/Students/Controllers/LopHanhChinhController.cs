@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Common;
 using StudentManagement.Modules.Students.Dtos;
@@ -6,6 +7,7 @@ using StudentManagement.Modules.Students.Services;
 namespace StudentManagement.Modules.Students.Controllers;
 
 [ApiController]
+[Authorize(Roles = "Admin,PhongDaoTao,GiangVien")]
 [Route("api/lop-hanh-chinh")]
 [Tags("Students - LopHanhChinh")]
 public class LopHanhChinhController(ILopHanhChinhService service) : ControllerBase
@@ -31,6 +33,7 @@ public class LopHanhChinhController(ILopHanhChinhService service) : ControllerBa
     }
 
     // STU-04: Tạo lớp hành chính
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<LopHanhChinhDto>>> Create([FromBody] LopHanhChinhRequest request)
     {
@@ -46,6 +49,7 @@ public class LopHanhChinhController(ILopHanhChinhService service) : ControllerBa
     }
 
     // STU-04: Sửa lớp hành chính
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ApiResponse<LopHanhChinhDto>>> Update(int id, [FromBody] LopHanhChinhRequest request)
     {
@@ -63,6 +67,7 @@ public class LopHanhChinhController(ILopHanhChinhService service) : ControllerBa
     }
 
     // STU-04: Xóa lớp hành chính
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {
@@ -80,6 +85,7 @@ public class LopHanhChinhController(ILopHanhChinhService service) : ControllerBa
     }
 
     // STU-04: Phân nhiều sinh viên vào lớp
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}/phan-lop")]
     public async Task<ActionResult<ApiResponse<object>>> PhanLop(int id, [FromBody] PhanLopRequest request)
     {
@@ -90,6 +96,7 @@ public class LopHanhChinhController(ILopHanhChinhService service) : ControllerBa
     }
 
     // STU-05: Gán cố vấn học tập cho lớp
+    [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}/phan-co-van")]
     public async Task<ActionResult<ApiResponse<object>>> PhanCoVan(int id, [FromBody] PhanCoVanRequest request)
     {

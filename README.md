@@ -20,6 +20,16 @@ Mở Swagger: http://localhost:5235/swagger
 Ở môi trường **Development**, khi khởi động ứng dụng sẽ tự chạy migration và seed dữ liệu mẫu (`Data/DbSeeder.cs`).
 Chuỗi kết nối nằm trong `appsettings.json` → `ConnectionStrings:DefaultConnection`.
 
+**JWT secret** không lưu trong repo. Ở Development, nếu để trống, app tự sinh khóa ngẫu nhiên mỗi lần chạy (token cũ mất hiệu lực khi khởi động lại). Muốn giữ khóa cố định:
+
+```bash
+dotnet user-secrets set "Jwt:Secret" "<chuỗi ngẫu nhiên tối thiểu 32 byte>"
+```
+
+Môi trường khác bắt buộc cấu hình qua biến môi trường `Jwt__Secret`.
+
+Tài khoản mặc định: `admin` / `Admin@123`. Admin tạo các tài khoản khác qua `POST /api/auth/accounts`.
+
 ## 2. Migration
 
 ```bash
