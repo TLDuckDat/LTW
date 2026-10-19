@@ -9,14 +9,20 @@ using StudentManagement.Modules.Students.Entities;
 
 namespace StudentManagement.Modules.Grades.Services;
 
-public class PhucKhaoService(AppDbContext db) : IPhucKhaoService
+public class PhucKhaoService(AppDbContext db, NhatKyContext nhatKy) : IPhucKhaoService
 {
     private readonly AppDbContext _db = db;
+    private readonly NhatKyContext _nhatKy = nhatKy;
 
-    public async Task<PhucKhaoDto> CreateAsync(PhucKhaoRequest request)
+    public async Task<PhucKhaoDto> CreateAsync(PhucKhaoRequest request, int? chiSinhVienId = null)
     {
-        var diem = await _db.Set<DiemHocPhan>().AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == request.DiemHocPhanId)
+        var diemQuery = _db.Set<DiemHocPhan>().AsNoTracking().Where(x => x.Id == request.DiemHocPhanId);
+        if (chiSinhVienId is { } sinhVienId)
+        {
+            var diemCuaSinhVien = DiemCuaSinhVien(sinhVienId);
+            diemQuery = diemQuery.Where(x => diemCuaSinhVien.Contains(x.Id));
+        }
+        var diem = await diemQuery.FirstOrDefaultAsync()
             ?? throw AppException.NotFound("bản ghi điểm");
 
         if (!await ThuocLopDaKetThucAsync(diem))
@@ -38,9 +44,10 @@ public class PhucKhaoService(AppDbContext db) : IPhucKhaoService
         return await GetByIdAsync(phucKhao.Id);
     }
 
-    public async Task<PagedResult<PhucKhaoDto>> GetPagedAsync(PagedQuery query, TrangThaiPhucKhao? trangThai)
+    public async Task<PagedResult<PhucKhaoDto>> GetPagedAsync(
+        PagedQuery query, TrangThaiPhucKhao? trangThai, int? chiSinhVienId = null)
     {
-        var phucKhao = _db.Set<PhucKhao>().AsNoTracking();
+        var phucKhao = CuaSinhVien(_db.Set<PhucKhao>().AsNoTracking(), chiSinhVienId);
         if (trangThai is not null)
         {
             // Query string dạng số (ví dụ ?trangThai=9) vẫn bind được vào enum, nên phải kiểm tra lại
@@ -64,9 +71,25 @@ public class PhucKhaoService(AppDbContext db) : IPhucKhaoService
             .ToPagedResultAsync(query, Project);
     }
 
-    public async Task<PhucKhaoDto> GetByIdAsync(int id) =>
-        await Project(_db.Set<PhucKhao>().AsNoTracking().Where(x => x.Id == id)).FirstOrDefaultAsync()
+    public async Task<PhucKhaoDto> GetByIdAsync(int id, int? chiSinhVienId = null) =>
+        await Project(CuaSinhVien(_db.Set<PhucKhao>().AsNoTracking(), chiSinhVienId).Where(x => x.Id == id))
+            .FirstOrDefaultAsync()
             ?? throw AppException.NotFound("yêu cầu phúc khảo");
+
+    /// <summary>Id các bản ghi điểm thuộc lượt đăng ký của sinh viên.</summary>
+    private IQueryable<int> DiemCuaSinhVien(int sinhVienId) =>
+        from diem in _db.Set<DiemHocPhan>()
+        join dangKy in _db.Set<DangKyHocPhan>() on diem.DangKyHocPhanId equals dangKy.Id
+        where dangKy.SinhVienId == sinhVienId
+        select diem.Id;
+
+    // Phúc khảo của sinh viên khác coi như không tồn tại (404), không tiết lộ là có hay không
+    private IQueryable<PhucKhao> CuaSinhVien(IQueryable<PhucKhao> phucKhao, int? chiSinhVienId)
+    {
+        if (chiSinhVienId is not { } id) return phucKhao;
+        var diemCuaSinhVien = DiemCuaSinhVien(id);
+        return phucKhao.Where(x => diemCuaSinhVien.Contains(x.DiemHocPhanId));
+    }
 
     public async Task<PhucKhaoDto> XuLyAsync(int id, XuLyPhucKhaoRequest request)
     {
@@ -82,9 +105,16 @@ public class PhucKhaoService(AppDbContext db) : IPhucKhaoService
             throw AppException.Conflict("Lượt đăng ký hoặc lớp học phần không còn hợp lệ để xử lý phúc khảo.");
 
         if (request.ChapNhan == true)
+        {
+            var diemCu = diem.DiemCuoiKy;
             ChapNhan(phucKhao, diem, request.DiemMoi);
+            _nhatKy.Ghi($"chấp nhận phúc khảo, điểm cuối kỳ {diemCu} -> {diem.DiemCuoiKy}, tổng kết {diem.DiemTongKet} ({diem.DiemChu})");
+        }
         else
+        {
             TuChoi(phucKhao, request.DiemMoi);
+            _nhatKy.Ghi("từ chối phúc khảo");
+        }
 
         await _db.SaveChangesAsync();
         return await GetByIdAsync(phucKhao.Id);

@@ -5,16 +5,45 @@ using StudentManagement.Modules.Courses.Entities;
 using StudentManagement.Modules.Grades.Dtos;
 using StudentManagement.Modules.Grades.Entities;
 using StudentManagement.Modules.Registration.Entities;
+using StudentManagement.Modules.Students.Entities;
 
 namespace StudentManagement.Modules.Grades.Services;
 
-public class DiemService(AppDbContext db) : IDiemService
+public class DiemService(AppDbContext db, NhatKyContext nhatKy) : IDiemService
 {
     private readonly AppDbContext _db = db;
+    private readonly NhatKyContext _nhatKy = nhatKy;
 
-    public async Task<NhapDiemResultDto> NhapDiemAsync(int lopHocPhanId, NhapDiemRequest request)
+    public async Task<BangDiemLopDto> GetBangDiemLopAsync(int lopHocPhanId, int? chiGiangVienId = null)
     {
         var lop = await _db.GetLopHocPhanAsync(lopHocPhanId);
+        KiemTraGiangVienCuaLop(lop, chiGiangVienId);
+
+        var danhSach = await (
+            from dk in _db.Set<DangKyHocPhan>().AsNoTracking()
+            join sv in _db.Set<SinhVien>().AsNoTracking() on dk.SinhVienId equals sv.Id
+            join d in _db.Set<DiemHocPhan>().AsNoTracking() on dk.Id equals d.DangKyHocPhanId into nhomDiem
+            from d in nhomDiem.DefaultIfEmpty()
+            where dk.LopHocPhanId == lopHocPhanId && dk.TrangThai == TrangThaiDangKy.DaDangKy
+            orderby sv.MSSV
+            select new DiemTrongLopDto(
+                dk.Id, sv.Id, sv.MSSV, sv.HoTen, dk.LoaiDangKy.ToString(),
+                d == null ? null : d.Id,
+                d == null ? null : d.DiemQuaTrinh,
+                d == null ? null : d.DiemGiuaKy,
+                d == null ? null : d.DiemCuoiKy,
+                d == null ? null : d.DiemTongKet,
+                d == null ? null : d.DiemChu,
+                d != null && d.DaKhoa))
+            .ToListAsync();
+
+        return new BangDiemLopDto(lop.Id, lop.Ma, lop.TrangThai.ToString(), danhSach);
+    }
+
+    public async Task<NhapDiemResultDto> NhapDiemAsync(int lopHocPhanId, NhapDiemRequest request, int? chiGiangVienId = null)
+    {
+        var lop = await _db.GetLopHocPhanAsync(lopHocPhanId);
+        KiemTraGiangVienCuaLop(lop, chiGiangVienId);
         KiemTraLopDuocNhapDiem(lop);
 
         // DataAnnotations bỏ qua phần tử null trong danh sách, nên phải kiểm tra ở đây
@@ -82,12 +111,14 @@ public class DiemService(AppDbContext db) : IDiemService
         }
 
         await _db.SaveChangesAsync();
+        _nhatKy.Ghi($"lớp {lop.Ma}: nhập mới {soThemMoi}, sửa {soCapNhat} điểm (DangKyHocPhanId: {string.Join(",", dangKyIds)})");
         return new NhapDiemResultDto(lopHocPhanId, request.DanhSachDiem.Count, soThemMoi, soCapNhat, soKhongThayDoi);
     }
 
-    public async Task<TinhDiemResultDto> TinhDiemAsync(int lopHocPhanId)
+    public async Task<TinhDiemResultDto> TinhDiemAsync(int lopHocPhanId, int? chiGiangVienId = null)
     {
         var lop = await _db.GetLopHocPhanAsync(lopHocPhanId);
+        KiemTraGiangVienCuaLop(lop, chiGiangVienId);
         if (lop.TrangThai is not (TrangThaiLopHocPhan.DangHoc or TrangThaiLopHocPhan.DaKetThuc))
             throw AppException.Conflict("Lớp học phần chưa bắt đầu hoặc đã bị hủy, không thể tính điểm.");
 
@@ -131,6 +162,7 @@ public class DiemService(AppDbContext db) : IDiemService
         }
 
         if (soDaTinh > 0) await _db.SaveChangesAsync();
+        _nhatKy.Ghi($"lớp {lop.Ma}: tính điểm tổng kết {soDaTinh} sinh viên");
         return new TinhDiemResultDto(
             lopHocPhanId, danhSachDiem.Count, soDaTinh, soThieuDiem, soDaKhoa, soKhongThayDoi);
     }
@@ -168,7 +200,15 @@ public class DiemService(AppDbContext db) : IDiemService
 
         var soMoiKhoa = dangKyIds.Count - soDaKhoaTruocDo;
         if (soMoiKhoa > 0) await _db.SaveChangesAsync();
+        _nhatKy.Ghi($"lớp {lop.Ma}: duyệt và khóa điểm {soMoiKhoa} sinh viên");
         return new KhoaDiemResultDto(lopHocPhanId, dangKyIds.Count, soMoiKhoa, soDaKhoaTruocDo);
+    }
+
+    // Giảng viên chỉ làm việc với lớp mình được phân công; Admin/PhongDaoTao truyền null để bỏ qua
+    private static void KiemTraGiangVienCuaLop(LopHocPhan lop, int? chiGiangVienId)
+    {
+        if (chiGiangVienId is not null && lop.GiangVienId != chiGiangVienId)
+            throw AppException.Forbidden("Bạn không được phân công giảng dạy lớp học phần này.");
     }
 
     // Chỉ nhập điểm khi lớp đã bắt đầu học hoặc đã kết thúc

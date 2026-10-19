@@ -29,3 +29,21 @@ public record TinhDiemResultDto(
 
 /// <summary>Kết quả duyệt và khóa bảng điểm của lớp học phần.</summary>
 public record KhoaDiemResultDto(int LopHocPhanId, int TongSoSinhVien, int SoMoiKhoa, int SoDaKhoaTruocDo);
+
+/// <summary>Điểm của một sinh viên trong bảng điểm lớp; DiemHocPhanId null khi chưa nhập điểm.</summary>
+public record DiemTrongLopDto(
+    int DangKyHocPhanId,
+    int SinhVienId,
+    string MSSV,
+    string HoTen,
+    string LoaiDangKy,
+    int? DiemHocPhanId,
+    decimal? DiemQuaTrinh,
+    decimal? DiemGiuaKy,
+    decimal? DiemCuoiKy,
+    decimal? DiemTongKet,
+    string? DiemChu,
+    bool DaKhoa);
+
+/// <summary>Bảng điểm của lớp học phần (các lượt đăng ký còn hiệu lực), sắp theo MSSV.</summary>
+public record BangDiemLopDto(int LopHocPhanId, string MaLop, string TrangThaiLop, IReadOnlyList<DiemTrongLopDto> DanhSach);

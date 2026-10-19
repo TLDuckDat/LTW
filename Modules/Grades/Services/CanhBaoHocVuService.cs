@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using StudentManagement.Common;
 using StudentManagement.Data;
 using StudentManagement.Modules.Academic.Entities;
+using StudentManagement.Modules.Academic.Services;
 using StudentManagement.Modules.Courses.Entities;
 using StudentManagement.Modules.Grades.Dtos;
 using StudentManagement.Modules.Registration.Entities;
@@ -11,11 +12,11 @@ namespace StudentManagement.Modules.Grades.Services;
 
 public class CanhBaoHocVuService(AppDbContext db, IBangDiemService bangDiem) : ICanhBaoHocVuService
 {
-    // Ngưỡng theo quy chế: GPA học kỳ 1 của năm học đầu tiên phải từ 0.80, các học kỳ chính khác từ 1.00;
-    // mỗi học kỳ chính phải đăng ký tối thiểu 12 tín chỉ.
-    private const decimal NguongGpaHocKyDauTien = 0.80m;
-    private const decimal NguongGpa = 1.00m;
-    private const int SoTinChiToiThieu = 12;
+    // Ngưỡng mặc định khi chưa cấu hình quy chế (MaQuyChe.CanhBao*): GPA học kỳ 1 của năm học đầu tiên
+    // phải từ 0.80, các học kỳ chính khác từ 1.00; mỗi học kỳ chính phải đăng ký tối thiểu 12 tín chỉ.
+    private const decimal NguongGpaHocKyDauTienMacDinh = 0.80m;
+    private const decimal NguongGpaMacDinh = 1.00m;
+    private const int SoTinChiToiThieuMacDinh = 12;
     private const string GhiChu =
         "Đánh giá tự động; điều kiện tín chỉ cần Phòng đào tạo xác nhận các trường hợp được công nhận tín chỉ.";
 
@@ -29,7 +30,7 @@ public class CanhBaoHocVuService(AppDbContext db, IBangDiemService bangDiem) : I
             .FirstOrDefaultAsync()
             ?? throw AppException.NotFound("sinh viên");
         var bangDiem = await _bangDiem.GetBangDiemAsync(sinhVienId);
-        return DanhGia(sinhVien, hocKy, bangDiem);
+        return DanhGia(sinhVien, hocKy, bangDiem, await GetNguongAsync());
     }
 
     public async Task<PagedResult<CanhBaoHocVuDto>> GetDanhSachCanhBaoAsync(int hocKyId, PagedQuery query)
@@ -52,8 +53,9 @@ public class CanhBaoHocVuService(AppDbContext db, IBangDiemService bangDiem) : I
 
         // Phải tính xong bảng điểm mới biết ai bị cảnh báo, nên lọc và phân trang trong bộ nhớ.
         var bangDiemTheoSinhVien = await _bangDiem.GetBangDiemNhieuSinhVienAsync(sinhVien.Select(x => x.Id).ToArray());
+        var nguong = await GetNguongAsync();
         var canhBao = sinhVien
-            .Select(sv => DanhGia(sv, hocKy, bangDiemTheoSinhVien[sv.Id]))
+            .Select(sv => DanhGia(sv, hocKy, bangDiemTheoSinhVien[sv.Id], nguong))
             .Where(x => x.TrangThaiCanhBao == TrangThaiCanhBao.CanhBao)
             .ToList();
         return canhBao.ToPagedResult(query);
@@ -80,7 +82,15 @@ public class CanhBaoHocVuService(AppDbContext db, IBangDiemService bangDiem) : I
         from lop in nhomLop.DefaultIfEmpty()
         select new SinhVienCanhBao(sv.Id, sv.MSSV, sv.HoTen, lop == null ? null : lop.KhoaTuyen);
 
-    private static CanhBaoHocVuDto DanhGia(SinhVienCanhBao sv, HocKyCanhBao hocKy, BangDiemSinhVienDto bangDiem)
+    private sealed record NguongCanhBao(decimal GpaHocKyDauTien, decimal Gpa, int SoTinChiToiThieu);
+
+    private async Task<NguongCanhBao> GetNguongAsync() => new(
+        await _db.GetThamSoAsync(MaQuyChe.CanhBaoGpaHocKyDauTien, NguongGpaHocKyDauTienMacDinh),
+        await _db.GetThamSoAsync(MaQuyChe.CanhBaoGpaToiThieu, NguongGpaMacDinh),
+        await _db.GetThamSoNguyenAsync(MaQuyChe.CanhBaoTinChiToiThieu, SoTinChiToiThieuMacDinh));
+
+    private static CanhBaoHocVuDto DanhGia(
+        SinhVienCanhBao sv, HocKyCanhBao hocKy, BangDiemSinhVienDto bangDiem, NguongCanhBao nguong)
     {
         var diemHocKy = bangDiem.DanhSachHocKy.FirstOrDefault(x => x.HocKyId == hocKy.Id);
         var monHoc = diemHocKy?.DanhSachMonHoc ?? [];
@@ -100,12 +110,12 @@ public class CanhBaoHocVuService(AppDbContext db, IBangDiemService bangDiem) : I
             return KetQua(TrangThaiCanhBao.ChuaDuDuLieu, lyDoChuaDuDuLieu);
 
         // Học kỳ 1 của năm học đầu tiên (năm bắt đầu = khóa tuyển) dùng ngưỡng thấp hơn.
-        var nguongGpa = hocKy.SoThuTu == 1 && hocKy.NamBatDau == sv.KhoaTuyen ? NguongGpaHocKyDauTien : NguongGpa;
+        var nguongGpa = hocKy.SoThuTu == 1 && hocKy.NamBatDau == sv.KhoaTuyen ? nguong.GpaHocKyDauTien : nguong.Gpa;
         var lyDoCanhBao = new List<string>();
         if (diemHocKy!.Gpa < nguongGpa)
             lyDoCanhBao.Add($"GPA học kỳ {diemHocKy.Gpa:0.00} thấp hơn mức {nguongGpa:0.00}.");
-        if (tongTinChiDangKy < SoTinChiToiThieu)
-            lyDoCanhBao.Add($"Sinh viên chỉ đăng ký {tongTinChiDangKy} tín chỉ, thấp hơn mức tối thiểu {SoTinChiToiThieu} tín chỉ.");
+        if (tongTinChiDangKy < nguong.SoTinChiToiThieu)
+            lyDoCanhBao.Add($"Sinh viên chỉ đăng ký {tongTinChiDangKy} tín chỉ, thấp hơn mức tối thiểu {nguong.SoTinChiToiThieu} tín chỉ.");
 
         return KetQua(lyDoCanhBao.Count > 0 ? TrangThaiCanhBao.CanhBao : TrangThaiCanhBao.KhongCanhBao, lyDoCanhBao);
     }

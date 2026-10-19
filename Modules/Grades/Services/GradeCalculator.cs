@@ -54,6 +54,19 @@ public static class GradeCalculator
         _ => throw AppException.Conflict($"Điểm chữ '{diemChu}' trong dữ liệu không hợp lệ.")
     };
 
+    /// <summary>Thang xếp loại học lực theo điểm hệ 4 (GPA học kỳ hoặc CPA), xét từ ngưỡng cao xuống.</summary>
+    public static readonly IReadOnlyList<(string Ma, string Ten, decimal NguongDuoi)> ThangXepLoai =
+    [
+        ("XuatSac", "Xuất sắc", 3.6m),
+        ("Gioi", "Giỏi", 3.2m),
+        ("Kha", "Khá", 2.5m),
+        ("TrungBinh", "Trung bình", 2.0m),
+        ("Yeu", "Yếu", 0m)
+    ];
+
+    public static (string Ma, string Ten, decimal NguongDuoi) XepLoai(decimal diemHe4) =>
+        ThangXepLoai.First(x => diemHe4 >= x.NguongDuoi);
+
     /// <summary>Điểm trung bình có trọng số tín chỉ (GPA/CPA), làm tròn 2 chữ số; null nếu chưa có tín chỉ nào.</summary>
     public static decimal? TinhTrungBinh(decimal tongDiem, int soTinChi) => soTinChi == 0
         ? null
