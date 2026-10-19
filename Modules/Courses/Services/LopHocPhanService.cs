@@ -162,6 +162,36 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
         return await GetByIdAsync(id);
     }
 
+    // CRS-08 Bắt đầu học: lớp ngừng nhận đăng ký/hủy đăng ký, từ đây mới được nhập điểm
+    public async Task<LopHocPhanDto?> BatDauHocAsync(int id)
+    {
+        var entity = await _db.Set<LopHocPhan>().FindAsync(id);
+        if (entity is null) return null;
+
+        if (entity.TrangThai != TrangThaiLopHocPhan.MoDangKy)
+            throw new InvalidOperationException("Chỉ lớp học phần đang mở đăng ký mới chuyển sang đang học được.");
+        if (await DemDangKyAsync(id) == 0)
+            throw new InvalidOperationException("Lớp học phần chưa có sinh viên đăng ký, hãy hủy lớp thay vì bắt đầu học.");
+
+        entity.TrangThai = TrangThaiLopHocPhan.DangHoc;
+        await _db.SaveChangesAsync();
+        return await GetByIdAsync(id);
+    }
+
+    // CRS-08 Kết thúc lớp: từ đây mới được duyệt, khóa bảng điểm và phúc khảo
+    public async Task<LopHocPhanDto?> KetThucAsync(int id)
+    {
+        var entity = await _db.Set<LopHocPhan>().FindAsync(id);
+        if (entity is null) return null;
+
+        if (entity.TrangThai != TrangThaiLopHocPhan.DangHoc)
+            throw new InvalidOperationException("Chỉ lớp học phần đang học mới kết thúc được.");
+
+        entity.TrangThai = TrangThaiLopHocPhan.DaKetThuc;
+        await _db.SaveChangesAsync();
+        return await GetByIdAsync(id);
+    }
+
     // CRS-07 Hủy lớp học phần: hủy các lượt đăng ký còn hiệu lực, giữ lại dữ liệu để tra cứu
     public async Task<LopHocPhanDto?> HuyAsync(int id)
     {
