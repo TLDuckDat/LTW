@@ -67,10 +67,10 @@ public class LopHanhChinhService(AppDbContext db) : ILopHanhChinhService
         };
     }
 
-    public async Task<LopHanhChinhDetailDto?> GetByIdAsync(int id)
+    public async Task<LopHanhChinhDetailDto> GetByIdAsync(int id)
     {
         var lop = await _db.Set<LopHanhChinh>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        if (lop is null) return null;
+        if (lop is null) throw AppException.NotFound("lớp hành chính");
 
         var nganh = await _db.Set<Nganh>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == lop.NganhId);
         GiangVien? coVan = null;
@@ -117,13 +117,13 @@ public class LopHanhChinhService(AppDbContext db) : ILopHanhChinhService
     public async Task<LopHanhChinhDto> CreateAsync(LopHanhChinhRequest request)
     {
         if (await _db.Set<LopHanhChinh>().AnyAsync(x => x.Ma == request.Ma))
-            throw new InvalidOperationException($"Mã lớp '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã lớp '{request.Ma}' đã tồn tại.");
 
         if (!await _db.Set<Nganh>().AnyAsync(x => x.Id == request.NganhId))
-            throw new InvalidOperationException($"Ngành với Id {request.NganhId} không tồn tại.");
+            throw AppException.Conflict($"Ngành với Id {request.NganhId} không tồn tại.");
 
         if (request.CoVanId.HasValue && !await _db.Set<GiangVien>().AnyAsync(x => x.Id == request.CoVanId.Value))
-            throw new InvalidOperationException($"Giảng viên cố vấn với Id {request.CoVanId.Value} không tồn tại.");
+            throw AppException.Conflict($"Giảng viên cố vấn với Id {request.CoVanId.Value} không tồn tại.");
 
         var lop = new LopHanhChinh
         {
@@ -146,19 +146,19 @@ public class LopHanhChinhService(AppDbContext db) : ILopHanhChinhService
         );
     }
 
-    public async Task<LopHanhChinhDto?> UpdateAsync(int id, LopHanhChinhRequest request)
+    public async Task<LopHanhChinhDto> UpdateAsync(int id, LopHanhChinhRequest request)
     {
         var lop = await _db.Set<LopHanhChinh>().FindAsync(id);
-        if (lop is null) return null;
+        if (lop is null) throw AppException.NotFound("lớp hành chính");
 
         if (await _db.Set<LopHanhChinh>().AnyAsync(x => x.Ma == request.Ma && x.Id != id))
-            throw new InvalidOperationException($"Mã lớp '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã lớp '{request.Ma}' đã tồn tại.");
 
         if (!await _db.Set<Nganh>().AnyAsync(x => x.Id == request.NganhId))
-            throw new InvalidOperationException($"Ngành với Id {request.NganhId} không tồn tại.");
+            throw AppException.Conflict($"Ngành với Id {request.NganhId} không tồn tại.");
 
         if (request.CoVanId.HasValue && !await _db.Set<GiangVien>().AnyAsync(x => x.Id == request.CoVanId.Value))
-            throw new InvalidOperationException($"Giảng viên cố vấn với Id {request.CoVanId.Value} không tồn tại.");
+            throw AppException.Conflict($"Giảng viên cố vấn với Id {request.CoVanId.Value} không tồn tại.");
 
         lop.Ma = request.Ma.Trim();
         lop.Ten = request.Ten.Trim();
@@ -178,10 +178,10 @@ public class LopHanhChinhService(AppDbContext db) : ILopHanhChinhService
         );
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
         var lop = await _db.Set<LopHanhChinh>().FindAsync(id);
-        if (lop is null) return false;
+        if (lop is null) throw AppException.NotFound("lớp hành chính");
 
         _db.Remove(lop);
         try
@@ -190,17 +190,15 @@ public class LopHanhChinhService(AppDbContext db) : ILopHanhChinhService
         }
         catch (DbUpdateException)
         {
-            throw new InvalidOperationException("Không thể xóa lớp hành chính đang có sinh viên tham gia.");
+            throw AppException.Conflict("Không thể xóa lớp hành chính đang có sinh viên tham gia.");
         }
-
-        return true;
     }
 
     // STU-04: Phân danh sách sinh viên vào lớp
-    public async Task<bool> PhanLopAsync(int id, PhanLopRequest request)
+    public async Task PhanLopAsync(int id, PhanLopRequest request)
     {
         var lop = await _db.Set<LopHanhChinh>().FindAsync(id);
-        if (lop is null) return false;
+        if (lop is null) throw AppException.NotFound("lớp hành chính");
 
         var sinhViens = await _db.Set<SinhVien>()
             .Where(x => request.SinhVienIds.Contains(x.Id))
@@ -212,20 +210,18 @@ public class LopHanhChinhService(AppDbContext db) : ILopHanhChinhService
         }
 
         await _db.SaveChangesAsync();
-        return true;
     }
 
     // STU-05: Gán cố vấn học tập cho lớp
-    public async Task<bool> PhanCoVanAsync(int id, PhanCoVanRequest request)
+    public async Task PhanCoVanAsync(int id, PhanCoVanRequest request)
     {
         var lop = await _db.Set<LopHanhChinh>().FindAsync(id);
-        if (lop is null) return false;
+        if (lop is null) throw AppException.NotFound("lớp hành chính");
 
         if (request.CoVanId.HasValue && !await _db.Set<GiangVien>().AnyAsync(x => x.Id == request.CoVanId.Value))
-            throw new InvalidOperationException($"Giảng viên với Id {request.CoVanId.Value} không tồn tại.");
+            throw AppException.BadRequest($"Giảng viên với Id {request.CoVanId.Value} không tồn tại.");
 
         lop.CoVanId = request.CoVanId;
         await _db.SaveChangesAsync();
-        return true;
     }
 }

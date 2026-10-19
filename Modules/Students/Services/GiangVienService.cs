@@ -59,10 +59,10 @@ public class GiangVienService(AppDbContext db) : IGiangVienService
         };
     }
 
-    public async Task<GiangVienDto?> GetByIdAsync(int id)
+    public async Task<GiangVienDto> GetByIdAsync(int id)
     {
         var gv = await _db.Set<GiangVien>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        if (gv is null) return null;
+        if (gv is null) throw AppException.NotFound("giảng viên");
 
         var boMon = await _db.Set<BoMon>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == gv.BoMonId);
 
@@ -83,10 +83,10 @@ public class GiangVienService(AppDbContext db) : IGiangVienService
     public async Task<GiangVienDto> CreateAsync(GiangVienRequest request)
     {
         if (await _db.Set<GiangVien>().AnyAsync(x => x.Ma == request.Ma))
-            throw new InvalidOperationException($"Mã giảng viên '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã giảng viên '{request.Ma}' đã tồn tại.");
 
         if (!await _db.Set<BoMon>().AnyAsync(x => x.Id == request.BoMonId))
-            throw new InvalidOperationException($"Bộ môn với Id {request.BoMonId} không tồn tại.");
+            throw AppException.Conflict($"Bộ môn với Id {request.BoMonId} không tồn tại.");
 
         var gv = new GiangVien
         {
@@ -109,16 +109,16 @@ public class GiangVienService(AppDbContext db) : IGiangVienService
         );
     }
 
-    public async Task<GiangVienDto?> UpdateAsync(int id, GiangVienRequest request)
+    public async Task<GiangVienDto> UpdateAsync(int id, GiangVienRequest request)
     {
         var gv = await _db.Set<GiangVien>().FindAsync(id);
-        if (gv is null) return null;
+        if (gv is null) throw AppException.NotFound("giảng viên");
 
         if (await _db.Set<GiangVien>().AnyAsync(x => x.Ma == request.Ma && x.Id != id))
-            throw new InvalidOperationException($"Mã giảng viên '{request.Ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã giảng viên '{request.Ma}' đã tồn tại.");
 
         if (!await _db.Set<BoMon>().AnyAsync(x => x.Id == request.BoMonId))
-            throw new InvalidOperationException($"Bộ môn với Id {request.BoMonId} không tồn tại.");
+            throw AppException.Conflict($"Bộ môn với Id {request.BoMonId} không tồn tại.");
 
         gv.Ma = request.Ma.Trim();
         gv.HoTen = request.HoTen.Trim();
@@ -137,10 +137,10 @@ public class GiangVienService(AppDbContext db) : IGiangVienService
         );
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
         var gv = await _db.Set<GiangVien>().FindAsync(id);
-        if (gv is null) return false;
+        if (gv is null) throw AppException.NotFound("giảng viên");
 
         _db.Remove(gv);
         try
@@ -149,9 +149,7 @@ public class GiangVienService(AppDbContext db) : IGiangVienService
         }
         catch (DbUpdateException)
         {
-            throw new InvalidOperationException("Không thể xóa giảng viên đang phụ trách lớp hành chính hoặc học phần liên quan.");
+            throw AppException.Conflict("Không thể xóa giảng viên đang phụ trách lớp hành chính hoặc học phần liên quan.");
         }
-
-        return true;
     }
 }

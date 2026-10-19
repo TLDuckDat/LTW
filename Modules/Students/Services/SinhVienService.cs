@@ -7,9 +7,10 @@ using StudentManagement.Modules.Students.Entities;
 
 namespace StudentManagement.Modules.Students.Services;
 
-public class SinhVienService(AppDbContext db) : ISinhVienService
+public class SinhVienService(AppDbContext db, NhatKyContext nhatKy) : ISinhVienService
 {
     private readonly AppDbContext _db = db;
+    private readonly NhatKyContext _nhatKy = nhatKy;
 
     // STU-01 & STU-03: Danh sách sinh viên (phân trang, lọc theo MSSV, Họ tên, Khoa, Ngành, Lớp, Trạng thái)
     public async Task<PagedResult<SinhVienDto>> GetPagedAsync(SinhVienFilterQuery query)
@@ -85,10 +86,10 @@ public class SinhVienService(AppDbContext db) : ISinhVienService
     }
 
     // STU-02: Xem chi tiết hồ sơ sinh viên
-    public async Task<SinhVienDetailDto?> GetByIdAsync(int id)
+    public async Task<SinhVienDetailDto> GetByIdAsync(int id)
     {
         var sv = await _db.Set<SinhVien>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        if (sv is null) return null;
+        if (sv is null) throw AppException.NotFound("sinh viên");
 
         var nganh = await _db.Set<Nganh>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == sv.NganhId);
         Khoa? khoa = null;
@@ -145,16 +146,16 @@ public class SinhVienService(AppDbContext db) : ISinhVienService
     public async Task<SinhVienDto> CreateAsync(CreateSinhVienRequest request)
     {
         if (await _db.Set<SinhVien>().AnyAsync(x => x.MSSV == request.MSSV))
-            throw new InvalidOperationException($"Mã sinh viên '{request.MSSV}' đã tồn tại.");
+            throw AppException.Conflict($"Mã sinh viên '{request.MSSV}' đã tồn tại.");
 
         if (!await _db.Set<Nganh>().AnyAsync(x => x.Id == request.NganhId))
-            throw new InvalidOperationException($"Ngành đào tạo với Id {request.NganhId} không tồn tại.");
+            throw AppException.Conflict($"Ngành đào tạo với Id {request.NganhId} không tồn tại.");
 
         if (request.ChuyenNganhId.HasValue && !await _db.Set<ChuyenNganh>().AnyAsync(x => x.Id == request.ChuyenNganhId.Value))
-            throw new InvalidOperationException($"Chuyên ngành với Id {request.ChuyenNganhId.Value} không tồn tại.");
+            throw AppException.Conflict($"Chuyên ngành với Id {request.ChuyenNganhId.Value} không tồn tại.");
 
         if (request.LopHanhChinhId.HasValue && !await _db.Set<LopHanhChinh>().AnyAsync(x => x.Id == request.LopHanhChinhId.Value))
-            throw new InvalidOperationException($"Lớp hành chính với Id {request.LopHanhChinhId.Value} không tồn tại.");
+            throw AppException.Conflict($"Lớp hành chính với Id {request.LopHanhChinhId.Value} không tồn tại.");
 
         var sv = new SinhVien
         {
@@ -175,29 +176,23 @@ public class SinhVienService(AppDbContext db) : ISinhVienService
         _db.Add(sv);
         await _db.SaveChangesAsync();
 
-        var nganh = await _db.Set<Nganh>().FindAsync(sv.NganhId);
-        var lop = sv.LopHanhChinhId.HasValue ? await _db.Set<LopHanhChinh>().FindAsync(sv.LopHanhChinhId.Value) : null;
-
-        return new SinhVienDto(
-            sv.Id, sv.MSSV, sv.HoTen, sv.NgaySinh, sv.GioiTinh, sv.Email, sv.SoDienThoai,
-            sv.NganhId, nganh?.Ten, sv.LopHanhChinhId, lop?.Ten, sv.TrangThai, sv.CreatedAt, sv.UpdatedAt
-        );
+        return await ToDtoAsync(sv);
     }
 
     // STU-01: Cập nhật thông tin sinh viên
-    public async Task<SinhVienDto?> UpdateAsync(int id, UpdateSinhVienRequest request)
+    public async Task<SinhVienDto> UpdateAsync(int id, UpdateSinhVienRequest request)
     {
         var sv = await _db.Set<SinhVien>().FindAsync(id);
-        if (sv is null) return null;
+        if (sv is null) throw AppException.NotFound("sinh viên");
 
         if (!await _db.Set<Nganh>().AnyAsync(x => x.Id == request.NganhId))
-            throw new InvalidOperationException($"Ngành đào tạo với Id {request.NganhId} không tồn tại.");
+            throw AppException.Conflict($"Ngành đào tạo với Id {request.NganhId} không tồn tại.");
 
         if (request.ChuyenNganhId.HasValue && !await _db.Set<ChuyenNganh>().AnyAsync(x => x.Id == request.ChuyenNganhId.Value))
-            throw new InvalidOperationException($"Chuyên ngành với Id {request.ChuyenNganhId.Value} không tồn tại.");
+            throw AppException.Conflict($"Chuyên ngành với Id {request.ChuyenNganhId.Value} không tồn tại.");
 
         if (request.LopHanhChinhId.HasValue && !await _db.Set<LopHanhChinh>().AnyAsync(x => x.Id == request.LopHanhChinhId.Value))
-            throw new InvalidOperationException($"Lớp hành chính với Id {request.LopHanhChinhId.Value} không tồn tại.");
+            throw AppException.Conflict($"Lớp hành chính với Id {request.LopHanhChinhId.Value} không tồn tại.");
 
         sv.HoTen = request.HoTen.Trim();
         sv.NgaySinh = request.NgaySinh;
@@ -212,21 +207,16 @@ public class SinhVienService(AppDbContext db) : ISinhVienService
 
         await _db.SaveChangesAsync();
 
-        var nganh = await _db.Set<Nganh>().FindAsync(sv.NganhId);
-        var lop = sv.LopHanhChinhId.HasValue ? await _db.Set<LopHanhChinh>().FindAsync(sv.LopHanhChinhId.Value) : null;
-
-        return new SinhVienDto(
-            sv.Id, sv.MSSV, sv.HoTen, sv.NgaySinh, sv.GioiTinh, sv.Email, sv.SoDienThoai,
-            sv.NganhId, nganh?.Ten, sv.LopHanhChinhId, lop?.Ten, sv.TrangThai, sv.CreatedAt, sv.UpdatedAt
-        );
+        return await ToDtoAsync(sv);
     }
 
     // STU-01: Xóa sinh viên
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
         var sv = await _db.Set<SinhVien>().FindAsync(id);
-        if (sv is null) return false;
+        if (sv is null) throw AppException.NotFound("sinh viên");
 
+        _nhatKy.Ghi($"xóa sinh viên {sv.MSSV} - {sv.HoTen}");
         _db.Remove(sv);
         try
         {
@@ -234,31 +224,37 @@ public class SinhVienService(AppDbContext db) : ISinhVienService
         }
         catch (DbUpdateException)
         {
-            throw new InvalidOperationException("Không thể xóa sinh viên đang có dữ liệu liên quan (học phí, điểm, đăng ký học phần).");
+            throw AppException.Conflict("Không thể xóa sinh viên đang có dữ liệu liên quan (học phí, điểm, đăng ký học phần).");
         }
-
-        return true;
     }
 
     // STU-04: Đổi lớp hành chính cho 1 sinh viên
-    public async Task<bool> ChuyenLopAsync(int id, int? lopHanhChinhId)
+    public async Task ChuyenLopAsync(int id, int? lopHanhChinhId)
     {
         var sv = await _db.Set<SinhVien>().FindAsync(id);
-        if (sv is null) return false;
+        if (sv is null) throw AppException.NotFound("sinh viên");
 
         if (lopHanhChinhId.HasValue && !await _db.Set<LopHanhChinh>().AnyAsync(x => x.Id == lopHanhChinhId.Value))
-            throw new InvalidOperationException($"Lớp hành chính với Id {lopHanhChinhId.Value} không tồn tại.");
+            throw AppException.Conflict($"Lớp hành chính với Id {lopHanhChinhId.Value} không tồn tại.");
 
         sv.LopHanhChinhId = lopHanhChinhId;
         await _db.SaveChangesAsync();
-        return true;
     }
 
     // STU-06: Đổi trạng thái học tập
-    public async Task<SinhVienDto?> ChangeStatusAsync(int id, ChangeStatusRequest request)
+    public async Task<SinhVienDto> ChangeStatusAsync(int id, ChangeStatusRequest request)
     {
         var sv = await _db.Set<SinhVien>().FindAsync(id);
-        if (sv is null) return null;
+        if (sv is null) throw AppException.NotFound("sinh viên");
+
+        // Query/JSON dạng số (ví dụ 9) vẫn bind được vào enum, nên phải kiểm tra lại
+        if (!Enum.IsDefined(request.TrangThai))
+            throw AppException.BadRequest("Trạng thái học tập không hợp lệ.");
+        // Tốt nghiệp chỉ được ghi nhận qua xét tốt nghiệp (module Graduation) để luôn có kết quả xét đi kèm
+        if (request.TrangThai == TrangThaiSinhVien.DaTotNghiep)
+            throw AppException.Conflict("Trạng thái đã tốt nghiệp chỉ được cập nhật qua xét tốt nghiệp.");
+        if (sv.TrangThai == TrangThaiSinhVien.DaTotNghiep)
+            throw AppException.Conflict("Sinh viên đã tốt nghiệp, không thể đổi trạng thái học tập.");
 
         if (sv.TrangThai != request.TrangThai)
         {
@@ -272,30 +268,25 @@ public class SinhVienService(AppDbContext db) : ISinhVienService
                 NgayHieuLuc = DateOnly.FromDateTime(DateTime.UtcNow)
             };
             _db.Add(lichSu);
+            _nhatKy.Ghi($"sinh viên {sv.MSSV}: {sv.TrangThai} -> {request.TrangThai}");
             sv.TrangThai = request.TrangThai;
             await _db.SaveChangesAsync();
         }
 
-        var nganh = await _db.Set<Nganh>().FindAsync(sv.NganhId);
-        var lop = sv.LopHanhChinhId.HasValue ? await _db.Set<LopHanhChinh>().FindAsync(sv.LopHanhChinhId.Value) : null;
-
-        return new SinhVienDto(
-            sv.Id, sv.MSSV, sv.HoTen, sv.NgaySinh, sv.GioiTinh, sv.Email, sv.SoDienThoai,
-            sv.NganhId, nganh?.Ten, sv.LopHanhChinhId, lop?.Ten, sv.TrangThai, sv.CreatedAt, sv.UpdatedAt
-        );
+        return await ToDtoAsync(sv);
     }
 
     // STU-07: Tiếp nhận bảo lưu
-    public async Task<SinhVienDto?> BaoLuuAsync(int id, BaoLuuRequest request)
+    public async Task<SinhVienDto> BaoLuuAsync(int id, BaoLuuRequest request)
     {
         var sv = await _db.Set<SinhVien>().FindAsync(id);
-        if (sv is null) return null;
+        if (sv is null) throw AppException.NotFound("sinh viên");
 
         if (sv.TrangThai == TrangThaiSinhVien.BaoLuu)
-            throw new InvalidOperationException("Sinh viên hiện đang trong trạng thái bảo lưu.");
+            throw AppException.BadRequest("Sinh viên hiện đang trong trạng thái bảo lưu.");
 
         if (sv.TrangThai == TrangThaiSinhVien.ThoiHoc || sv.TrangThai == TrangThaiSinhVien.DaTotNghiep)
-            throw new InvalidOperationException($"Không thể bảo lưu sinh viên đã {sv.TrangThai}.");
+            throw AppException.BadRequest($"Không thể bảo lưu sinh viên đã {sv.TrangThai}.");
 
         var lichSu = new LichSuHocTap
         {
@@ -309,26 +300,23 @@ public class SinhVienService(AppDbContext db) : ISinhVienService
         };
 
         _db.Add(lichSu);
+        _nhatKy.Ghi($"sinh viên {sv.MSSV}: {sv.TrangThai} -> BaoLuu");
         sv.TrangThai = TrangThaiSinhVien.BaoLuu;
         await _db.SaveChangesAsync();
 
-        var nganh = await _db.Set<Nganh>().FindAsync(sv.NganhId);
-        var lop = sv.LopHanhChinhId.HasValue ? await _db.Set<LopHanhChinh>().FindAsync(sv.LopHanhChinhId.Value) : null;
-
-        return new SinhVienDto(
-            sv.Id, sv.MSSV, sv.HoTen, sv.NgaySinh, sv.GioiTinh, sv.Email, sv.SoDienThoai,
-            sv.NganhId, nganh?.Ten, sv.LopHanhChinhId, lop?.Ten, sv.TrangThai, sv.CreatedAt, sv.UpdatedAt
-        );
+        return await ToDtoAsync(sv);
     }
 
     // STU-07: Buộc thôi học / xin thôi học
-    public async Task<SinhVienDto?> ThoiHocAsync(int id, ThoiHocRequest request)
+    public async Task<SinhVienDto> ThoiHocAsync(int id, ThoiHocRequest request)
     {
         var sv = await _db.Set<SinhVien>().FindAsync(id);
-        if (sv is null) return null;
+        if (sv is null) throw AppException.NotFound("sinh viên");
 
         if (sv.TrangThai == TrangThaiSinhVien.ThoiHoc)
-            throw new InvalidOperationException("Sinh viên hiện đã có quyết định thôi học.");
+            throw AppException.BadRequest("Sinh viên hiện đã có quyết định thôi học.");
+        if (sv.TrangThai == TrangThaiSinhVien.DaTotNghiep)
+            throw AppException.BadRequest("Không thể thôi học đối với sinh viên đã tốt nghiệp.");
 
         var lichSu = new LichSuHocTap
         {
@@ -342,26 +330,23 @@ public class SinhVienService(AppDbContext db) : ISinhVienService
         };
 
         _db.Add(lichSu);
+        _nhatKy.Ghi($"sinh viên {sv.MSSV}: {sv.TrangThai} -> ThoiHoc");
         sv.TrangThai = TrangThaiSinhVien.ThoiHoc;
         await _db.SaveChangesAsync();
 
-        var nganh = await _db.Set<Nganh>().FindAsync(sv.NganhId);
-        var lop = sv.LopHanhChinhId.HasValue ? await _db.Set<LopHanhChinh>().FindAsync(sv.LopHanhChinhId.Value) : null;
-
-        return new SinhVienDto(
-            sv.Id, sv.MSSV, sv.HoTen, sv.NgaySinh, sv.GioiTinh, sv.Email, sv.SoDienThoai,
-            sv.NganhId, nganh?.Ten, sv.LopHanhChinhId, lop?.Ten, sv.TrangThai, sv.CreatedAt, sv.UpdatedAt
-        );
+        return await ToDtoAsync(sv);
     }
 
     // STU-07: Quay lại học tập
-    public async Task<SinhVienDto?> QuayLaiHocAsync(int id, string? ghiChu)
+    public async Task<SinhVienDto> QuayLaiHocAsync(int id, string? ghiChu)
     {
         var sv = await _db.Set<SinhVien>().FindAsync(id);
-        if (sv is null) return null;
+        if (sv is null) throw AppException.NotFound("sinh viên");
 
         if (sv.TrangThai == TrangThaiSinhVien.DangHoc)
-            throw new InvalidOperationException("Sinh viên hiện đang học bình thường.");
+            throw AppException.BadRequest("Sinh viên hiện đang học bình thường.");
+        if (sv.TrangThai == TrangThaiSinhVien.DaTotNghiep)
+            throw AppException.BadRequest("Sinh viên đã tốt nghiệp, không thể quay lại học.");
 
         var lichSu = new LichSuHocTap
         {
@@ -374,16 +359,11 @@ public class SinhVienService(AppDbContext db) : ISinhVienService
         };
 
         _db.Add(lichSu);
+        _nhatKy.Ghi($"sinh viên {sv.MSSV}: {sv.TrangThai} -> DangHoc");
         sv.TrangThai = TrangThaiSinhVien.DangHoc;
         await _db.SaveChangesAsync();
 
-        var nganh = await _db.Set<Nganh>().FindAsync(sv.NganhId);
-        var lop = sv.LopHanhChinhId.HasValue ? await _db.Set<LopHanhChinh>().FindAsync(sv.LopHanhChinhId.Value) : null;
-
-        return new SinhVienDto(
-            sv.Id, sv.MSSV, sv.HoTen, sv.NgaySinh, sv.GioiTinh, sv.Email, sv.SoDienThoai,
-            sv.NganhId, nganh?.Ten, sv.LopHanhChinhId, lop?.Ten, sv.TrangThai, sv.CreatedAt, sv.UpdatedAt
-        );
+        return await ToDtoAsync(sv);
     }
 
     // STU-07: Xem lịch sử học tập
@@ -405,5 +385,17 @@ public class SinhVienService(AppDbContext db) : ISinhVienService
                 x.CreatedAt
             ))
             .ToListAsync();
+    }
+
+    // Kèm tên ngành và tên lớp hành chính để hiển thị
+    private async Task<SinhVienDto> ToDtoAsync(SinhVien sv)
+    {
+        var nganh = await _db.Set<Nganh>().FindAsync(sv.NganhId);
+        var lop = sv.LopHanhChinhId.HasValue ? await _db.Set<LopHanhChinh>().FindAsync(sv.LopHanhChinhId.Value) : null;
+
+        return new SinhVienDto(
+            sv.Id, sv.MSSV, sv.HoTen, sv.NgaySinh, sv.GioiTinh, sv.Email, sv.SoDienThoai,
+            sv.NganhId, nganh?.Ten, sv.LopHanhChinhId, lop?.Ten, sv.TrangThai, sv.CreatedAt, sv.UpdatedAt
+        );
     }
 }
