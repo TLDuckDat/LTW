@@ -7,8 +7,8 @@ namespace StudentManagement.Modules.Courses.Services;
 public interface IPhongHocService
 {
     Task<PagedResult<PhongHocDto>> GetPagedAsync(PagedQuery query);
-    Task<PhongHocDto?> GetByIdAsync(int id);
+    Task<PhongHocDto> GetByIdAsync(int id);
     Task<PhongHocDto> CreateAsync(PhongHocRequest request);
-    Task<PhongHocDto?> UpdateAsync(int id, PhongHocRequest request);
-    Task<bool> DeleteAsync(int id);
+    Task<PhongHocDto> UpdateAsync(int id, PhongHocRequest request);
+    Task DeleteAsync(int id);
 }

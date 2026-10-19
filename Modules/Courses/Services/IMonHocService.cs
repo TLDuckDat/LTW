@@ -7,12 +7,12 @@ namespace StudentManagement.Modules.Courses.Services;
 public interface IMonHocService
 {
     Task<PagedResult<MonHocDto>> GetPagedAsync(PagedQuery query);
-    Task<MonHocDto?> GetByIdAsync(int id);
+    Task<MonHocDto> GetByIdAsync(int id);
     Task<MonHocDto> CreateAsync(MonHocRequest request);
-    Task<MonHocDto?> UpdateAsync(int id, MonHocRequest request);
-    Task<bool> DeleteAsync(int id);
+    Task<MonHocDto> UpdateAsync(int id, MonHocRequest request);
+    Task DeleteAsync(int id);
 
-    Task<IReadOnlyList<MonHocDto>?> GetTienQuyetAsync(int id);
-    Task<MonHocDto?> AddTienQuyetAsync(int id, TienQuyetRequest request);
-    Task<bool> RemoveTienQuyetAsync(int id, int tienQuyetId);
+    Task<IReadOnlyList<MonHocDto>> GetTienQuyetAsync(int id);
+    Task<MonHocDto> AddTienQuyetAsync(int id, TienQuyetRequest request);
+    Task RemoveTienQuyetAsync(int id, int tienQuyetId);
 }

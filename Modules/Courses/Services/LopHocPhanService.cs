@@ -39,19 +39,20 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
         return new PagedResult<LopHocPhanDto> { Items = items, Page = query.Page, PageSize = query.PageSize, TotalCount = total };
     }
 
-    public async Task<LopHocPhanDto?> GetByIdAsync(int id)
-        => await ProjectToDto(_db.Set<LopHocPhan>().AsNoTracking().Where(x => x.Id == id)).FirstOrDefaultAsync();
+    public async Task<LopHocPhanDto> GetByIdAsync(int id)
+        => await ProjectToDto(_db.Set<LopHocPhan>().AsNoTracking().Where(x => x.Id == id)).FirstOrDefaultAsync()
+            ?? throw AppException.NotFound("lớp học phần");
 
     // CRS-02 Mở lớp học phần trong học kỳ
     public async Task<LopHocPhanDto> CreateAsync(LopHocPhanRequest request)
     {
         var ma = request.Ma.Trim();
         if (!await _db.Set<HocKy>().AnyAsync(x => x.Id == request.HocKyId))
-            throw new InvalidOperationException("Học kỳ không tồn tại.");
+            throw AppException.Conflict("Học kỳ không tồn tại.");
         if (!await _db.Set<MonHoc>().AnyAsync(x => x.Id == request.MonHocId))
-            throw new InvalidOperationException("Môn học không tồn tại.");
+            throw AppException.Conflict("Môn học không tồn tại.");
         if (await _db.Set<LopHocPhan>().AnyAsync(x => x.Ma == ma))
-            throw new InvalidOperationException($"Mã lớp học phần '{ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã lớp học phần '{ma}' đã tồn tại.");
 
         var entity = new LopHocPhan
         {
@@ -66,17 +67,17 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
     }
 
     // CRS-02 Cập nhật mã lớp và sĩ số tối đa
-    public async Task<LopHocPhanDto?> UpdateAsync(int id, LopHocPhanUpdateRequest request)
+    public async Task<LopHocPhanDto> UpdateAsync(int id, LopHocPhanUpdateRequest request)
     {
         var entity = await _db.Set<LopHocPhan>().FindAsync(id);
-        if (entity is null) return null;
+        if (entity is null) throw AppException.NotFound("lớp học phần");
 
         if (entity.TrangThai is TrangThaiLopHocPhan.DaHuy or TrangThaiLopHocPhan.DaKetThuc)
-            throw new InvalidOperationException("Lớp học phần đã hủy hoặc kết thúc, không thể chỉnh sửa.");
+            throw AppException.Conflict("Lớp học phần đã hủy hoặc kết thúc, không thể chỉnh sửa.");
 
         var ma = request.Ma.Trim();
         if (await _db.Set<LopHocPhan>().AnyAsync(x => x.Ma == ma && x.Id != id))
-            throw new InvalidOperationException($"Mã lớp học phần '{ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã lớp học phần '{ma}' đã tồn tại.");
 
         await KiemTraSiSoToiDaAsync(id, request.SiSoToiDa);
 
@@ -87,13 +88,13 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
     }
 
     // CRS-02, REG-07 Chỉ cập nhật sĩ số tối đa của lớp
-    public async Task<LopHocPhanDto?> CapNhatSiSoToiDaAsync(int id, int siSoToiDa)
+    public async Task<LopHocPhanDto> CapNhatSiSoToiDaAsync(int id, int siSoToiDa)
     {
-        var entity = await _db.Set<LopHocPhan>().FindAsync(id);
-        if (entity is null) return null;
+        var entity = await _db.Set<LopHocPhan>().FindAsync(id)
+            ?? throw AppException.NotFound("lớp học phần");
 
         if (entity.TrangThai is TrangThaiLopHocPhan.DaHuy or TrangThaiLopHocPhan.DaKetThuc)
-            throw new InvalidOperationException("Lớp học phần đã hủy hoặc kết thúc, không thể chỉnh sửa.");
+            throw AppException.Conflict("Lớp học phần đã hủy hoặc kết thúc, không thể chỉnh sửa.");
         await KiemTraSiSoToiDaAsync(id, siSoToiDa);
 
         entity.SiSoToiDa = siSoToiDa;
@@ -106,24 +107,24 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
     {
         var daDangKy = await DemDangKyAsync(id);
         if (siSoToiDa < daDangKy)
-            throw new InvalidOperationException($"Sĩ số tối đa không được nhỏ hơn số sinh viên đã đăng ký ({daDangKy}).");
+            throw AppException.Conflict($"Sĩ số tối đa không được nhỏ hơn số sinh viên đã đăng ký ({daDangKy}).");
 
         var sucChuaNhoNhat = await _db.Set<LichHoc>()
             .Where(l => l.LopHocPhanId == id && l.PhongHocId != null)
             .Join(_db.Set<PhongHoc>(), l => l.PhongHocId, p => p.Id, (l, p) => (int?)p.SucChua)
             .MinAsync();
         if (sucChuaNhoNhat is not null && siSoToiDa > sucChuaNhoNhat)
-            throw new InvalidOperationException($"Sĩ số tối đa vượt sức chứa phòng đã xếp ({sucChuaNhoNhat}).");
+            throw AppException.Conflict($"Sĩ số tối đa vượt sức chứa phòng đã xếp ({sucChuaNhoNhat}).");
     }
 
     // CRS-02 Xóa lớp học phần chưa có sinh viên đăng ký (lịch học xóa theo lớp)
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
         var entity = await _db.Set<LopHocPhan>().FindAsync(id);
-        if (entity is null) return false;
+        if (entity is null) throw AppException.NotFound("lớp học phần");
 
         if (await _db.Set<DangKyHocPhan>().AnyAsync(x => x.LopHocPhanId == id))
-            throw new InvalidOperationException("Lớp học phần đã có lượt đăng ký, không thể xóa (hãy hủy lớp).");
+            throw AppException.Conflict("Lớp học phần đã có lượt đăng ký, không thể xóa (hãy hủy lớp).");
 
         _db.RemoveRange(await _db.Set<LichHoc>().Where(x => x.LopHocPhanId == id).ToListAsync());
         _db.Remove(entity);
@@ -133,28 +134,27 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
         }
         catch (DbUpdateException)
         {
-            throw new InvalidOperationException("Không thể xóa lớp học phần đang có dữ liệu liên quan.");
+            throw AppException.Conflict("Không thể xóa lớp học phần đang có dữ liệu liên quan.");
         }
-        return true;
     }
 
     // CRS-03 Phân công (hoặc bỏ phân công) giảng viên cho lớp, chặn khi giảng viên trùng giờ giảng
-    public async Task<LopHocPhanDto?> PhanCongGiangVienAsync(int id, PhanCongGiangVienRequest request)
+    public async Task<LopHocPhanDto> PhanCongGiangVienAsync(int id, PhanCongGiangVienRequest request)
     {
         var entity = await _db.Set<LopHocPhan>().FindAsync(id);
-        if (entity is null) return null;
+        if (entity is null) throw AppException.NotFound("lớp học phần");
 
         if (entity.TrangThai is TrangThaiLopHocPhan.DaHuy or TrangThaiLopHocPhan.DaKetThuc)
-            throw new InvalidOperationException("Lớp học phần đã hủy hoặc kết thúc, không thể phân công giảng viên.");
+            throw AppException.Conflict("Lớp học phần đã hủy hoặc kết thúc, không thể phân công giảng viên.");
 
         if (request.GiangVienId is { } giangVienId)
         {
             if (!await _db.Set<GiangVien>().AnyAsync(x => x.Id == giangVienId))
-                throw new InvalidOperationException("Giảng viên không tồn tại.");
+                throw AppException.Conflict("Giảng viên không tồn tại.");
 
             var xungDot = await _xungDot.TimXungDotGiangVienAsync(entity, giangVienId);
             if (xungDot.Count > 0)
-                throw new InvalidOperationException("Giảng viên bị trùng lịch giảng: " + string.Join(" ", xungDot.Select(x => x.ThongBao)));
+                throw AppException.Conflict("Giảng viên bị trùng lịch giảng: " + string.Join(" ", xungDot.Select(x => x.ThongBao)));
         }
 
         entity.GiangVienId = request.GiangVienId;
@@ -163,15 +163,15 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
     }
 
     // CRS-08 Bắt đầu học: lớp ngừng nhận đăng ký/hủy đăng ký, từ đây mới được nhập điểm
-    public async Task<LopHocPhanDto?> BatDauHocAsync(int id)
+    public async Task<LopHocPhanDto> BatDauHocAsync(int id)
     {
         var entity = await _db.Set<LopHocPhan>().FindAsync(id);
-        if (entity is null) return null;
+        if (entity is null) throw AppException.NotFound("lớp học phần");
 
         if (entity.TrangThai != TrangThaiLopHocPhan.MoDangKy)
-            throw new InvalidOperationException("Chỉ lớp học phần đang mở đăng ký mới chuyển sang đang học được.");
+            throw AppException.Conflict("Chỉ lớp học phần đang mở đăng ký mới chuyển sang đang học được.");
         if (await DemDangKyAsync(id) == 0)
-            throw new InvalidOperationException("Lớp học phần chưa có sinh viên đăng ký, hãy hủy lớp thay vì bắt đầu học.");
+            throw AppException.Conflict("Lớp học phần chưa có sinh viên đăng ký, hãy hủy lớp thay vì bắt đầu học.");
 
         entity.TrangThai = TrangThaiLopHocPhan.DangHoc;
         await _db.SaveChangesAsync();
@@ -179,13 +179,13 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
     }
 
     // CRS-08 Kết thúc lớp: từ đây mới được duyệt, khóa bảng điểm và phúc khảo
-    public async Task<LopHocPhanDto?> KetThucAsync(int id)
+    public async Task<LopHocPhanDto> KetThucAsync(int id)
     {
         var entity = await _db.Set<LopHocPhan>().FindAsync(id);
-        if (entity is null) return null;
+        if (entity is null) throw AppException.NotFound("lớp học phần");
 
         if (entity.TrangThai != TrangThaiLopHocPhan.DangHoc)
-            throw new InvalidOperationException("Chỉ lớp học phần đang học mới kết thúc được.");
+            throw AppException.Conflict("Chỉ lớp học phần đang học mới kết thúc được.");
 
         entity.TrangThai = TrangThaiLopHocPhan.DaKetThuc;
         await _db.SaveChangesAsync();
@@ -193,17 +193,17 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
     }
 
     // CRS-07 Hủy lớp học phần: hủy các lượt đăng ký còn hiệu lực, giữ lại dữ liệu để tra cứu
-    public async Task<LopHocPhanDto?> HuyAsync(int id)
+    public async Task<LopHocPhanDto> HuyAsync(int id)
     {
         var entity = await _db.Set<LopHocPhan>().FindAsync(id);
-        if (entity is null) return null;
+        if (entity is null) throw AppException.NotFound("lớp học phần");
 
         if (entity.TrangThai == TrangThaiLopHocPhan.DaHuy)
-            throw new InvalidOperationException("Lớp học phần đã được hủy trước đó.");
+            throw AppException.Conflict("Lớp học phần đã được hủy trước đó.");
         if (entity.TrangThai == TrangThaiLopHocPhan.DaKetThuc)
-            throw new InvalidOperationException("Lớp học phần đã kết thúc, không thể hủy.");
+            throw AppException.Conflict("Lớp học phần đã kết thúc, không thể hủy.");
         if (await CoDiemAsync(id))
-            throw new InvalidOperationException("Lớp học phần đã có điểm, không thể hủy.");
+            throw AppException.Conflict("Lớp học phần đã có điểm, không thể hủy.");
 
         var dangKy = await _db.Set<DangKyHocPhan>()
             .Where(x => x.LopHocPhanId == id && x.TrangThai == TrangThaiDangKy.DaDangKy)
@@ -216,22 +216,22 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
     }
 
     // CRS-07 Gộp lớp: chuyển sinh viên sang lớp đích rồi hủy lớp nguồn
-    public async Task<GopLopResultDto?> GopAsync(int id, GopLopRequest request)
+    public async Task<GopLopResultDto> GopAsync(int id, GopLopRequest request)
     {
         var nguon = await _db.Set<LopHocPhan>().FindAsync(id);
         var dich = await _db.Set<LopHocPhan>().FindAsync(request.LopDichId);
-        if (nguon is null || dich is null) return null;
+        if (nguon is null || dich is null) throw AppException.NotFound("lớp học phần nguồn hoặc lớp đích");
 
         if (nguon.Id == dich.Id)
-            throw new InvalidOperationException("Không thể gộp một lớp vào chính nó.");
+            throw AppException.Conflict("Không thể gộp một lớp vào chính nó.");
         if (nguon.TrangThai != TrangThaiLopHocPhan.MoDangKy || dich.TrangThai != TrangThaiLopHocPhan.MoDangKy)
-            throw new InvalidOperationException("Chỉ gộp được hai lớp học phần đang mở đăng ký.");
+            throw AppException.Conflict("Chỉ gộp được hai lớp học phần đang mở đăng ký.");
         if (nguon.MonHocId != dich.MonHocId)
-            throw new InvalidOperationException("Hai lớp học phần không cùng môn học.");
+            throw AppException.Conflict("Hai lớp học phần không cùng môn học.");
         if (nguon.HocKyId != dich.HocKyId)
-            throw new InvalidOperationException("Hai lớp học phần không cùng học kỳ.");
+            throw AppException.Conflict("Hai lớp học phần không cùng học kỳ.");
         if (await CoDiemAsync(nguon.Id))
-            throw new InvalidOperationException("Lớp nguồn đã có điểm, không thể gộp.");
+            throw AppException.Conflict("Lớp nguồn đã có điểm, không thể gộp.");
 
         var dangKyNguon = await _db.Set<DangKyHocPhan>()
             .Where(x => x.LopHocPhanId == nguon.Id && x.TrangThai == TrangThaiDangKy.DaDangKy)
@@ -250,7 +250,7 @@ public class LopHocPhanService(AppDbContext db, IXungDotLichService xungDot) : I
 
         var daDangKyDich = await DemDangKyAsync(dich.Id);
         if (daDangKyDich + canChuyen.Count > dich.SiSoToiDa)
-            throw new InvalidOperationException(
+            throw AppException.Conflict(
                 $"Lớp đích không đủ chỗ: còn {dich.SiSoToiDa - daDangKyDich} chỗ, cần chuyển {canChuyen.Count} sinh viên.");
 
         foreach (var d in canChuyen)

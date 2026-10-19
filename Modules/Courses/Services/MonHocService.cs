@@ -30,17 +30,17 @@ public class MonHocService(AppDbContext db) : IMonHocService
         return new PagedResult<MonHocDto> { Items = items, Page = query.Page, PageSize = query.PageSize, TotalCount = total };
     }
 
-    public async Task<MonHocDto?> GetByIdAsync(int id)
+    public async Task<MonHocDto> GetByIdAsync(int id)
     {
         var entity = await _db.Set<MonHoc>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        return entity is null ? null : ToDto(entity);
+        return entity is null ? throw AppException.NotFound("môn học") : ToDto(entity);
     }
 
     public async Task<MonHocDto> CreateAsync(MonHocRequest request)
     {
         var ma = request.Ma.Trim();
         if (await _db.Set<MonHoc>().AnyAsync(x => x.Ma == ma))
-            throw new InvalidOperationException($"Mã môn học '{ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã môn học '{ma}' đã tồn tại.");
 
         var entity = new MonHoc { Ma = ma, Ten = request.Ten.Trim(), SoTinChi = request.SoTinChi };
         _db.Add(entity);
@@ -48,14 +48,14 @@ public class MonHocService(AppDbContext db) : IMonHocService
         return ToDto(entity);
     }
 
-    public async Task<MonHocDto?> UpdateAsync(int id, MonHocRequest request)
+    public async Task<MonHocDto> UpdateAsync(int id, MonHocRequest request)
     {
         var entity = await _db.Set<MonHoc>().FindAsync(id);
-        if (entity is null) return null;
+        if (entity is null) throw AppException.NotFound("môn học");
 
         var ma = request.Ma.Trim();
         if (await _db.Set<MonHoc>().AnyAsync(x => x.Ma == ma && x.Id != id))
-            throw new InvalidOperationException($"Mã môn học '{ma}' đã tồn tại.");
+            throw AppException.Conflict($"Mã môn học '{ma}' đã tồn tại.");
 
         entity.Ma = ma;
         entity.Ten = request.Ten.Trim();
@@ -64,15 +64,15 @@ public class MonHocService(AppDbContext db) : IMonHocService
         return ToDto(entity);
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
         var entity = await _db.Set<MonHoc>().FindAsync(id);
-        if (entity is null) return false;
+        if (entity is null) throw AppException.NotFound("môn học");
 
         if (await _db.Set<MonHocTienQuyet>().AnyAsync(x => x.TienQuyetId == id))
-            throw new InvalidOperationException("Môn học đang là tiên quyết của môn khác, không thể xóa.");
+            throw AppException.Conflict("Môn học đang là tiên quyết của môn khác, không thể xóa.");
         if (await _db.Set<LopHocPhan>().AnyAsync(x => x.MonHocId == id))
-            throw new InvalidOperationException("Môn học đã được mở lớp học phần, không thể xóa.");
+            throw AppException.Conflict("Môn học đã được mở lớp học phần, không thể xóa.");
 
         // Quan hệ tiên quyết của chính môn này xóa cùng môn học
         var tienQuyet = await _db.Set<MonHocTienQuyet>().Where(x => x.MonHocId == id).ToListAsync();
@@ -84,14 +84,13 @@ public class MonHocService(AppDbContext db) : IMonHocService
         }
         catch (DbUpdateException)
         {
-            throw new InvalidOperationException("Không thể xóa môn học đang có dữ liệu liên quan.");
+            throw AppException.Conflict("Không thể xóa môn học đang có dữ liệu liên quan.");
         }
-        return true;
     }
 
-    public async Task<IReadOnlyList<MonHocDto>?> GetTienQuyetAsync(int id)
+    public async Task<IReadOnlyList<MonHocDto>> GetTienQuyetAsync(int id)
     {
-        if (!await _db.Set<MonHoc>().AnyAsync(x => x.Id == id)) return null;
+        if (!await _db.Set<MonHoc>().AnyAsync(x => x.Id == id)) throw AppException.NotFound("môn học");
 
         return await (
             from tq in _db.Set<MonHocTienQuyet>().AsNoTracking()
@@ -102,33 +101,32 @@ public class MonHocService(AppDbContext db) : IMonHocService
             .ToListAsync();
     }
 
-    public async Task<MonHocDto?> AddTienQuyetAsync(int id, TienQuyetRequest request)
+    public async Task<MonHocDto> AddTienQuyetAsync(int id, TienQuyetRequest request)
     {
         var monHoc = await _db.Set<MonHoc>().FindAsync(id);
         var tienQuyet = await _db.Set<MonHoc>().FindAsync(request.TienQuyetId);
-        if (monHoc is null || tienQuyet is null) return null;
+        if (monHoc is null || tienQuyet is null) throw AppException.NotFound("môn học hoặc môn tiên quyết");
 
         if (id == request.TienQuyetId)
-            throw new InvalidOperationException("Môn học không thể là tiên quyết của chính nó.");
+            throw AppException.Conflict("Môn học không thể là tiên quyết của chính nó.");
         if (await _db.Set<MonHocTienQuyet>().AnyAsync(x => x.MonHocId == id && x.TienQuyetId == request.TienQuyetId))
-            throw new InvalidOperationException("Môn tiên quyết này đã được thêm.");
+            throw AppException.Conflict("Môn tiên quyết này đã được thêm.");
         if (await PhuThuocVongAsync(id, request.TienQuyetId))
-            throw new InvalidOperationException("Không thể thêm: tạo vòng phụ thuộc giữa các môn tiên quyết.");
+            throw AppException.Conflict("Không thể thêm: tạo vòng phụ thuộc giữa các môn tiên quyết.");
 
         _db.Add(new MonHocTienQuyet { MonHocId = id, TienQuyetId = request.TienQuyetId });
         await _db.SaveChangesAsync();
         return ToDto(tienQuyet);
     }
 
-    public async Task<bool> RemoveTienQuyetAsync(int id, int tienQuyetId)
+    public async Task RemoveTienQuyetAsync(int id, int tienQuyetId)
     {
         var entity = await _db.Set<MonHocTienQuyet>()
             .FirstOrDefaultAsync(x => x.MonHocId == id && x.TienQuyetId == tienQuyetId);
-        if (entity is null) return false;
+        if (entity is null) throw AppException.NotFound("quan hệ tiên quyết");
 
         _db.Remove(entity);
         await _db.SaveChangesAsync();
-        return true;
     }
 
     /// <summary>
