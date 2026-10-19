@@ -28,10 +28,14 @@ public record ThucTapTotNghiepDto(bool? BatBuoc, int SoBanGhi,
 public record KhoaLuanTotNghiepDto(bool? BatBuoc, int? DeTaiId,
     int? HoiDongBaoVeId, decimal? Diem, decimal? DiemToiThieu, bool DaCoKetQua);
 
+/// <summary>Môn bắt buộc của chương trình đào tạo: đã đạt khi có điểm đã khóa từ mức đạt trở lên.</summary>
+public record MonBatBuocTotNghiepDto(int SoMonBatBuoc, int SoMonDaDat, IReadOnlyList<string> MonConThieu);
+
+/// <summary>XepLoaiTotNghiep: xếp loại dự kiến theo CPA hiện tại (null khi chưa có CPA).</summary>
 public record DieuKienTotNghiepDto(
     int SinhVienId, string MaSinhVien, string HoTen, string TrangThaiSinhVien,
     int? ChuongTrinhDaoTaoId, string? TenChuongTrinhDaoTao,
     int? TongTinChiYeuCau, int? TinChiTichLuy, int? TinChiConThieu,
-    decimal? Cpa, decimal? CpaToiThieu,
-    ThucTapTotNghiepDto ThucTap, KhoaLuanTotNghiepDto KhoaLuan,
+    decimal? Cpa, decimal? CpaToiThieu, string? XepLoaiTotNghiep,
+    ThucTapTotNghiepDto ThucTap, KhoaLuanTotNghiepDto KhoaLuan, MonBatBuocTotNghiepDto MonBatBuoc,
     IReadOnlyList<DieuKienDto> DanhSachDieuKien, KetLuanTotNghiep KetLuan);

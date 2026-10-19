@@ -7,9 +7,11 @@ using StudentManagement.Modules.Students.Entities;
 
 namespace StudentManagement.Modules.Graduation.Services;
 
-public class GraduationService(AppDbContext db, IDieuKienTotNghiepService dieuKien) : IGraduationService
+public class GraduationService(AppDbContext db, IDieuKienTotNghiepService dieuKien, NhatKyContext nhatKy)
+    : IGraduationService
 {
     private readonly AppDbContext _db = db;
+    private readonly NhatKyContext _nhatKy = nhatKy;
     private readonly IDieuKienTotNghiepService _dieuKien = dieuKien;
 
     public async Task<XetTotNghiepDto> XetTotNghiepAsync(int sinhVienId)
@@ -51,10 +53,12 @@ public class GraduationService(AppDbContext db, IDieuKienTotNghiepService dieuKi
             : string.Join("; ", check.DanhSachDieuKien
                 .Where(x => x.TrangThai != TrangThaiDieuKien.Dat)
                 .Select(x => $"{x.Ten}: {x.GiaiThich}"));
+        // Xếp loại tốt nghiệp chỉ ghi khi được công nhận; đủ điều kiện thì chắc chắn đã có CPA
+        var xepLoai = ketQua == KetQuaXetTotNghiep.DuDieuKien ? check.XepLoaiTotNghiep : null;
 
         if (last is not null && last.KetQua == ketQua &&
             last.TongTinChiTichLuy == check.TinChiTichLuy &&
-            last.DiemTrungBinhTichLuy == check.Cpa && last.LyDo == lyDo)
+            last.DiemTrungBinhTichLuy == check.Cpa && last.LyDo == lyDo && last.XepLoai == xepLoai)
         {
             await transaction.CommitAsync();
             return await GetRecordAsync(last.Id);
@@ -66,10 +70,12 @@ public class GraduationService(AppDbContext db, IDieuKienTotNghiepService dieuKi
             NgayXet = DateOnly.FromDateTime(DateTime.UtcNow),
             TongTinChiTichLuy = check.TinChiTichLuy,
             DiemTrungBinhTichLuy = check.Cpa,
+            XepLoai = xepLoai,
             KetQua = ketQua,
             LyDo = lyDo
         };
         _db.Set<XetTotNghiep>().Add(result);
+        _nhatKy.Ghi($"xét tốt nghiệp {sv.MSSV}: {ketQua}" + (xepLoai is null ? "" : $", xếp loại {xepLoai}"));
         if (ketQua == KetQuaXetTotNghiep.DuDieuKien)
             sv.TrangThai = TrangThaiSinhVien.DaTotNghiep;
         await _db.SaveChangesAsync();
