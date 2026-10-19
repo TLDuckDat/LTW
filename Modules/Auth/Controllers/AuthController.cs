@@ -92,6 +92,83 @@ public class AuthController(IAuthService service) : ControllerBase
         }
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpPut("accounts/{id:int}/giang-vien")]
+    public async Task<ActionResult<ApiResponse<AccountDto>>> LinkLecturer(int id, [FromBody] LinkLecturerRequest request)
+    {
+        try
+        {
+            var result = await _service.LinkLecturerAsync(id, request);
+            return result is null
+                ? NotFound(ApiResponse<AccountDto>.Fail("Không tìm thấy tài khoản."))
+                : Ok(ApiResponse<AccountDto>.Ok(result, "Đã cập nhật liên kết giảng viên."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<AccountDto>.Fail(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("accounts")]
+    public async Task<ActionResult<ApiResponse<AccountDto>>> CreateAccount([FromBody] CreateAccountRequest request)
+    {
+        try
+        {
+            var result = await _service.CreateAccountAsync(request);
+            return StatusCode(StatusCodes.Status201Created, ApiResponse<AccountDto>.Ok(result, "Đã tạo tài khoản."));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<AccountDto>.Fail(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<AccountDto>.Fail(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("accounts/{id:int}/reset-password")]
+    public async Task<ActionResult<ApiResponse<AccountDto>>> ResetPassword(int id, [FromBody] ResetPasswordRequest request)
+    {
+        try
+        {
+            var result = await _service.ResetPasswordAsync(id, request);
+            return result is null
+                ? NotFound(ApiResponse<AccountDto>.Fail("Không tìm thấy tài khoản."))
+                : Ok(ApiResponse<AccountDto>.Ok(result, "Đã đặt lại mật khẩu. Tài khoản cần đăng nhập lại."));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<AccountDto>.Fail(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("accounts/{id:int}/vai-tro")]
+    public async Task<ActionResult<ApiResponse<AccountDto>>> ChangeRole(int id, [FromBody] ChangeRoleRequest request)
+    {
+        if (TryGetCurrentAccountId(out var currentId) && currentId == id)
+            return Conflict(ApiResponse<AccountDto>.Fail("Không thể tự đổi vai trò của tài khoản đang đăng nhập."));
+
+        try
+        {
+            var result = await _service.ChangeRoleAsync(id, request);
+            return result is null
+                ? NotFound(ApiResponse<AccountDto>.Fail("Không tìm thấy tài khoản."))
+                : Ok(ApiResponse<AccountDto>.Ok(result, "Đã đổi vai trò tài khoản."));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<AccountDto>.Fail(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<AccountDto>.Fail(ex.Message));
+        }
+    }
+
     private bool TryGetCurrentAccountId(out int taiKhoanId) =>
         int.TryParse(User.FindFirst("sub")?.Value, NumberStyles.None, CultureInfo.InvariantCulture, out taiKhoanId);
 }

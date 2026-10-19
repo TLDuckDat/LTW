@@ -18,5 +18,7 @@ public class TaiKhoanConfiguration : IEntityTypeConfiguration<TaiKhoan>
         builder.HasIndex(x => x.TenDangNhap).IsUnique();
         builder.HasIndex(x => x.SinhVienId).IsUnique();
         builder.HasOne<SinhVien>().WithMany().HasForeignKey(x => x.SinhVienId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(x => x.GiangVienId).IsUnique();
+        builder.HasOne<GiangVien>().WithMany().HasForeignKey(x => x.GiangVienId).OnDelete(DeleteBehavior.Restrict);
     }
 }

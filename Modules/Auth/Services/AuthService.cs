@@ -116,7 +116,8 @@ public class AuthService(AppDbContext db, IOptions<JwtSettings> jwtOptions, ILog
                 x.VaiTro.ToString(),
                 x.DaKhoa,
                 x.CreatedAt,
-                x.SinhVienId))
+                x.SinhVienId,
+                x.GiangVienId))
             .ToListAsync();
 
         return new PagedResult<AccountDto>
@@ -167,13 +168,8 @@ public class AuthService(AppDbContext db, IOptions<JwtSettings> jwtOptions, ILog
         if (account is null)
             return null;
 
-        if (!account.DaKhoa && account.VaiTro == VaiTro.Admin)
-        {
-            var anotherActiveAdminExists = await _db.Set<TaiKhoan>()
-                .AnyAsync(x => x.Id != id && x.VaiTro == VaiTro.Admin && !x.DaKhoa);
-            if (!anotherActiveAdminExists)
-                throw new InvalidOperationException("Không thể khóa Admin đang hoạt động cuối cùng.");
-        }
+        if (!account.DaKhoa && account.VaiTro == VaiTro.Admin && !await AnotherActiveAdminExistsAsync(id))
+            throw new InvalidOperationException("Không thể khóa Admin đang hoạt động cuối cùng.");
 
         account.DaKhoa = !account.DaKhoa;
         await _db.SaveChangesAsync();
@@ -188,18 +184,122 @@ public class AuthService(AppDbContext db, IOptions<JwtSettings> jwtOptions, ILog
             return null;
 
         if (request.SinhVienId is { } sinhVienId)
-        {
-            if (account.VaiTro != VaiTro.SinhVien)
-                throw new InvalidOperationException("Chỉ liên kết sinh viên cho tài khoản có vai trò SinhVien.");
-            if (!await _db.Set<SinhVien>().AnyAsync(x => x.Id == sinhVienId))
-                throw new InvalidOperationException("Sinh viên không tồn tại.");
-            if (await _db.Set<TaiKhoan>().AnyAsync(x => x.SinhVienId == sinhVienId && x.Id != id))
-                throw new InvalidOperationException("Sinh viên đã được liên kết với tài khoản khác.");
-        }
+            await EnsureCanLinkStudentAsync(id, account.VaiTro, sinhVienId);
 
         account.SinhVienId = request.SinhVienId;
         await _db.SaveChangesAsync();
         return ToAccountDto(account);
+    }
+
+    public async Task<AccountDto?> LinkLecturerAsync(int id, LinkLecturerRequest request)
+    {
+        var account = await _db.Set<TaiKhoan>().FirstOrDefaultAsync(x => x.Id == id);
+        if (account is null)
+            return null;
+
+        if (request.GiangVienId is { } giangVienId)
+            await EnsureCanLinkLecturerAsync(id, account.VaiTro, giangVienId);
+
+        account.GiangVienId = request.GiangVienId;
+        await _db.SaveChangesAsync();
+        return ToAccountDto(account);
+    }
+
+    public async Task<AccountDto> CreateAccountAsync(CreateAccountRequest request)
+    {
+        var username = request.TenDangNhap.Trim();
+        var vaiTro = request.VaiTro ?? throw new ArgumentException("Vai trò là bắt buộc.");
+        if (string.IsNullOrEmpty(username))
+            throw new ArgumentException("Tên đăng nhập không được để trống.");
+        if (!HasValidBcryptPassword(request.MatKhau))
+            throw new ArgumentException("Mật khẩu không được vượt quá 72 byte UTF-8.");
+        if (await _db.Set<TaiKhoan>().AnyAsync(x => x.TenDangNhap == username))
+            throw new InvalidOperationException($"Tên đăng nhập '{username}' đã tồn tại.");
+        if (request.SinhVienId is { } sinhVienId)
+            await EnsureCanLinkStudentAsync(null, vaiTro, sinhVienId);
+        if (request.GiangVienId is { } giangVienId)
+            await EnsureCanLinkLecturerAsync(null, vaiTro, giangVienId);
+
+        var account = new TaiKhoan
+        {
+            TenDangNhap = username,
+            MatKhauHash = BCrypt.Net.BCrypt.HashPassword(request.MatKhau),
+            HoTen = request.HoTen.Trim(),
+            VaiTro = vaiTro,
+            SinhVienId = request.SinhVienId,
+            GiangVienId = request.GiangVienId
+        };
+        _db.Add(account);
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.IsUniqueViolation())
+        {
+            throw new InvalidOperationException("Tên đăng nhập hoặc hồ sơ liên kết đã được dùng cho tài khoản khác.");
+        }
+
+        _logger.LogInformation("Account {AccountId} created with role {Role}", account.Id, account.VaiTro);
+        return ToAccountDto(account);
+    }
+
+    // Đổi mật khẩu làm thay đổi UpdatedAt nên các token cũ của tài khoản bị thu hồi
+    public async Task<AccountDto?> ResetPasswordAsync(int id, ResetPasswordRequest request)
+    {
+        if (!HasValidBcryptPassword(request.MatKhauMoi))
+            throw new ArgumentException("Mật khẩu không được vượt quá 72 byte UTF-8.");
+
+        var account = await _db.Set<TaiKhoan>().FirstOrDefaultAsync(x => x.Id == id);
+        if (account is null)
+            return null;
+
+        account.MatKhauHash = BCrypt.Net.BCrypt.HashPassword(request.MatKhauMoi);
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Password of account {AccountId} reset by admin", id);
+        return ToAccountDto(account);
+    }
+
+    public async Task<AccountDto?> ChangeRoleAsync(int id, ChangeRoleRequest request)
+    {
+        var vaiTro = request.VaiTro ?? throw new ArgumentException("Vai trò là bắt buộc.");
+        var account = await _db.Set<TaiKhoan>().FirstOrDefaultAsync(x => x.Id == id);
+        if (account is null)
+            return null;
+        if (account.VaiTro == vaiTro)
+            return ToAccountDto(account);
+
+        if (account.VaiTro == VaiTro.Admin && !account.DaKhoa && !await AnotherActiveAdminExistsAsync(id))
+            throw new InvalidOperationException("Không thể đổi vai trò của Admin đang hoạt động cuối cùng.");
+
+        // Liên kết hồ sơ chỉ có nghĩa với đúng vai trò, nên gỡ khi đổi sang vai trò khác
+        account.VaiTro = vaiTro;
+        if (vaiTro != VaiTro.SinhVien) account.SinhVienId = null;
+        if (vaiTro != VaiTro.GiangVien) account.GiangVienId = null;
+        await _db.SaveChangesAsync();
+        return ToAccountDto(account);
+    }
+
+    private Task<bool> AnotherActiveAdminExistsAsync(int id) =>
+        _db.Set<TaiKhoan>().AnyAsync(x => x.Id != id && x.VaiTro == VaiTro.Admin && !x.DaKhoa);
+
+    private async Task EnsureCanLinkStudentAsync(int? accountId, VaiTro vaiTro, int sinhVienId)
+    {
+        if (vaiTro != VaiTro.SinhVien)
+            throw new InvalidOperationException("Chỉ liên kết sinh viên cho tài khoản có vai trò SinhVien.");
+        if (!await _db.Set<SinhVien>().AnyAsync(x => x.Id == sinhVienId))
+            throw new InvalidOperationException("Sinh viên không tồn tại.");
+        if (await _db.Set<TaiKhoan>().AnyAsync(x => x.SinhVienId == sinhVienId && x.Id != accountId))
+            throw new InvalidOperationException("Sinh viên đã được liên kết với tài khoản khác.");
+    }
+
+    private async Task EnsureCanLinkLecturerAsync(int? accountId, VaiTro vaiTro, int giangVienId)
+    {
+        if (vaiTro != VaiTro.GiangVien)
+            throw new InvalidOperationException("Chỉ liên kết giảng viên cho tài khoản có vai trò GiangVien.");
+        if (!await _db.Set<GiangVien>().AnyAsync(x => x.Id == giangVienId))
+            throw new InvalidOperationException("Giảng viên không tồn tại.");
+        if (await _db.Set<TaiKhoan>().AnyAsync(x => x.GiangVienId == giangVienId && x.Id != accountId))
+            throw new InvalidOperationException("Giảng viên đã được liên kết với tài khoản khác.");
     }
 
     private static bool HasValidBcryptPassword(string password) =>
@@ -236,5 +336,6 @@ public class AuthService(AppDbContext db, IOptions<JwtSettings> jwtOptions, ILog
         account.VaiTro.ToString(),
         account.DaKhoa,
         account.CreatedAt,
-        account.SinhVienId);
+        account.SinhVienId,
+        account.GiangVienId);
 }

@@ -464,6 +464,9 @@ namespace StudentManagement.Data.Migrations
                     b.Property<bool>("DaKhoa")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("GiangVienId")
+                        .HasColumnType("int");
+
                     b.Property<string>("HoTen")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -491,6 +494,10 @@ namespace StudentManagement.Data.Migrations
                         .HasColumnType("nvarchar(30)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("GiangVienId")
+                        .IsUnique()
+                        .HasFilter("[GiangVienId] IS NOT NULL");
 
                     b.HasIndex("SinhVienId")
                         .IsUnique()
@@ -1632,6 +1639,11 @@ namespace StudentManagement.Data.Migrations
 
             modelBuilder.Entity("StudentManagement.Modules.Auth.Entities.TaiKhoan", b =>
                 {
+                    b.HasOne("StudentManagement.Modules.Students.Entities.GiangVien", null)
+                        .WithMany()
+                        .HasForeignKey("GiangVienId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("StudentManagement.Modules.Students.Entities.SinhVien", null)
                         .WithMany()
                         .HasForeignKey("SinhVienId")
