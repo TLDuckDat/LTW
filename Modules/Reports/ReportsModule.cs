@@ -8,6 +8,7 @@ public static class ReportsModule
     public static IServiceCollection AddReportsModule(this IServiceCollection services)
     {
         services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<IThongBaoService, ThongBaoService>();
         return services;
     }
 }
