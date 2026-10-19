@@ -8,6 +8,9 @@ public static class StudentsModule
     public static IServiceCollection AddStudentsModule(this IServiceCollection services)
     {
         services.AddScoped<ISinhVienService, SinhVienService>();
+        services.AddScoped<ILopHanhChinhService, LopHanhChinhService>();
+        services.AddScoped<IGiangVienService, GiangVienService>();
         return services;
     }
 }
+
