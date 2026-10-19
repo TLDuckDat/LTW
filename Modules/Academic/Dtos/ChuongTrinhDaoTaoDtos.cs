@@ -12,6 +12,11 @@ public record ChuongTrinhDaoTaoDto(
     string? TenNganh,
     int KhoaTuyen,
     int TongSoTinChi,
+    decimal? CpaToiThieu,
+    bool? YeuCauThucTap,
+    decimal? DiemThucTapToiThieu,
+    bool? YeuCauKhoaLuan,
+    decimal? DiemBaoVeToiThieu,
     int SoLuongMonHoc,
     DateTime CreatedAt,
     DateTime? UpdatedAt
@@ -33,8 +38,23 @@ public record ChuongTrinhDaoTaoRequest(
     [Range(2000, 2100, ErrorMessage = "Khóa tuyển hợp lệ từ 2000 đến 2100.")]
     int KhoaTuyen,
 
+    // Tổng tín chỉ phải tích lũy để tốt nghiệp (gồm cả tự chọn); 0 = chưa quy định
     [Range(0, 500, ErrorMessage = "Tổng số tín chỉ từ 0 đến 500.")]
-    int TongSoTinChi = 0
+    int TongSoTinChi = 0,
+
+    // Điều kiện xét tốt nghiệp (GRAD); null = chưa quy định
+    [Range(typeof(decimal), "0", "4", ErrorMessage = "CPA tối thiểu từ 0 đến 4.")]
+    decimal? CpaToiThieu = null,
+
+    bool? YeuCauThucTap = null,
+
+    [Range(typeof(decimal), "0", "10", ErrorMessage = "Điểm thực tập tối thiểu từ 0 đến 10.")]
+    decimal? DiemThucTapToiThieu = null,
+
+    bool? YeuCauKhoaLuan = null,
+
+    [Range(typeof(decimal), "0", "10", ErrorMessage = "Điểm bảo vệ tối thiểu từ 0 đến 10.")]
+    decimal? DiemBaoVeToiThieu = null
 );
 
 public class ChuongTrinhDaoTaoFilterQuery : PagedQuery
@@ -90,6 +110,12 @@ public record ChuongTrinhDaoTaoDetailDto(
     string? TenNganh,
     int KhoaTuyen,
     int TongSoTinChi,
+    int TongTinChiBatBuoc,
+    decimal? CpaToiThieu,
+    bool? YeuCauThucTap,
+    decimal? DiemThucTapToiThieu,
+    bool? YeuCauKhoaLuan,
+    decimal? DiemBaoVeToiThieu,
     List<MonHocTrongCtdtDto> DanhSachMonHoc,
     DateTime CreatedAt,
     DateTime? UpdatedAt

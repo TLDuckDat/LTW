@@ -47,6 +47,11 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
                             nganh != null ? nganh.Ten : null,
                             ctdt.KhoaTuyen,
                             ctdt.TongSoTinChi,
+                            ctdt.CpaToiThieu,
+                            ctdt.YeuCauThucTap,
+                            ctdt.DiemThucTapToiThieu,
+                            ctdt.YeuCauKhoaLuan,
+                            ctdt.DiemBaoVeToiThieu,
                             _db.Set<ChuongTrinhDaoTaoMonHoc>().Count(m => m.ChuongTrinhDaoTaoId == ctdt.Id),
                             ctdt.CreatedAt,
                             ctdt.UpdatedAt
@@ -84,6 +89,12 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
             nganh?.Ten,
             ctdt.KhoaTuyen,
             ctdt.TongSoTinChi,
+            danhSachMonHoc.Where(x => x.BatBuoc).Sum(x => x.SoTinChi ?? 0),
+            ctdt.CpaToiThieu,
+            ctdt.YeuCauThucTap,
+            ctdt.DiemThucTapToiThieu,
+            ctdt.YeuCauKhoaLuan,
+            ctdt.DiemBaoVeToiThieu,
             danhSachMonHoc,
             ctdt.CreatedAt,
             ctdt.UpdatedAt
@@ -98,24 +109,22 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
 
         if (!await _db.Set<Nganh>().AnyAsync(x => x.Id == request.NganhId))
             throw new InvalidOperationException($"Ngành với Id {request.NganhId} không tồn tại.");
+        KiemTraDieuKienTotNghiep(request);
 
         var ctdt = new ChuongTrinhDaoTao
         {
             Ma = request.Ma.Trim(),
             Ten = request.Ten.Trim(),
             NganhId = request.NganhId,
-            KhoaTuyen = request.KhoaTuyen,
-            TongSoTinChi = request.TongSoTinChi
+            KhoaTuyen = request.KhoaTuyen
         };
+        GanThongTin(ctdt, request);
 
         _db.Add(ctdt);
         await _db.SaveChangesAsync();
 
         var nganh = await _db.Set<Nganh>().FindAsync(ctdt.NganhId);
-        return new ChuongTrinhDaoTaoDto(
-            ctdt.Id, ctdt.Ma, ctdt.Ten, ctdt.NganhId, nganh?.Ten,
-            ctdt.KhoaTuyen, ctdt.TongSoTinChi, 0, ctdt.CreatedAt, ctdt.UpdatedAt
-        );
+        return ToDto(ctdt, nganh?.Ten, 0);
     }
 
     // EDU-04: Cập nhật CTĐT
@@ -129,21 +138,68 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
 
         if (!await _db.Set<Nganh>().AnyAsync(x => x.Id == request.NganhId))
             throw new InvalidOperationException($"Ngành với Id {request.NganhId} không tồn tại.");
+        KiemTraDieuKienTotNghiep(request);
+
+        var tinChiBatBuoc = await TongTinChiBatBuocAsync(id);
+        if (request.TongSoTinChi > 0 && request.TongSoTinChi < tinChiBatBuoc)
+            throw new InvalidOperationException(
+                $"Tổng số tín chỉ ({request.TongSoTinChi}) không được nhỏ hơn tổng tín chỉ các môn bắt buộc ({tinChiBatBuoc}).");
 
         ctdt.Ma = request.Ma.Trim();
         ctdt.Ten = request.Ten.Trim();
         ctdt.NganhId = request.NganhId;
         ctdt.KhoaTuyen = request.KhoaTuyen;
-        ctdt.TongSoTinChi = request.TongSoTinChi;
+        GanThongTin(ctdt, request);
 
         await _db.SaveChangesAsync();
 
         var nganh = await _db.Set<Nganh>().FindAsync(ctdt.NganhId);
         var soLuongMon = await _db.Set<ChuongTrinhDaoTaoMonHoc>().CountAsync(m => m.ChuongTrinhDaoTaoId == ctdt.Id);
-        return new ChuongTrinhDaoTaoDto(
-            ctdt.Id, ctdt.Ma, ctdt.Ten, ctdt.NganhId, nganh?.Ten,
-            ctdt.KhoaTuyen, ctdt.TongSoTinChi, soLuongMon, ctdt.CreatedAt, ctdt.UpdatedAt
-        );
+        return ToDto(ctdt, nganh?.Ten, soLuongMon);
+    }
+
+    // Bắt buộc thực tập/khóa luận thì phải có điểm tối thiểu, nếu không Graduation không xét được
+    private static void KiemTraDieuKienTotNghiep(ChuongTrinhDaoTaoRequest request)
+    {
+        if (request.YeuCauThucTap == true && request.DiemThucTapToiThieu is null)
+            throw new InvalidOperationException("Chương trình bắt buộc thực tập phải có điểm thực tập tối thiểu.");
+        if (request.YeuCauKhoaLuan == true && request.DiemBaoVeToiThieu is null)
+            throw new InvalidOperationException("Chương trình bắt buộc khóa luận phải có điểm bảo vệ tối thiểu.");
+        if (new[] { request.CpaToiThieu, request.DiemThucTapToiThieu, request.DiemBaoVeToiThieu }
+            .Any(x => x is not null && decimal.Round(x.Value, 2) != x.Value))
+            throw new InvalidOperationException("CPA và điểm tối thiểu chỉ được có tối đa 2 chữ số thập phân.");
+    }
+
+    private static void GanThongTin(ChuongTrinhDaoTao ctdt, ChuongTrinhDaoTaoRequest request)
+    {
+        ctdt.TongSoTinChi = request.TongSoTinChi;
+        ctdt.CpaToiThieu = request.CpaToiThieu;
+        ctdt.YeuCauThucTap = request.YeuCauThucTap;
+        ctdt.DiemThucTapToiThieu = request.DiemThucTapToiThieu;
+        ctdt.YeuCauKhoaLuan = request.YeuCauKhoaLuan;
+        ctdt.DiemBaoVeToiThieu = request.DiemBaoVeToiThieu;
+    }
+
+    private static ChuongTrinhDaoTaoDto ToDto(ChuongTrinhDaoTao ctdt, string? tenNganh, int soLuongMon) => new(
+        ctdt.Id, ctdt.Ma, ctdt.Ten, ctdt.NganhId, tenNganh, ctdt.KhoaTuyen, ctdt.TongSoTinChi,
+        ctdt.CpaToiThieu, ctdt.YeuCauThucTap, ctdt.DiemThucTapToiThieu, ctdt.YeuCauKhoaLuan, ctdt.DiemBaoVeToiThieu,
+        soLuongMon, ctdt.CreatedAt, ctdt.UpdatedAt);
+
+    private Task<int> TongTinChiBatBuocAsync(int chuongTrinhDaoTaoId, int? boQuaMonHocId = null)
+        => (from ctm in _db.Set<ChuongTrinhDaoTaoMonHoc>()
+            join mh in _db.Set<MonHoc>() on ctm.MonHocId equals mh.Id
+            where ctm.ChuongTrinhDaoTaoId == chuongTrinhDaoTaoId && ctm.BatBuoc
+                  && (boQuaMonHocId == null || ctm.MonHocId != boQuaMonHocId)
+            select mh.SoTinChi).SumAsync();
+
+    // TongSoTinChi do người dùng nhập (gồm cả tự chọn); chỉ chặn khi môn bắt buộc vượt quá con số này
+    private async Task KiemTraVuotTongTinChiAsync(ChuongTrinhDaoTao ctdt, MonHoc monHoc)
+    {
+        if (ctdt.TongSoTinChi <= 0) return;
+        var tong = await TongTinChiBatBuocAsync(ctdt.Id, monHoc.Id) + monHoc.SoTinChi;
+        if (tong > ctdt.TongSoTinChi)
+            throw new InvalidOperationException(
+                $"Tổng tín chỉ môn bắt buộc ({tong}) vượt tổng số tín chỉ của chương trình ({ctdt.TongSoTinChi}).");
     }
 
     // EDU-04: Xóa CTĐT
@@ -224,14 +280,10 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
             GhiChu = request.GhiChu?.Trim()
         };
 
-        _db.Add(item);
-
-        // Tự động cập nhật tổng số tín chỉ nếu môn này là bắt buộc và CTĐT chưa tính
         if (request.BatBuoc)
-        {
-            ctdt.TongSoTinChi += monHoc.SoTinChi;
-        }
+            await KiemTraVuotTongTinChiAsync(ctdt, monHoc);
 
+        _db.Add(item);
         await _db.SaveChangesAsync();
 
         return new MonHocTrongCtdtDto(
@@ -258,18 +310,8 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
         var ctdt = await _db.Set<ChuongTrinhDaoTao>().FindAsync(chuongTrinhDaoTaoId);
         var monHoc = await _db.Set<MonHoc>().FindAsync(monHocId);
 
-        // Nếu thay đổi trạng thái bắt buộc <-> tự chọn, điều chỉnh lại tổng số tín chỉ bắt buộc
-        if (ctdt != null && monHoc != null && item.BatBuoc != request.BatBuoc)
-        {
-            if (request.BatBuoc)
-            {
-                ctdt.TongSoTinChi += monHoc.SoTinChi;
-            }
-            else
-            {
-                ctdt.TongSoTinChi = Math.Max(0, ctdt.TongSoTinChi - monHoc.SoTinChi);
-            }
-        }
+        if (ctdt != null && monHoc != null && request.BatBuoc && !item.BatBuoc)
+            await KiemTraVuotTongTinChiAsync(ctdt, monHoc);
 
         item.HocKyGoiY = request.HocKyGoiY;
         item.BatBuoc = request.BatBuoc;
@@ -297,14 +339,6 @@ public class ChuongTrinhDaoTaoService(AppDbContext db) : IChuongTrinhDaoTaoServi
         var item = await _db.Set<ChuongTrinhDaoTaoMonHoc>()
             .FirstOrDefaultAsync(x => x.ChuongTrinhDaoTaoId == chuongTrinhDaoTaoId && x.MonHocId == monHocId);
         if (item is null) return false;
-
-        var ctdt = await _db.Set<ChuongTrinhDaoTao>().FindAsync(chuongTrinhDaoTaoId);
-        var monHoc = await _db.Set<MonHoc>().FindAsync(monHocId);
-
-        if (ctdt != null && monHoc != null && item.BatBuoc)
-        {
-            ctdt.TongSoTinChi = Math.Max(0, ctdt.TongSoTinChi - monHoc.SoTinChi);
-        }
 
         _db.Remove(item);
         await _db.SaveChangesAsync();
