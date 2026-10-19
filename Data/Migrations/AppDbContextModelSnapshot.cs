@@ -67,8 +67,20 @@ namespace StudentManagement.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<decimal?>("CpaToiThieu")
+                        .HasPrecision(3, 2)
+                        .HasColumnType("decimal(3,2)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("DiemBaoVeToiThieu")
+                        .HasPrecision(4, 2)
+                        .HasColumnType("decimal(4,2)");
+
+                    b.Property<decimal?>("DiemThucTapToiThieu")
+                        .HasPrecision(4, 2)
+                        .HasColumnType("decimal(4,2)");
 
                     b.Property<int>("KhoaTuyen")
                         .HasColumnType("int");
@@ -92,6 +104,12 @@ namespace StudentManagement.Data.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool?>("YeuCauKhoaLuan")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("YeuCauThucTap")
+                        .HasColumnType("bit");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Ma")
@@ -99,7 +117,14 @@ namespace StudentManagement.Data.Migrations
 
                     b.HasIndex("NganhId");
 
-                    b.ToTable("ChuongTrinhDaoTao", (string)null);
+                    b.ToTable("ChuongTrinhDaoTao", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ChuongTrinhDaoTao_Cpa", "[CpaToiThieu] IS NULL OR [CpaToiThieu] BETWEEN 0 AND 4");
+
+                            t.HasCheckConstraint("CK_ChuongTrinhDaoTao_DiemBaoVe", "[DiemBaoVeToiThieu] IS NULL OR [DiemBaoVeToiThieu] BETWEEN 0 AND 10");
+
+                            t.HasCheckConstraint("CK_ChuongTrinhDaoTao_DiemThucTap", "[DiemThucTapToiThieu] IS NULL OR [DiemThucTapToiThieu] BETWEEN 0 AND 10");
+                        });
                 });
 
             modelBuilder.Entity("StudentManagement.Modules.Academic.Entities.ChuongTrinhDaoTaoMonHoc", b =>
@@ -750,6 +775,62 @@ namespace StudentManagement.Data.Migrations
                     b.ToTable("PhucKhao", (string)null);
                 });
 
+            modelBuilder.Entity("StudentManagement.Modules.Graduation.Entities.CoSoThucTap", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("DangTiepNhan")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("DiaChi")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Ma")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("NguoiLienHe")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SoDienThoai")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Ten")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Ma")
+                        .IsUnique();
+
+                    b.ToTable("CoSoThucTap", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CoSoThucTap_Ma", "LEN(TRIM([Ma])) > 0");
+
+                            t.HasCheckConstraint("CK_CoSoThucTap_Ten", "LEN(TRIM([Ten])) > 0");
+                        });
+                });
+
             modelBuilder.Entity("StudentManagement.Modules.Graduation.Entities.DeTaiKhoaLuan", b =>
                 {
                     b.Property<int>("Id")
@@ -765,13 +846,20 @@ namespace StudentManagement.Data.Migrations
                         .HasPrecision(4, 2)
                         .HasColumnType("decimal(4,2)");
 
-                    b.Property<int>("GiangVienHuongDanId")
+                    b.Property<int?>("GiangVienHuongDanId")
                         .HasColumnType("int");
 
                     b.Property<int?>("HoiDongBaoVeId")
                         .HasColumnType("int");
 
-                    b.Property<int>("SinhVienId")
+                    b.Property<DateTime?>("NgayGhiNhanKetQua")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NhanXetBaoVe")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("SinhVienId")
                         .HasColumnType("int");
 
                     b.Property<string>("TenDeTai")
@@ -788,9 +876,16 @@ namespace StudentManagement.Data.Migrations
 
                     b.HasIndex("HoiDongBaoVeId");
 
-                    b.HasIndex("SinhVienId");
+                    b.HasIndex("SinhVienId")
+                        .IsUnique()
+                        .HasFilter("[SinhVienId] IS NOT NULL");
 
-                    b.ToTable("DeTaiKhoaLuan", (string)null);
+                    b.ToTable("DeTaiKhoaLuan", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_DeTaiKhoaLuan_Diem", "[Diem] IS NULL OR ([Diem] >= 0 AND [Diem] <= 10)");
+
+                            t.HasCheckConstraint("CK_DeTaiKhoaLuan_TenDeTai", "LEN(TRIM([TenDeTai])) > 0");
+                        });
                 });
 
             modelBuilder.Entity("StudentManagement.Modules.Graduation.Entities.HoiDongBaoVe", b =>
@@ -838,6 +933,9 @@ namespace StudentManagement.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("CoSoThucTapId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -846,7 +944,6 @@ namespace StudentManagement.Data.Migrations
                         .HasColumnType("decimal(4,2)");
 
                     b.Property<string>("DonViThucTap")
-                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
@@ -856,21 +953,39 @@ namespace StudentManagement.Data.Migrations
                     b.Property<int>("HocKyId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("NgayGhiNhanKetQua")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NhanXet")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<int>("SinhVienId")
                         .HasColumnType("int");
+
+                    b.Property<string>("TrangThai")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CoSoThucTapId");
+
                     b.HasIndex("GiangVienHuongDanId");
 
                     b.HasIndex("HocKyId");
 
-                    b.HasIndex("SinhVienId");
+                    b.HasIndex("SinhVienId", "HocKyId")
+                        .IsUnique();
 
-                    b.ToTable("ThucTap", (string)null);
+                    b.ToTable("ThucTap", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ThucTap_KetQua", "([Diem] IS NULL AND [TrangThai] <> 'HoanThanh') OR ([Diem] BETWEEN 0 AND 10 AND [TrangThai] = 'HoanThanh')");
+                        });
                 });
 
             modelBuilder.Entity("StudentManagement.Modules.Graduation.Entities.XetTotNghiep", b =>
@@ -884,7 +999,7 @@ namespace StudentManagement.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<decimal>("DiemTrungBinhTichLuy")
+                    b.Property<decimal?>("DiemTrungBinhTichLuy")
                         .HasPrecision(4, 2)
                         .HasColumnType("decimal(4,2)");
 
@@ -893,13 +1008,16 @@ namespace StudentManagement.Data.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<string>("LyDo")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateOnly>("NgayXet")
                         .HasColumnType("date");
 
                     b.Property<int>("SinhVienId")
                         .HasColumnType("int");
 
-                    b.Property<int>("TongTinChiTichLuy")
+                    b.Property<int?>("TongTinChiTichLuy")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -1592,8 +1710,7 @@ namespace StudentManagement.Data.Migrations
                     b.HasOne("StudentManagement.Modules.Students.Entities.GiangVien", null)
                         .WithMany()
                         .HasForeignKey("GiangVienHuongDanId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("StudentManagement.Modules.Graduation.Entities.HoiDongBaoVe", null)
                         .WithMany()
@@ -1603,8 +1720,7 @@ namespace StudentManagement.Data.Migrations
                     b.HasOne("StudentManagement.Modules.Students.Entities.SinhVien", null)
                         .WithMany()
                         .HasForeignKey("SinhVienId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("StudentManagement.Modules.Graduation.Entities.HoiDongBaoVe", b =>
@@ -1623,6 +1739,12 @@ namespace StudentManagement.Data.Migrations
 
             modelBuilder.Entity("StudentManagement.Modules.Graduation.Entities.ThucTap", b =>
                 {
+                    b.HasOne("StudentManagement.Modules.Graduation.Entities.CoSoThucTap", null)
+                        .WithMany()
+                        .HasForeignKey("CoSoThucTapId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("StudentManagement.Modules.Students.Entities.GiangVien", null)
                         .WithMany()
                         .HasForeignKey("GiangVienHuongDanId")

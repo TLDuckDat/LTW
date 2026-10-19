@@ -10,4 +10,9 @@ public class ChuongTrinhDaoTao : BaseEntity
     public int NganhId { get; set; } // -> Nganh
     public int KhoaTuyen { get; set; }
     public int TongSoTinChi { get; set; }
+    public decimal? CpaToiThieu { get; set; }
+    public bool? YeuCauThucTap { get; set; }
+    public decimal? DiemThucTapToiThieu { get; set; }
+    public bool? YeuCauKhoaLuan { get; set; }
+    public decimal? DiemBaoVeToiThieu { get; set; }
 }
