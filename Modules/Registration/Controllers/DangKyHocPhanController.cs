@@ -1,7 +1,7 @@
-using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Common;
+using StudentManagement.Modules.Auth.Services;
 using StudentManagement.Modules.Registration.Dtos;
 using StudentManagement.Modules.Registration.Services;
 
@@ -11,146 +11,65 @@ namespace StudentManagement.Modules.Registration.Controllers;
 /// Sinh viên chỉ thao tác trên hồ sơ của mình (tài khoản đã liên kết SinhVienId);
 /// Admin và PhongDaoTao thao tác thay mặt bất kỳ sinh viên nào.
 /// </summary>
-[ApiController]
 [Route("api/dang-ky-hoc-phan")]
 [Tags("Registration")]
 [Authorize(Roles = "Admin,PhongDaoTao,SinhVien")]
-public class DangKyHocPhanController(IDangKyHocPhanService service) : ControllerBase
+public class DangKyHocPhanController(IDangKyHocPhanService service, ICurrentUserService currentUser) : ApiControllerBase
 {
-    private readonly IDangKyHocPhanService _service = service;
-
     private bool LaNhanVien => User.IsInRole("Admin") || User.IsInRole("PhongDaoTao");
 
     // REG-02 Lớp học phần đang mở đăng ký, kèm điều kiện đăng ký của sinh viên
     [HttpGet("lop-mo")]
-    public async Task<ActionResult<ApiResponse<PagedResult<LopMoDto>>>> GetLopMo([FromQuery] LopMoQuery query)
-    {
-        var (sinhVienId, loi) = await XacDinhSinhVienAsync(query.SinhVienId);
-        if (loi is not null) return loi;
-
-        var result = await _service.GetLopMoAsync(sinhVienId!.Value, query);
-        return result is null
-            ? NotFound(ApiResponse<PagedResult<LopMoDto>>.Fail("Không tìm thấy sinh viên hoặc học kỳ."))
-            : Ok(ApiResponse<PagedResult<LopMoDto>>.Ok(result));
-    }
+    public Task<ActionResult<ApiResponse<PagedResult<LopMoDto>>>> GetLopMo([FromQuery] LopMoQuery query) =>
+        Execute(async () => await service.GetLopMoAsync(await XacDinhSinhVienAsync(query.SinhVienId), query));
 
     // REG-03 Đăng ký học phần (kiểm tra đợt, sĩ số, tiên quyết, trùng lịch, tín chỉ)
     [HttpPost]
-    public async Task<ActionResult<ApiResponse<DangKyDto>>> DangKy([FromBody] DangKyRequest request)
-    {
-        var (sinhVienId, loi) = await XacDinhSinhVienAsync(request.SinhVienId);
-        if (loi is not null) return loi;
-
-        try
-        {
-            var result = await _service.DangKyAsync(sinhVienId!.Value, request.LopHocPhanId, request.XacNhanHocCaiThien);
-            return result is null
-                ? NotFound(ApiResponse<DangKyDto>.Fail("Không tìm thấy sinh viên hoặc lớp học phần."))
-                : StatusCode(StatusCodes.Status201Created, ApiResponse<DangKyDto>.Ok(result, "Đăng ký học phần thành công."));
-        }
-        catch (DangKyKhongHopLeException ex)
-        {
-            return Conflict(new ApiResponse<DangKyDto> { Success = false, Message = ex.Message });
-        }
-    }
+    public Task<ActionResult<ApiResponse<DangKyDto>>> DangKy([FromBody] DangKyRequest request) =>
+        Execute(async () => await service.DangKyAsync(
+                await XacDinhSinhVienAsync(request.SinhVienId), request.LopHocPhanId, request.XacNhanHocCaiThien),
+            StatusCodes.Status201Created, "Đăng ký học phần thành công.");
 
     // REG-05 Danh sách học phần đã đăng ký trong học kỳ
     [HttpGet("da-dang-ky")]
-    public async Task<ActionResult<ApiResponse<DaDangKyDto>>> GetDaDangKy([FromQuery] HocKyQuery query)
-    {
-        var (sinhVienId, loi) = await XacDinhSinhVienAsync(query.SinhVienId);
-        if (loi is not null) return loi;
-
-        var result = await _service.GetDaDangKyAsync(sinhVienId!.Value, query.HocKyId);
-        return result is null
-            ? NotFound(ApiResponse<DaDangKyDto>.Fail("Không tìm thấy sinh viên."))
-            : Ok(ApiResponse<DaDangKyDto>.Ok(result));
-    }
+    public Task<ActionResult<ApiResponse<DaDangKyDto>>> GetDaDangKy([FromQuery] HocKyQuery query) =>
+        Execute(async () => await service.GetDaDangKyAsync(await XacDinhSinhVienAsync(query.SinhVienId), query.HocKyId));
 
     // REG-05 Thời khóa biểu của sinh viên trong học kỳ
     [HttpGet("thoi-khoa-bieu")]
-    public async Task<ActionResult<ApiResponse<ThoiKhoaBieuDto>>> GetThoiKhoaBieu([FromQuery] HocKyQuery query)
-    {
-        var (sinhVienId, loi) = await XacDinhSinhVienAsync(query.SinhVienId);
-        if (loi is not null) return loi;
-
-        var result = await _service.GetThoiKhoaBieuAsync(sinhVienId!.Value, query.HocKyId);
-        return result is null
-            ? NotFound(ApiResponse<ThoiKhoaBieuDto>.Fail("Không tìm thấy sinh viên."))
-            : Ok(ApiResponse<ThoiKhoaBieuDto>.Ok(result));
-    }
+    public Task<ActionResult<ApiResponse<ThoiKhoaBieuDto>>> GetThoiKhoaBieu([FromQuery] HocKyQuery query) =>
+        Execute(async () => await service.GetThoiKhoaBieuAsync(await XacDinhSinhVienAsync(query.SinhVienId), query.HocKyId));
 
     // REG-07 Theo dõi sĩ số các lớp học phần trong học kỳ (lọc lớp đầy/gần đầy)
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpGet("si-so")]
-    public async Task<ActionResult<ApiResponse<PagedResult<SiSoLopDto>>>> GetSiSo([FromQuery] SiSoQuery query)
-        => Ok(ApiResponse<PagedResult<SiSoLopDto>>.Ok(await _service.GetSiSoAsync(query)));
+    public Task<ActionResult<ApiResponse<PagedResult<SiSoLopDto>>>> GetSiSo([FromQuery] SiSoQuery query) =>
+        Execute(() => service.GetSiSoAsync(query));
 
     // REG-07 Cập nhật sĩ số tối đa của lớp học phần
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("si-so/{lopHocPhanId:int}")]
-    public async Task<ActionResult<ApiResponse<SiSoLopDto>>> CapNhatSiSo(int lopHocPhanId, [FromBody] CapNhatSiSoRequest request)
-    {
-        try
-        {
-            var result = await _service.CapNhatSiSoToiDaAsync(lopHocPhanId, request.SiSoToiDa);
-            return result is null
-                ? NotFound(ApiResponse<SiSoLopDto>.Fail("Không tìm thấy lớp học phần."))
-                : Ok(ApiResponse<SiSoLopDto>.Ok(result, "Đã cập nhật sĩ số tối đa."));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ApiResponse<SiSoLopDto>.Fail(ex.Message));
-        }
-    }
+    public Task<ActionResult<ApiResponse<SiSoLopDto>>> CapNhatSiSo(int lopHocPhanId, [FromBody] CapNhatSiSoRequest request) =>
+        Execute(() => service.CapNhatSiSoToiDaAsync(lopHocPhanId, request.SiSoToiDa), message: "Đã cập nhật sĩ số tối đa.");
 
-    // REG-04 Hủy đăng ký học phần (id là mã lượt đăng ký)
+    // REG-04 Hủy đăng ký học phần (id là mã lượt đăng ký); sinh viên chỉ hủy được lượt của mình
     [HttpDelete("{id:int}")]
-    public async Task<ActionResult<ApiResponse<DangKyDto>>> HuyDangKy(int id)
-    {
-        int? chiSinhVienId = null;
-        if (!LaNhanVien)
-        {
-            var (sinhVienId, loi) = await XacDinhSinhVienAsync(null);
-            if (loi is not null) return loi;
-            chiSinhVienId = sinhVienId;
-        }
-
-        try
-        {
-            var result = await _service.HuyDangKyAsync(id, chiSinhVienId);
-            return result is null
-                ? NotFound(ApiResponse<DangKyDto>.Fail("Không tìm thấy lượt đăng ký."))
-                : Ok(ApiResponse<DangKyDto>.Ok(result, "Đã hủy đăng ký học phần."));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ApiResponse<DangKyDto>.Fail(ex.Message));
-        }
-    }
+    public Task<ActionResult<ApiResponse<DangKyDto>>> HuyDangKy(int id) =>
+        Execute(async () => await service.HuyDangKyAsync(id, LaNhanVien ? null : await XacDinhSinhVienAsync(null)),
+            message: "Đã hủy đăng ký học phần.");
 
     /// <summary>
-    /// Xác định sinh viên được thao tác. Trả về lỗi 400/403 khi thiếu hoặc không được phép.
+    /// Sinh viên được thao tác: nhân viên phải truyền sinhVienId (400 nếu thiếu); sinh viên chỉ được là chính mình
+    /// (403 nếu chưa liên kết hồ sơ hoặc truyền sinhVienId của người khác).
     /// </summary>
-    private async Task<(int? SinhVienId, ActionResult? Loi)> XacDinhSinhVienAsync(int? sinhVienIdYeuCau)
+    private async Task<int> XacDinhSinhVienAsync(int? sinhVienIdYeuCau)
     {
         if (LaNhanVien)
-        {
-            return sinhVienIdYeuCau is null
-                ? (null, BadRequest(ApiResponse<object>.Fail("Cần truyền sinhVienId khi thao tác thay sinh viên.")))
-                : (sinhVienIdYeuCau, null);
-        }
+            return sinhVienIdYeuCau ?? throw AppException.BadRequest("Cần truyền sinhVienId khi thao tác thay sinh viên.");
 
-        var sinhVienCuaToi = int.TryParse(User.FindFirst("sub")?.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var taiKhoanId)
-            ? await _service.GetSinhVienIdCuaTaiKhoanAsync(taiKhoanId)
-            : null;
-        if (sinhVienCuaToi is null)
-            return (null, Forbidden("Tài khoản chưa được liên kết với hồ sơ sinh viên."));
+        var sinhVienCuaToi = await currentUser.GetSinhVienIdAsync();
         if (sinhVienIdYeuCau is not null && sinhVienIdYeuCau != sinhVienCuaToi)
-            return (null, Forbidden("Không được thao tác trên hồ sơ của sinh viên khác."));
-        return (sinhVienCuaToi, null);
+            throw AppException.Forbidden("Không được thao tác trên hồ sơ của sinh viên khác.");
+        return sinhVienCuaToi;
     }
-
-    private ObjectResult Forbidden(string message)
-        => StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object>.Fail(message));
 }

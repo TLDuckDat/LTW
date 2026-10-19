@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using StudentManagement.Common;
 using StudentManagement.Data;
 using StudentManagement.Modules.Academic.Entities;
-using StudentManagement.Modules.Auth.Entities;
 using StudentManagement.Modules.Courses.Dtos;
 using StudentManagement.Modules.Courses.Entities;
 using StudentManagement.Modules.Courses.Services;
@@ -24,16 +23,11 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
     private readonly IDieuKienDangKyService _dieuKien = dieuKien;
     private readonly ILopHocPhanService _lopHocPhan = lopHocPhan;
 
-    public Task<int?> GetSinhVienIdCuaTaiKhoanAsync(int taiKhoanId)
-        => _db.Set<TaiKhoan>().AsNoTracking()
-            .Where(x => x.Id == taiKhoanId)
-            .Select(x => x.SinhVienId)
-            .FirstOrDefaultAsync();
-
     // REG-02 Lớp học phần đang mở đăng ký trong học kỳ, kèm điều kiện đăng ký của sinh viên
-    public async Task<PagedResult<LopMoDto>?> GetLopMoAsync(int sinhVienId, LopMoQuery query)
+    public async Task<PagedResult<LopMoDto>> GetLopMoAsync(int sinhVienId, LopMoQuery query)
     {
-        if (!await _db.Set<SinhVien>().AnyAsync(x => x.Id == sinhVienId)) return null;
+        if (!await _db.Set<SinhVien>().AnyAsync(x => x.Id == sinhVienId))
+            throw AppException.NotFound("sinh viên hoặc học kỳ");
 
         var trang = new PagedResult<LopMoDto> { Items = [], Page = query.Page, PageSize = query.PageSize };
         var hocKyId = await XacDinhHocKyAsync(query.HocKyId);
@@ -99,16 +93,16 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
     }
 
     // REG-03 Đăng ký học phần: kiểm tra toàn bộ điều kiện rồi mới ghi, trong một giao dịch
-    public async Task<DangKyDto?> DangKyAsync(int sinhVienId, int lopHocPhanId, bool xacNhanHocCaiThien = false)
+    public async Task<DangKyDto> DangKyAsync(int sinhVienId, int lopHocPhanId, bool xacNhanHocCaiThien = false)
     {
         // Serializable để hai sinh viên cùng đăng ký chỗ cuối cùng không cùng vượt sĩ số
         await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
         var lop = await _db.Set<LopHocPhan>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == lopHocPhanId);
-        if (lop is null) return null;
+        if (lop is null) throw AppException.NotFound("sinh viên hoặc lớp học phần");
 
         var ketQua = await _dieuKien.KiemTraAsync(sinhVienId, [lop]);
-        if (ketQua is null) return null;
+        if (ketQua is null) throw AppException.NotFound("sinh viên hoặc lớp học phần");
 
         var kiemTra = ketQua[lop.Id];
         if (!kiemTra.DuDieuKien)
@@ -133,9 +127,10 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
     }
 
     // REG-05 Học phần đã đăng ký (còn hiệu lực) trong học kỳ, kèm lịch học và tổng tín chỉ
-    public async Task<DaDangKyDto?> GetDaDangKyAsync(int sinhVienId, int? hocKyId)
+    public async Task<DaDangKyDto> GetDaDangKyAsync(int sinhVienId, int? hocKyId)
     {
-        if (!await _db.Set<SinhVien>().AnyAsync(x => x.Id == sinhVienId)) return null;
+        if (!await _db.Set<SinhVien>().AnyAsync(x => x.Id == sinhVienId))
+            throw AppException.NotFound("sinh viên");
 
         var hocKy = await XacDinhHocKyAsync(hocKyId);
         if (hocKy is null) return new DaDangKyDto(sinhVienId, null, 0, []);
@@ -170,10 +165,9 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
     }
 
     // REG-05 Thời khóa biểu của sinh viên: các buổi học của những lớp đã đăng ký
-    public async Task<ThoiKhoaBieuDto?> GetThoiKhoaBieuAsync(int sinhVienId, int? hocKyId)
+    public async Task<ThoiKhoaBieuDto> GetThoiKhoaBieuAsync(int sinhVienId, int? hocKyId)
     {
         var daDangKy = await GetDaDangKyAsync(sinhVienId, hocKyId);
-        if (daDangKy is null) return null;
 
         var buoi = daDangKy.HocPhan
             .SelectMany(h => h.LichHoc.Select(l => new BuoiHocDto(
@@ -225,10 +219,9 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
     }
 
     // REG-07 Cập nhật sĩ số tối đa của lớp (không nhỏ hơn số đã đăng ký, vừa sức chứa phòng)
-    public async Task<SiSoLopDto?> CapNhatSiSoToiDaAsync(int lopHocPhanId, int siSoToiDa)
+    public async Task<SiSoLopDto> CapNhatSiSoToiDaAsync(int lopHocPhanId, int siSoToiDa)
     {
         var capNhat = await _lopHocPhan.CapNhatSiSoToiDaAsync(lopHocPhanId, siSoToiDa);
-        if (capNhat is null) return null;
 
         var mon = await _db.Set<MonHoc>().AsNoTracking().FirstAsync(x => x.Id == capNhat.MonHocId);
         var lop = await _db.Set<LopHocPhan>().AsNoTracking().FirstAsync(x => x.Id == lopHocPhanId);
@@ -247,19 +240,20 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
     }
 
     // REG-04 Hủy đăng ký: chỉ đổi trạng thái để giữ lịch sử; giải phóng chỗ trong lớp
-    public async Task<DangKyDto?> HuyDangKyAsync(int dangKyId, int? chiSinhVienId)
+    public async Task<DangKyDto> HuyDangKyAsync(int dangKyId, int? chiSinhVienId)
     {
         var dangKy = await _db.Set<DangKyHocPhan>().FirstOrDefaultAsync(x => x.Id == dangKyId);
-        if (dangKy is null || (chiSinhVienId is not null && dangKy.SinhVienId != chiSinhVienId)) return null;
+        if (dangKy is null || (chiSinhVienId is not null && dangKy.SinhVienId != chiSinhVienId))
+            throw AppException.NotFound("lượt đăng ký");
 
         if (dangKy.TrangThai == TrangThaiDangKy.DaHuy)
-            throw new InvalidOperationException("Lượt đăng ký này đã được hủy trước đó.");
+            throw AppException.Conflict("Lượt đăng ký này đã được hủy trước đó.");
 
         var lop = await _db.Set<LopHocPhan>().AsNoTracking().FirstAsync(x => x.Id == dangKy.LopHocPhanId);
         if (lop.TrangThai != TrangThaiLopHocPhan.MoDangKy)
-            throw new InvalidOperationException("Lớp học phần đã bắt đầu học, kết thúc hoặc bị hủy, không thể hủy đăng ký.");
+            throw AppException.Conflict("Lớp học phần đã bắt đầu học, kết thúc hoặc bị hủy, không thể hủy đăng ký.");
         if (await _db.Set<DiemHocPhan>().AnyAsync(x => x.DangKyHocPhanId == dangKyId))
-            throw new InvalidOperationException("Lượt đăng ký đã có điểm, không thể hủy.");
+            throw AppException.Conflict("Lượt đăng ký đã có điểm, không thể hủy.");
 
         // Sinh viên tự hủy phải trong thời gian của đợt đăng ký; phòng đào tạo không bị giới hạn này
         if (chiSinhVienId is not null)
@@ -269,7 +263,7 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
                 x.HocKyId == lop.HocKyId && x.TrangThai == TrangThaiDotDangKy.DangMo
                 && x.NgayBatDau <= bay && bay <= x.NgayKetThuc);
             if (!trongDot)
-                throw new InvalidOperationException("Đã ngoài thời gian đăng ký, sinh viên không thể tự hủy. Hãy liên hệ phòng đào tạo.");
+                throw AppException.Conflict("Đã ngoài thời gian đăng ký, sinh viên không thể tự hủy. Hãy liên hệ phòng đào tạo.");
         }
 
         dangKy.TrangThai = TrangThaiDangKy.DaHuy;

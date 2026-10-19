@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using StudentManagement.Data;
 using StudentManagement.Modules.Academic.Entities;
+using StudentManagement.Modules.Academic.Services;
 using StudentManagement.Modules.Courses.Entities;
 using StudentManagement.Modules.Grades.Entities;
+using StudentManagement.Modules.Grades.Services;
 using StudentManagement.Modules.Registration.Entities;
 using StudentManagement.Modules.Students.Entities;
 
@@ -10,11 +12,8 @@ namespace StudentManagement.Modules.Registration.Services;
 
 public class DieuKienDangKyService(AppDbContext db) : IDieuKienDangKyService
 {
-    /// <summary>Số tín chỉ tối đa một sinh viên được đăng ký trong một học kỳ.</summary>
-    public const int TinChiToiDaMotHocKy = 24;
-
-    /// <summary>Điểm tổng kết tối thiểu để tính là đã hoàn thành môn.</summary>
-    private const decimal DiemDat = 4m;
+    /// <summary>Số tín chỉ tối đa mỗi học kỳ khi chưa cấu hình quy chế TIN_CHI_TOI_DA_HOC_KY.</summary>
+    public const int TinChiToiDaMacDinh = 24;
 
     private readonly AppDbContext _db = db;
 
@@ -31,6 +30,7 @@ public class DieuKienDangKyService(AppDbContext db) : IDieuKienDangKyService
     {
         var sinhVien = await _db.Set<SinhVien>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == sinhVienId);
         if (sinhVien is null) return null;
+        var tinChiToiDa = await _db.GetThamSoNguyenAsync(MaQuyChe.TinChiToiDaHocKy, TinChiToiDaMacDinh);
 
         var ketQua = cacLop.ToDictionary(l => l.Id, _ => new KetQuaKiemTraDangKy());
         if (cacLop.Count == 0) return ketQua;
@@ -58,7 +58,7 @@ public class DieuKienDangKyService(AppDbContext db) : IDieuKienDangKyService
             where dk.SinhVienId == sinhVienId && dk.TrangThai == TrangThaiDangKy.DaDangKy
                   && l.TrangThai != TrangThaiLopHocPhan.DaHuy
             select new DangKyDaCo(l.Id, l.Ma, l.MonHocId, m.Ma, m.SoTinChi, l.HocKyId, hk.NgayBatDau,
-                d != null && d.DaKhoa && d.DiemTongKet >= DiemDat))
+                d != null && d.DaKhoa && d.DiemTongKet >= GradeCalculator.DiemDat))
             .ToListAsync();
         var ngayBatDauHocKy = await _db.Set<HocKy>().AsNoTracking()
             .Where(x => hocKyIds.Contains(x.Id))
@@ -138,8 +138,8 @@ public class DieuKienDangKyService(AppDbContext db) : IDieuKienDangKyService
             }
 
             var tongTinChi = lopCungKy.Sum(x => x.SoTinChi) + tinChiMon.GetValueOrDefault(lop.MonHocId);
-            if (tongTinChi > TinChiToiDaMotHocKy)
-                lyDo.Add($"Vượt số tín chỉ tối đa mỗi học kỳ ({tongTinChi}/{TinChiToiDaMotHocKy}).");
+            if (tongTinChi > tinChiToiDa)
+                lyDo.Add($"Vượt số tín chỉ tối đa mỗi học kỳ ({tongTinChi}/{tinChiToiDa}).");
 
             // Một lớp có nhiều buổi cùng trùng một lớp khác sẽ sinh lý do lặp
             var khongLap = lyDo.Distinct().ToList();

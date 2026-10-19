@@ -34,10 +34,10 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
         return new PagedResult<DotDangKyDto> { Items = items, Page = query.Page, PageSize = query.PageSize, TotalCount = total };
     }
 
-    public async Task<DotDangKyDto?> GetByIdAsync(int id)
+    public async Task<DotDangKyDto> GetByIdAsync(int id)
     {
         var entity = await _db.Set<DotDangKy>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        return entity is null ? null : ToDto(entity);
+        return entity is null ? throw AppException.NotFound("đợt đăng ký") : ToDto(entity);
     }
 
     // REG-01 Tạo đợt đăng ký cho học kỳ, ban đầu chưa mở
@@ -45,7 +45,7 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
     {
         KiemTraThoiGian(request.NgayBatDau, request.NgayKetThuc);
         if (!await _db.Set<HocKy>().AnyAsync(x => x.Id == request.HocKyId))
-            throw new InvalidOperationException("Học kỳ không tồn tại.");
+            throw AppException.Conflict("Học kỳ không tồn tại.");
 
         var entity = new DotDangKy
         {
@@ -59,13 +59,13 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
         return ToDto(entity);
     }
 
-    public async Task<DotDangKyDto?> UpdateAsync(int id, DotDangKyUpdateRequest request)
+    public async Task<DotDangKyDto> UpdateAsync(int id, DotDangKyUpdateRequest request)
     {
         var entity = await _db.Set<DotDangKy>().FindAsync(id);
-        if (entity is null) return null;
+        if (entity is null) throw AppException.NotFound("đợt đăng ký");
 
         if (entity.TrangThai == TrangThaiDotDangKy.DaDong)
-            throw new InvalidOperationException("Đợt đăng ký đã đóng, không thể chỉnh sửa.");
+            throw AppException.Conflict("Đợt đăng ký đã đóng, không thể chỉnh sửa.");
         KiemTraThoiGian(request.NgayBatDau, request.NgayKetThuc);
 
         entity.Ten = request.Ten.Trim();
@@ -76,43 +76,42 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
     }
 
     // Chỉ xóa đợt chưa mở; đợt đã mở/đóng giữ lại làm lịch sử
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
         var entity = await _db.Set<DotDangKy>().FindAsync(id);
-        if (entity is null) return false;
+        if (entity is null) throw AppException.NotFound("đợt đăng ký");
 
         if (entity.TrangThai != TrangThaiDotDangKy.ChuaMo)
-            throw new InvalidOperationException("Chỉ xóa được đợt đăng ký chưa mở.");
+            throw AppException.Conflict("Chỉ xóa được đợt đăng ký chưa mở.");
 
         _db.Remove(entity);
         await _db.SaveChangesAsync();
-        return true;
     }
 
     // Mỗi học kỳ chỉ có một đợt đang mở tại một thời điểm
-    public async Task<DotDangKyDto?> MoAsync(int id)
+    public async Task<DotDangKyDto> MoAsync(int id)
     {
         var entity = await _db.Set<DotDangKy>().FindAsync(id);
-        if (entity is null) return null;
+        if (entity is null) throw AppException.NotFound("đợt đăng ký");
 
         if (entity.TrangThai != TrangThaiDotDangKy.ChuaMo)
-            throw new InvalidOperationException("Chỉ mở được đợt đăng ký đang ở trạng thái chưa mở.");
+            throw AppException.Conflict("Chỉ mở được đợt đăng ký đang ở trạng thái chưa mở.");
         if (await _db.Set<DotDangKy>().AnyAsync(x =>
                 x.HocKyId == entity.HocKyId && x.TrangThai == TrangThaiDotDangKy.DangMo))
-            throw new InvalidOperationException("Học kỳ này đã có một đợt đăng ký đang mở.");
+            throw AppException.Conflict("Học kỳ này đã có một đợt đăng ký đang mở.");
 
         entity.TrangThai = TrangThaiDotDangKy.DangMo;
         await _db.SaveChangesAsync();
         return ToDto(entity);
     }
 
-    public async Task<DotDangKyDto?> DongAsync(int id)
+    public async Task<DotDangKyDto> DongAsync(int id)
     {
         var entity = await _db.Set<DotDangKy>().FindAsync(id);
-        if (entity is null) return null;
+        if (entity is null) throw AppException.NotFound("đợt đăng ký");
 
         if (entity.TrangThai != TrangThaiDotDangKy.DangMo)
-            throw new InvalidOperationException("Chỉ đóng được đợt đăng ký đang mở.");
+            throw AppException.Conflict("Chỉ đóng được đợt đăng ký đang mở.");
 
         entity.TrangThai = TrangThaiDotDangKy.DaDong;
         await _db.SaveChangesAsync();
@@ -122,7 +121,7 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
     private static void KiemTraThoiGian(DateTime batDau, DateTime ketThuc)
     {
         if (ketThuc <= batDau)
-            throw new InvalidOperationException("Thời điểm kết thúc phải sau thời điểm bắt đầu.");
+            throw AppException.Conflict("Thời điểm kết thúc phải sau thời điểm bắt đầu.");
     }
 
     private static DotDangKyDto ToDto(DotDangKy x) =>

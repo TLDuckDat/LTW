@@ -7,10 +7,10 @@ namespace StudentManagement.Modules.Registration.Services;
 public interface IDotDangKyService
 {
     Task<PagedResult<DotDangKyDto>> GetPagedAsync(DotDangKyQuery query);
-    Task<DotDangKyDto?> GetByIdAsync(int id);
+    Task<DotDangKyDto> GetByIdAsync(int id);
     Task<DotDangKyDto> CreateAsync(DotDangKyRequest request);
-    Task<DotDangKyDto?> UpdateAsync(int id, DotDangKyUpdateRequest request);
-    Task<bool> DeleteAsync(int id);
-    Task<DotDangKyDto?> MoAsync(int id);
-    Task<DotDangKyDto?> DongAsync(int id);
+    Task<DotDangKyDto> UpdateAsync(int id, DotDangKyUpdateRequest request);
+    Task DeleteAsync(int id);
+    Task<DotDangKyDto> MoAsync(int id);
+    Task<DotDangKyDto> DongAsync(int id);
 }
