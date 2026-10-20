@@ -159,6 +159,16 @@ public record ThoiHocRequest(
     string? GhiChu
 );
 
+/// <summary>Request chuyển lớp hành chính (STU-04); null để gỡ sinh viên khỏi lớp</summary>
+public record ChuyenLopHanhChinhRequest(
+    [Range(1, int.MaxValue)] int? LopHanhChinhId
+);
+
+/// <summary>Request quay lại học sau bảo lưu (STU-07)</summary>
+public record QuayLaiHocRequest(
+    [MaxLength(500)] string? GhiChu
+);
+
 /// <summary>DTO lịch sử học tập / thay đổi trạng thái (STU-07)</summary>
 public record LichSuHocTapDto(
     int Id,

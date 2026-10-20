@@ -172,7 +172,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors(CorsPolicy);
-// Đặt trước xác thực để ghi được cả các lần bị từ chối (401/403); người dùng đã được xác thực khi request quay ra
+// Đặt trước xác thực để ghi được cả các lần bị từ chối quyền (403) của người đã đăng nhập; người dùng đã được
+// xác thực khi request quay ra. Request chưa đăng nhập (401) không ghi vì không biết là ai.
 app.UseMiddleware<NhatKyHoatDongMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();

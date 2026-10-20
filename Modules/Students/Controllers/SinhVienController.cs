@@ -42,8 +42,8 @@ public class SinhVienController(ISinhVienService service) : ApiControllerBase
     // STU-04: Chuyển lớp hành chính cho sinh viên
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}/chuyen-lop")]
-    public Task<ActionResult<ApiResponse<object>>> ChuyenLop(int id, [FromBody] int? lopHanhChinhId) =>
-        Execute(() => service.ChuyenLopAsync(id, lopHanhChinhId), "Đã chuyển lớp hành chính.");
+    public Task<ActionResult<ApiResponse<object>>> ChuyenLop(int id, [FromBody] ChuyenLopHanhChinhRequest request) =>
+        Execute(() => service.ChuyenLopAsync(id, request.LopHanhChinhId), "Đã chuyển lớp hành chính.");
 
     // STU-06: Đổi trạng thái học tập
     [Authorize(Roles = "Admin,PhongDaoTao")]
@@ -66,8 +66,8 @@ public class SinhVienController(ISinhVienService service) : ApiControllerBase
     // STU-07: Phục hồi / quay lại học tập sau bảo lưu
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost("{id:int}/quay-lai-hoc")]
-    public Task<ActionResult<ApiResponse<SinhVienDto>>> QuayLaiHoc(int id, [FromQuery] string? ghiChu) =>
-        Execute(() => service.QuayLaiHocAsync(id, ghiChu), message: "Đã chuyển sinh viên về trạng thái đang học.");
+    public Task<ActionResult<ApiResponse<SinhVienDto>>> QuayLaiHoc(int id, [FromBody] QuayLaiHocRequest? request) =>
+        Execute(() => service.QuayLaiHocAsync(id, request?.GhiChu?.Trim()), message: "Đã chuyển sinh viên về trạng thái đang học.");
 
     // STU-07: Xem lịch sử học tập
     [HttpGet("{id:int}/lich-su-hoc-tap")]
