@@ -83,7 +83,7 @@ public class DeTaiService(AppDbContext db) : IDeTaiService
         return await GetByIdAsync(id);
     }
 
-    public async Task<DeTaiDto> PhanCongGiangVienAsync(int id, PhanCongGiangVienRequest request)
+    public async Task<DeTaiDto> PhanCongGiangVienAsync(int id, PhanCongHuongDanRequest request)
     {
         var item = await FindAsync(id);
         if (!await _db.Set<GiangVien>().AsNoTracking()

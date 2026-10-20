@@ -33,6 +33,6 @@ public class DeTaiController(IDeTaiService service) : ApiControllerBase
 
     [HttpPatch("{id:int}/giang-vien")]
     public Task<ActionResult<ApiResponse<DeTaiDto>>> PhanCongGiangVien(
-        int id, [FromBody] PhanCongGiangVienRequest request) =>
+        int id, [FromBody] PhanCongHuongDanRequest request) =>
         Execute(() => service.PhanCongGiangVienAsync(id, request), message: "Đã phân công giảng viên hướng dẫn.");
 }

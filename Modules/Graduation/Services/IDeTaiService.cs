@@ -10,5 +10,5 @@ public interface IDeTaiService
     Task<DeTaiDto> CreateAsync(DeTaiRequest request);
     Task<DeTaiDto> UpdateAsync(int id, DeTaiRequest request);
     Task<DeTaiDto> DangKyAsync(int id, DangKyDeTaiRequest request);
-    Task<DeTaiDto> PhanCongGiangVienAsync(int id, PhanCongGiangVienRequest request);
+    Task<DeTaiDto> PhanCongGiangVienAsync(int id, PhanCongHuongDanRequest request);
 }
