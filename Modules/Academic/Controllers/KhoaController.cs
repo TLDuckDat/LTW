@@ -25,7 +25,7 @@ public class KhoaController(IKhoaService service) : ApiControllerBase
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<KhoaDto>>> Create([FromBody] KhoaRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo khoa.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo khoa.");
 
     // ACA-01 Cập nhật khoa
     [Authorize(Roles = "Admin,PhongDaoTao")]

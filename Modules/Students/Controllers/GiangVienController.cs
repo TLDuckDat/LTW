@@ -24,7 +24,7 @@ public class GiangVienController(IGiangVienService service) : ApiControllerBase
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<GiangVienDto>>> Create([FromBody] GiangVienRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã thêm giảng viên.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã thêm giảng viên.");
 
     // STU-05: Cập nhật giảng viên
     [Authorize(Roles = "Admin,PhongDaoTao")]

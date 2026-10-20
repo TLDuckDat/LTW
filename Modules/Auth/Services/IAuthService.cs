@@ -14,7 +14,7 @@ public interface IAuthService
     Task<PagedResult<AccountDto>> GetAccountsAsync(PagedQuery query);
     Task<AccountDto> GetAccountAsync(int id);
     Task<PagedResult<ActivityLogDto>> GetActivityLogsAsync(ActivityLogQuery query);
-    Task<AccountDto> ToggleLockAsync(int id);
+    Task<AccountDto> SetLockAsync(int id, bool khoa);
     Task<AccountDto> LinkStudentAsync(int id, LinkStudentRequest request);
     Task<AccountDto> LinkLecturerAsync(int id, LinkLecturerRequest request);
     Task<AccountDto> CreateAccountAsync(CreateAccountRequest request);

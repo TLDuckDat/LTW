@@ -28,7 +28,7 @@ public class ChuongTrinhDaoTaoController(IChuongTrinhDaoTaoService service) : Ap
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<ChuongTrinhDaoTaoDto>>> Create([FromBody] ChuongTrinhDaoTaoRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo chương trình đào tạo.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo chương trình đào tạo.");
 
     // Cập nhật CTĐT
     [Authorize(Roles = "Admin,PhongDaoTao")]

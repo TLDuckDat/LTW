@@ -27,11 +27,12 @@ public class HocPhiController(IHocPhiService service, ICurrentUserService curren
     public Task<ActionResult<ApiResponse<TinhHocPhiResultDto>>> TinhHocPhi(int hocKyId) =>
         Execute(() => service.TinhHocPhiAsync(hocKyId), message: "Đã tính học phí.");
 
-    // Bỏ trống body hoặc SoTien để nộp toàn bộ số còn nợ
-    [HttpPut("{id:int}/thanh-toan")]
+    // Mỗi lần gọi tạo một lần nộp mới (POST, không phải PUT). Bỏ trống body hoặc SoTien để nộp toàn bộ số còn nợ
+    [HttpPost("{id:int}/thanh-toan")]
     public Task<ActionResult<ApiResponse<ThanhToanResultDto>>> ThanhToan(
         int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ThanhToanRequest? request) =>
-        Execute(() => service.ThanhToanAsync(id, request, currentUser.AccountId), message: "Đã ghi nhận nộp học phí.");
+        ExecuteCreated(() => service.ThanhToanAsync(id, request, currentUser.AccountId),
+            x => x.ThanhToan.Id, "Đã ghi nhận nộp học phí.");
 
     [HttpGet("{id:int}/thanh-toan")]
     public Task<ActionResult<ApiResponse<IReadOnlyList<ThanhToanHocPhiDto>>>> GetLichSuThanhToan(int id) =>

@@ -53,38 +53,49 @@ public class AuthController(IAuthService service, ICurrentUserService currentUse
         Execute(() => service.GetActivityLogsAsync(query));
 
     [Authorize(Roles = "Admin")]
-    [HttpPut("accounts/{id:int}/lock")]
-    public Task<ActionResult<ApiResponse<AccountDto>>> ToggleLock(int id) =>
+    [HttpGet("accounts/{id:int}")]
+    public Task<ActionResult<ApiResponse<AccountDto>>> GetAccount(int id) =>
+        Execute(() => service.GetAccountAsync(id));
+
+    // Khóa/mở khóa là hai thao tác riêng, gọi lại nhiều lần vẫn cho cùng kết quả
+    [Authorize(Roles = "Admin")]
+    [HttpPost("accounts/{id:int}/lock")]
+    public Task<ActionResult<ApiResponse<AccountDto>>> Lock(int id) =>
         Execute(() =>
             {
                 KhongPhaiChinhMinh(id, "Không thể khóa chính tài khoản đang đăng nhập.");
-                return service.ToggleLockAsync(id);
+                return service.SetLockAsync(id, khoa: true);
             },
-            result => result.DaKhoa ? "Đã khóa tài khoản." : "Đã mở khóa tài khoản.");
+            message: "Đã khóa tài khoản.");
 
     [Authorize(Roles = "Admin")]
-    [HttpPut("accounts/{id:int}/sinh-vien")]
+    [HttpPost("accounts/{id:int}/unlock")]
+    public Task<ActionResult<ApiResponse<AccountDto>>> Unlock(int id) =>
+        Execute(() => service.SetLockAsync(id, khoa: false), message: "Đã mở khóa tài khoản.");
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("accounts/{id:int}/student")]
     public Task<ActionResult<ApiResponse<AccountDto>>> LinkStudent(int id, [FromBody] LinkStudentRequest request) =>
         Execute(() => service.LinkStudentAsync(id, request), message: "Đã cập nhật liên kết sinh viên.");
 
     [Authorize(Roles = "Admin")]
-    [HttpPut("accounts/{id:int}/giang-vien")]
+    [HttpPut("accounts/{id:int}/lecturer")]
     public Task<ActionResult<ApiResponse<AccountDto>>> LinkLecturer(int id, [FromBody] LinkLecturerRequest request) =>
         Execute(() => service.LinkLecturerAsync(id, request), message: "Đã cập nhật liên kết giảng viên.");
 
     [Authorize(Roles = "Admin")]
     [HttpPost("accounts")]
     public Task<ActionResult<ApiResponse<AccountDto>>> CreateAccount([FromBody] CreateAccountRequest request) =>
-        Execute(() => service.CreateAccountAsync(request), StatusCodes.Status201Created, "Đã tạo tài khoản.");
+        ExecuteCreated(() => service.CreateAccountAsync(request), x => x.Id, "Đã tạo tài khoản.");
 
     [Authorize(Roles = "Admin")]
-    [HttpPut("accounts/{id:int}/reset-password")]
+    [HttpPost("accounts/{id:int}/reset-password")]
     public Task<ActionResult<ApiResponse<AccountDto>>> ResetPassword(int id, [FromBody] ResetPasswordRequest request) =>
         Execute(() => service.ResetPasswordAsync(id, request),
             message: "Đã đặt lại mật khẩu. Tài khoản cần đăng nhập lại.");
 
     [Authorize(Roles = "Admin")]
-    [HttpPut("accounts/{id:int}/vai-tro")]
+    [HttpPut("accounts/{id:int}/role")]
     public Task<ActionResult<ApiResponse<AccountDto>>> ChangeRole(int id, [FromBody] ChangeRoleRequest request) =>
         Execute(() =>
         {

@@ -20,10 +20,10 @@ public class SinhVienLopHocPhanController(ISinhVienLopHocPhanService service) : 
     [HttpPost]
     public Task<ActionResult<ApiResponse<DangKyHocPhanDto>>> ThemSinhVien(
         int lopHocPhanId, [FromBody] ThemSinhVienRequest request) =>
-        Execute(() => service.ThemSinhVienAsync(lopHocPhanId, request),
-            StatusCodes.Status201Created, "Đã thêm sinh viên vào lớp.");
+        ExecuteCreated(() => service.ThemSinhVienAsync(lopHocPhanId, request),
+            x => x.DangKyHocPhanId, "Đã thêm sinh viên vào lớp.");
 
-    [HttpPut("{dangKyHocPhanId:int}")]
+    [HttpPost("{dangKyHocPhanId:int}/chuyen-lop")]
     public Task<ActionResult<ApiResponse<DangKyHocPhanDto>>> ChuyenLop(
         int lopHocPhanId, int dangKyHocPhanId, [FromBody] ChuyenLopRequest request) =>
         Execute(() => service.ChuyenLopAsync(lopHocPhanId, dangKyHocPhanId, request),

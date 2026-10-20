@@ -80,7 +80,7 @@ public class AuthAndErrorTests(ApiFactory factory)
         var (_, sv) = await TestData.TaoSinhVienAsync(factory, admin);
         var me = await sv.DataAsync(HttpMethod.Get, "/api/auth/me");
 
-        await admin.DataAsync(HttpMethod.Put, $"/api/auth/accounts/{me.Id()}/reset-password", new { matKhauMoi = "Matkhau@2" });
+        await admin.DataAsync(HttpMethod.Post, $"/api/auth/accounts/{me.Id()}/reset-password", new { matKhauMoi = "Matkhau@2" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await sv.GetAsync("/api/auth/me")).Status);
     }

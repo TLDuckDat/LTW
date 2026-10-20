@@ -24,7 +24,7 @@ public class MonHocController(IMonHocService service) : ApiControllerBase
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<MonHocDto>>> Create([FromBody] MonHocRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo môn học.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo môn học.");
 
     // CRS-01 Cập nhật môn học
     [Authorize(Roles = "Admin,PhongDaoTao")]
@@ -47,7 +47,8 @@ public class MonHocController(IMonHocService service) : ApiControllerBase
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost("{id:int}/tien-quyet")]
     public Task<ActionResult<ApiResponse<MonHocDto>>> AddTienQuyet(int id, [FromBody] TienQuyetRequest request) =>
-        Execute(() => service.AddTienQuyetAsync(id, request), StatusCodes.Status201Created, "Đã thêm môn tiên quyết.");
+        // Kết quả là môn học cha; tài nguyên vừa tạo là .../tien-quyet/{tienQuyetId}
+        ExecuteCreated(() => service.AddTienQuyetAsync(id, request), _ => request.TienQuyetId, "Đã thêm môn tiên quyết.");
 
     // CRS-01 Gỡ môn tiên quyết
     [Authorize(Roles = "Admin,PhongDaoTao")]

@@ -29,7 +29,7 @@ public class QuyCheHocVuController(IQuyCheHocVuService service) : ApiControllerB
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<QuyCheHocVuDto>>> Create([FromBody] QuyCheHocVuRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo quy chế học vụ.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo quy chế học vụ.");
 
     // EDU-06 Cập nhật quy chế
     [Authorize(Roles = "Admin,PhongDaoTao")]

@@ -109,12 +109,20 @@ Modules/<Module>/
 
 ### Quy ước
 - Controller **chỉ** gọi Service; Service dùng `AppDbContext` trực tiếp (`_db.Set<T>()`), không có Repository.
-- Route: `/api/<tai-nguyen>` (chữ thường, gạch nối).
-- Enum lưu dạng chuỗi: `.HasConversion<string>().HasMaxLength(30)`.
+- Route: `/api/<tai-nguyen>` (chữ thường, gạch nối). Tài nguyên nghiệp vụ dùng tiếng Việt không dấu; module Auth
+  (kỹ thuật) dùng tiếng Anh: `/api/auth/accounts/{id}/role`, `.../lock`.
+- Phương thức HTTP:
+  - CRUD: `GET` danh sách/chi tiết, `POST` tạo (trả **201** kèm header `Location`, dùng `ExecuteCreated`), `PUT` sửa, `DELETE` xóa.
+  - Gán một thuộc tính/quan hệ (gọi lại nhiều lần vẫn cùng kết quả): `PUT /{id}/<danh-tu>`, ví dụ `PUT /api/lop-hoc-phan/{id}/giang-vien`.
+  - Hành động nghiệp vụ, chuyển trạng thái, tính toán: `POST /{id}/<dong-tu>`, ví dụ `POST /api/lop-hoc-phan/{id}/bat-dau-hoc`.
+  - Không dùng `PATCH`.
+- Enum lưu dạng chuỗi: `.HasConversion<string>().HasMaxLength(30)`. JSON trả enum dạng chuỗi (`"PhongDaoTao"`)
+  và nhận cả chuỗi lẫn số khi gửi lên.
 - Thực thể đặt tên tiếng Việt không dấu; lớp kỹ thuật tiếng Anh (`KhoaService`, `KhoaDto`...).
 - Tham chiếu thực thể **module khác chỉ bằng Id**, không có navigation property. Khóa ngoại vẫn tạo trong CSDL:
   `builder.HasOne<SinhVien>().WithMany().HasForeignKey(x => x.SinhVienId).OnDelete(DeleteBehavior.Restrict);`
 - Mọi phản hồi bọc trong `ApiResponse<T>` (`Success`, `Message`, `Data`); danh sách dùng `PagedQuery` + `PagedResult<T>`.
+  Kể cả lỗi không đi qua controller (401, 403, 404 sai đường dẫn, 405, 415) cũng trả `ApiResponse` (`UseStatusCodePages` trong `Program.cs`).
 - Xử lý lỗi: Controller kế thừa `ApiControllerBase`, mỗi action là `Execute(() => service.XxxAsync(...))`.
   Service ném `AppException.NotFound/BadRequest/Conflict/Forbidden(...)` cho lỗi nghiệp vụ; **không** trả `null`/`false`
   và không dùng `InvalidOperationException`. Lỗi khác (bug) thành 500, vẫn đúng định dạng `ApiResponse` nhờ `GlobalExceptionHandler`.

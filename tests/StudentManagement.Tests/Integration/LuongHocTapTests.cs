@@ -42,7 +42,7 @@ public class LuongHocTapTests(ApiFactory factory)
 
         var phucKhao = await sv.DataAsync(HttpMethod.Post, "/api/diem/toi/phuc-khao",
             new { diemHocPhanId = dong.GetProperty("diemHocPhanId").GetInt32(), lyDo = "Xin chấm lại" }, HttpStatusCode.Created);
-        await pdt.DataAsync(HttpMethod.Put, $"/api/phuc-khao/{phucKhao.Id()}/xu-ly", new { chapNhan = true, diemMoi = 8m });
+        await pdt.DataAsync(HttpMethod.Post, $"/api/phuc-khao/{phucKhao.Id()}/xu-ly", new { chapNhan = true, diemMoi = 8m });
 
         bangDiemLop = await pdt.DataAsync(HttpMethod.Get, $"/api/diem/lop-hoc-phan/{lopId}");
         dong = bangDiemLop.GetProperty("danhSach").EnumerateArray().Single();

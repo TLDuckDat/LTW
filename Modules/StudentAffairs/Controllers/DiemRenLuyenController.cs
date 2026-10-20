@@ -22,7 +22,7 @@ public class DiemRenLuyenController(IDiemRenLuyenService service) : ApiControlle
 
     [HttpPost]
     public Task<ActionResult<ApiResponse<DiemRenLuyenDto>>> Create([FromBody] DiemRenLuyenRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã nhập điểm rèn luyện.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã nhập điểm rèn luyện.");
 
     [HttpPut("{id:int}")]
     public Task<ActionResult<ApiResponse<DiemRenLuyenDto>>> Update(int id, [FromBody] CapNhatDiemRenLuyenRequest request) =>

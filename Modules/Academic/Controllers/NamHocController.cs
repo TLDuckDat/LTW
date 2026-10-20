@@ -24,7 +24,7 @@ public class NamHocController(INamHocService service) : ApiControllerBase
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<NamHocDto>>> Create([FromBody] NamHocRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo năm học.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo năm học.");
 
     // EDU-03 Cập nhật năm học
     [Authorize(Roles = "Admin,PhongDaoTao")]

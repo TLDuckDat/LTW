@@ -26,9 +26,9 @@ public class DangKyHocPhanController(IDangKyHocPhanService service, ICurrentUser
     // REG-03 Đăng ký học phần (kiểm tra đợt, sĩ số, tiên quyết, trùng lịch, tín chỉ)
     [HttpPost]
     public Task<ActionResult<ApiResponse<DangKyDto>>> DangKy([FromBody] DangKyRequest request) =>
-        Execute(async () => await service.DangKyAsync(
+        ExecuteCreated(async () => await service.DangKyAsync(
                 await XacDinhSinhVienAsync(request.SinhVienId), request.LopHocPhanId, request.XacNhanHocCaiThien),
-            StatusCodes.Status201Created, "Đăng ký học phần thành công.");
+            x => x.Id, "Đăng ký học phần thành công.");
 
     // REG-05 Danh sách học phần đã đăng ký trong học kỳ
     [HttpGet("da-dang-ky")]

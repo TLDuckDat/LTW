@@ -32,13 +32,13 @@ public class HocPhiTests(ApiFactory factory)
     {
         var (admin, sv, id, soTien) = await TaoKhoanHocPhiAsync();
 
-        var lan1 = await admin.DataAsync(HttpMethod.Put, $"{HocPhi}/{id}/thanh-toan", new { soTien = 500_000m });
+        var lan1 = await admin.DataAsync(HttpMethod.Post, $"{HocPhi}/{id}/thanh-toan", new { soTien = 500_000m }, HttpStatusCode.Created);
         Assert.Equal(soTien - 500_000m, lan1.GetProperty("hocPhi").GetProperty("soConNo").GetDecimal());
-        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsync($"{HocPhi}/{id}/thanh-toan", new { soTien })).Status);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsync($"{HocPhi}/{id}/thanh-toan", new { soTien })).Status);
 
-        var lan2 = await admin.DataAsync(HttpMethod.Put, $"{HocPhi}/{id}/thanh-toan", new { });
+        var lan2 = await admin.DataAsync(HttpMethod.Post, $"{HocPhi}/{id}/thanh-toan", new { }, HttpStatusCode.Created);
         Assert.True(lan2.GetProperty("hocPhi").GetProperty("daThanhToan").GetBoolean());
-        Assert.Equal(HttpStatusCode.Conflict, (await admin.PutAsync($"{HocPhi}/{id}/thanh-toan", new { })).Status);
+        Assert.Equal(HttpStatusCode.Conflict, (await admin.PostAsync($"{HocPhi}/{id}/thanh-toan", new { })).Status);
 
         // Sinh viên thấy đủ 2 lần nộp của mình
         var lichSu = await sv.DataAsync(HttpMethod.Get, $"/api/cong-tac-sinh-vien/toi/hoc-phi/{id}/thanh-toan");
@@ -51,9 +51,9 @@ public class HocPhiTests(ApiFactory factory)
         var (admin, _, id, soTien) = await TaoKhoanHocPhiAsync();
 
         var ketQua = await Task.WhenAll(Enumerable.Range(0, 5)
-            .Select(_ => admin.PutAsync($"{HocPhi}/{id}/thanh-toan", new { })));
+            .Select(_ => admin.PostAsync($"{HocPhi}/{id}/thanh-toan", new { })));
 
-        Assert.Equal(1, ketQua.Count(x => x.Status == HttpStatusCode.OK));
+        Assert.Equal(1, ketQua.Count(x => x.Status == HttpStatusCode.Created));
         var hocPhi = await admin.DataAsync(HttpMethod.Get, $"{HocPhi}/{id}");
         Assert.Equal(soTien, hocPhi.GetProperty("soTienDaNop").GetDecimal());
     }

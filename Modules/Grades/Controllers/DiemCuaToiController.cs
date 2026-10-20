@@ -41,6 +41,6 @@ public class DiemCuaToiController(
 
     [HttpPost("phuc-khao")]
     public Task<ActionResult<ApiResponse<PhucKhaoDto>>> CreatePhucKhao([FromBody] PhucKhaoRequest request) =>
-        Execute(async () => await phucKhao.CreateAsync(request, await currentUser.GetSinhVienIdAsync()),
-            StatusCodes.Status201Created, "Đã gửi yêu cầu phúc khảo.");
+        ExecuteCreated(async () => await phucKhao.CreateAsync(request, await currentUser.GetSinhVienIdAsync()),
+            x => x.Id, "Đã gửi yêu cầu phúc khảo.");
 }

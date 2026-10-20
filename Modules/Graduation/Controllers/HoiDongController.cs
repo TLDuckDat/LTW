@@ -21,7 +21,7 @@ public class HoiDongController(IHoiDongService service) : ApiControllerBase
 
     [HttpPost]
     public Task<ActionResult<ApiResponse<HoiDongDto>>> Create([FromBody] HoiDongRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo hội đồng bảo vệ.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo hội đồng bảo vệ.");
 
     [HttpPut("{id:int}")]
     public Task<ActionResult<ApiResponse<HoiDongDto>>> Update(int id, [FromBody] HoiDongRequest request) =>

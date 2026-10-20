@@ -21,17 +21,17 @@ public class DeTaiController(IDeTaiService service) : ApiControllerBase
 
     [HttpPost]
     public Task<ActionResult<ApiResponse<DeTaiDto>>> Create([FromBody] DeTaiRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo đề tài.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo đề tài.");
 
     [HttpPut("{id:int}")]
     public Task<ActionResult<ApiResponse<DeTaiDto>>> Update(int id, [FromBody] DeTaiRequest request) =>
         Execute(() => service.UpdateAsync(id, request), message: "Đã cập nhật đề tài.");
 
-    [HttpPatch("{id:int}/dang-ky")]
+    [HttpPost("{id:int}/dang-ky")]
     public Task<ActionResult<ApiResponse<DeTaiDto>>> DangKy(int id, [FromBody] DangKyDeTaiRequest request) =>
         Execute(() => service.DangKyAsync(id, request), message: "Đã đăng ký đề tài.");
 
-    [HttpPatch("{id:int}/giang-vien")]
+    [HttpPut("{id:int}/giang-vien")]
     public Task<ActionResult<ApiResponse<DeTaiDto>>> PhanCongGiangVien(
         int id, [FromBody] PhanCongHuongDanRequest request) =>
         Execute(() => service.PhanCongGiangVienAsync(id, request), message: "Đã phân công giảng viên hướng dẫn.");

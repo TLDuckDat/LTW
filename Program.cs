@@ -17,6 +17,7 @@ using StudentManagement.Modules.StudentAffairs;
 using StudentManagement.Modules.Students;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -119,7 +120,11 @@ builder.Services.AddCors(options => options.AddPolicy(CorsPolicy, policy => poli
     .AllowAnyMethod()));
 
 // 5. Controllers + xử lý lỗi chung (mọi lỗi đều trả về ApiResponse)
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    // Enum trả về dạng chuỗi ("PhongDaoTao") và nhận cả chuỗi lẫn số khi gửi lên
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
+    // Không tự sinh ProblemDetails cho 404/405/415...: UseStatusCodePages bên dưới trả ApiResponse thay thế
+    .ConfigureApiBehaviorOptions(o => o.SuppressMapClientErrors = true);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddScoped<NhatKyContext>();
 builder.Services.AddProblemDetails();
@@ -155,6 +160,21 @@ builder.Services
 var app = builder.Build();
 
 app.UseExceptionHandler();
+// Lỗi chưa có nội dung (401/403 từ xác thực, 404 sai đường dẫn, 405, 415...) cũng trả về ApiResponse
+app.UseStatusCodePages(async context =>
+{
+    var response = context.HttpContext.Response;
+    var message = response.StatusCode switch
+    {
+        StatusCodes.Status401Unauthorized => "Chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.",
+        StatusCodes.Status403Forbidden => "Bạn không có quyền thực hiện thao tác này.",
+        StatusCodes.Status404NotFound => "Không tìm thấy đường dẫn API.",
+        StatusCodes.Status405MethodNotAllowed => "Phương thức HTTP không được hỗ trợ cho đường dẫn này.",
+        StatusCodes.Status415UnsupportedMediaType => "Kiểu dữ liệu gửi lên không được hỗ trợ, hãy gửi application/json.",
+        _ => "Yêu cầu không thành công."
+    };
+    await response.WriteAsJsonAsync(ApiResponse<object>.Fail(message), context.HttpContext.RequestAborted);
+});
 
 if (app.Environment.IsDevelopment())
 {

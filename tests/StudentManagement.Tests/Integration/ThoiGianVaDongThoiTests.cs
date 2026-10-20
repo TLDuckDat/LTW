@@ -48,7 +48,7 @@ public class ThoiGianVaDongThoiTests(ApiFactory factory)
         var admin = await factory.AdminAsync();
         var (sinhVienId, _) = await TestData.TaoSinhVienAsync(factory, admin);
 
-        await admin.DataAsync(HttpMethod.Put, $"/api/sinh-vien/{sinhVienId}/chuyen-lop", new { lopHanhChinhId = (int?)null });
+        await admin.DataAsync(HttpMethod.Put, $"/api/sinh-vien/{sinhVienId}/lop-hanh-chinh", new { lopHanhChinhId = (int?)null });
         await admin.DataAsync(HttpMethod.Post, $"/api/sinh-vien/{sinhVienId}/bao-luu", new { lyDo = "Nghỉ ốm" });
         await admin.DataAsync(HttpMethod.Post, $"/api/sinh-vien/{sinhVienId}/quay-lai-hoc", new { ghiChu = "Đã khỏi bệnh" });
 

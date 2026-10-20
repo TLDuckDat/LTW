@@ -329,18 +329,21 @@ public class AuthService(
             .ToPagedResultAsync(query);
     }
 
-    public async Task<AccountDto> ToggleLockAsync(int id)
+    // Idempotent: tài khoản đã ở đúng trạng thái yêu cầu thì giữ nguyên (không đổi UpdatedAt nên không thu hồi phiên)
+    public async Task<AccountDto> SetLockAsync(int id, bool khoa)
     {
         var account = await _db.Set<TaiKhoan>().FirstOrDefaultAsync(x => x.Id == id);
         if (account is null)
             throw AppException.NotFound("tài khoản");
+        if (account.DaKhoa == khoa)
+            return ToAccountDto(account);
 
-        if (!account.DaKhoa && account.VaiTro == VaiTro.Admin && !await AnotherActiveAdminExistsAsync(id))
+        if (khoa && account.VaiTro == VaiTro.Admin && !await AnotherActiveAdminExistsAsync(id))
             throw AppException.Conflict("Không thể khóa Admin đang hoạt động cuối cùng.");
 
-        account.DaKhoa = !account.DaKhoa;
+        account.DaKhoa = khoa;
         await _db.SaveChangesAsync();
-        _nhatKy.Ghi($"{(account.DaKhoa ? "khóa" : "mở khóa")} tài khoản {account.TenDangNhap}");
+        _nhatKy.Ghi($"{(khoa ? "khóa" : "mở khóa")} tài khoản {account.TenDangNhap}");
 
         return ToAccountDto(account);
     }

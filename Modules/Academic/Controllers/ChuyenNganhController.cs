@@ -24,7 +24,7 @@ public class ChuyenNganhController(IChuyenNganhService service) : ApiControllerB
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<ChuyenNganhDto>>> Create([FromBody] ChuyenNganhRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo chuyên ngành.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo chuyên ngành.");
 
     // EDU-02 Cập nhật chuyên ngành
     [Authorize(Roles = "Admin,PhongDaoTao")]

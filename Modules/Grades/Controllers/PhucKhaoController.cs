@@ -15,7 +15,7 @@ public class PhucKhaoController(IPhucKhaoService service) : ApiControllerBase
 {
     [HttpPost]
     public Task<ActionResult<ApiResponse<PhucKhaoDto>>> Create([FromBody] PhucKhaoRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo yêu cầu phúc khảo.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo yêu cầu phúc khảo.");
 
     [HttpGet]
     public Task<ActionResult<ApiResponse<PagedResult<PhucKhaoDto>>>> GetPaged(
@@ -26,7 +26,7 @@ public class PhucKhaoController(IPhucKhaoService service) : ApiControllerBase
     public Task<ActionResult<ApiResponse<PhucKhaoDto>>> GetById(int id) =>
         Execute(() => service.GetByIdAsync(id));
 
-    [HttpPut("{id:int}/xu-ly")]
+    [HttpPost("{id:int}/xu-ly")]
     public Task<ActionResult<ApiResponse<PhucKhaoDto>>> XuLy(int id, [FromBody] XuLyPhucKhaoRequest request) =>
         Execute(() => service.XuLyAsync(id, request), message: "Đã xử lý yêu cầu phúc khảo.");
 }

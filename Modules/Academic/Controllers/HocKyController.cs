@@ -24,7 +24,7 @@ public class HocKyController(IHocKyService service) : ApiControllerBase
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<HocKyDto>>> Create([FromBody] HocKyRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo học kỳ.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo học kỳ.");
 
     // EDU-03 Cập nhật học kỳ
     [Authorize(Roles = "Admin,PhongDaoTao")]

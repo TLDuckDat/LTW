@@ -22,7 +22,7 @@ public class KhenThuongKyLuatController(IKhenThuongKyLuatService service) : ApiC
 
     [HttpPost]
     public Task<ActionResult<ApiResponse<KhenThuongKyLuatDto>>> Create([FromBody] KhenThuongKyLuatRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã lưu quyết định.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã lưu quyết định.");
 
     [HttpPut("{id:int}")]
     public Task<ActionResult<ApiResponse<KhenThuongKyLuatDto>>> Update(int id, [FromBody] KhenThuongKyLuatRequest request) =>

@@ -24,7 +24,7 @@ public class MienGiamController(IMienGiamService service) : ApiControllerBase
 
     [HttpPost]
     public Task<ActionResult<ApiResponse<MienGiamDto>>> Create([FromBody] MienGiamRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo hồ sơ miễn giảm." + NhacTinhLai);
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo hồ sơ miễn giảm." + NhacTinhLai);
 
     [HttpPut("{id:int}")]
     public Task<ActionResult<ApiResponse<MienGiamDto>>> Update(int id, [FromBody] CapNhatMienGiamRequest request) =>

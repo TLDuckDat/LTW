@@ -24,7 +24,7 @@ public class NganhController(INganhService service) : ApiControllerBase
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<NganhDto>>> Create([FromBody] NganhRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo ngành đào tạo.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo ngành đào tạo.");
 
     // EDU-02 Cập nhật ngành
     [Authorize(Roles = "Admin,PhongDaoTao")]

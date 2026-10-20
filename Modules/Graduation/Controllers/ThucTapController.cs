@@ -21,13 +21,13 @@ public class ThucTapController(IThucTapService service) : ApiControllerBase
 
     [HttpPost]
     public Task<ActionResult<ApiResponse<ThucTapDto>>> Create([FromBody] ThucTapRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã đăng ký thực tập.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã đăng ký thực tập.");
 
     [HttpPut("{id:int}")]
     public Task<ActionResult<ApiResponse<ThucTapDto>>> Update(int id, [FromBody] CapNhatThucTapRequest request) =>
         Execute(() => service.UpdateAsync(id, request), message: "Đã cập nhật đăng ký.");
 
-    [HttpPatch("{id:int}/huy")]
+    [HttpPost("{id:int}/huy")]
     public Task<ActionResult<ApiResponse<ThucTapDto>>> Huy(int id) =>
         Execute(() => service.HuyAsync(id), message: "Đã hủy đăng ký.");
 

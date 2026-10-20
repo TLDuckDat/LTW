@@ -25,7 +25,7 @@ public class SinhVienController(ISinhVienService service) : ApiControllerBase
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<SinhVienDto>>> Create([FromBody] CreateSinhVienRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã thêm sinh viên thành công.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã thêm sinh viên thành công.");
 
     // STU-01: Cập nhật thông tin sinh viên
     [Authorize(Roles = "Admin,PhongDaoTao")]
@@ -41,7 +41,7 @@ public class SinhVienController(ISinhVienService service) : ApiControllerBase
 
     // STU-04: Chuyển lớp hành chính cho sinh viên
     [Authorize(Roles = "Admin,PhongDaoTao")]
-    [HttpPut("{id:int}/chuyen-lop")]
+    [HttpPut("{id:int}/lop-hanh-chinh")]
     public Task<ActionResult<ApiResponse<object>>> ChuyenLop(int id, [FromBody] ChuyenLopHanhChinhRequest request) =>
         Execute(() => service.ChuyenLopAsync(id, request.LopHanhChinhId), "Đã chuyển lớp hành chính.");
 

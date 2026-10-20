@@ -21,13 +21,13 @@ public class CoSoThucTapController(ICoSoThucTapService service) : ApiControllerB
 
     [HttpPost]
     public Task<ActionResult<ApiResponse<CoSoThucTapDto>>> Create([FromBody] CoSoThucTapRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo cơ sở thực tập.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo cơ sở thực tập.");
 
     [HttpPut("{id:int}")]
     public Task<ActionResult<ApiResponse<CoSoThucTapDto>>> Update(int id, [FromBody] CoSoThucTapRequest request) =>
         Execute(() => service.UpdateAsync(id, request), message: "Đã cập nhật cơ sở thực tập.");
 
-    [HttpPatch("{id:int}/trang-thai")]
+    [HttpPut("{id:int}/trang-thai")]
     public Task<ActionResult<ApiResponse<CoSoThucTapDto>>> SetTrangThai(int id, [FromBody] TrangThaiCoSoRequest request) =>
         Execute(() => service.SetTrangThaiAsync(id, request), message: "Đã cập nhật trạng thái tiếp nhận.");
 

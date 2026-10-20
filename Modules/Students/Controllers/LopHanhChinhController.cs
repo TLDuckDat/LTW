@@ -28,7 +28,7 @@ public class LopHanhChinhController(ILopHanhChinhService service) : ApiControlle
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<LopHanhChinhDto>>> Create([FromBody] LopHanhChinhRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo lớp hành chính.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo lớp hành chính.");
 
     // STU-04: Sửa lớp hành chính
     [Authorize(Roles = "Admin,PhongDaoTao")]
@@ -44,13 +44,13 @@ public class LopHanhChinhController(ILopHanhChinhService service) : ApiControlle
 
     // STU-04: Phân nhiều sinh viên vào lớp
     [Authorize(Roles = "Admin,PhongDaoTao")]
-    [HttpPut("{id:int}/phan-lop")]
+    [HttpPost("{id:int}/phan-lop")]
     public Task<ActionResult<ApiResponse<object>>> PhanLop(int id, [FromBody] PhanLopRequest request) =>
         Execute(() => service.PhanLopAsync(id, request), "Đã phân bổ sinh viên vào lớp.");
 
     // STU-05: Gán cố vấn học tập cho lớp
     [Authorize(Roles = "Admin,PhongDaoTao")]
-    [HttpPut("{id:int}/phan-co-van")]
+    [HttpPut("{id:int}/co-van")]
     public Task<ActionResult<ApiResponse<object>>> PhanCoVan(int id, [FromBody] PhanCoVanRequest request) =>
         Execute(() => service.PhanCoVanAsync(id, request), "Đã cập nhật cố vấn học tập.");
 }

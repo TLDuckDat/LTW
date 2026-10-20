@@ -24,7 +24,7 @@ public class BoMonController(IBoMonService service) : ApiControllerBase
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<BoMonDto>>> Create([FromBody] BoMonRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo bộ môn.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo bộ môn.");
 
     // EDU-01 Cập nhật bộ môn
     [Authorize(Roles = "Admin,PhongDaoTao")]

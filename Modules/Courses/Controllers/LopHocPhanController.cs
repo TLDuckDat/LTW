@@ -24,7 +24,7 @@ public class LopHocPhanController(ILopHocPhanService service) : ApiControllerBas
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<LopHocPhanDto>>> Create([FromBody] LopHocPhanRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã mở lớp học phần.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã mở lớp học phần.");
 
     // CRS-02 Cập nhật lớp học phần
     [Authorize(Roles = "Admin,PhongDaoTao")]

@@ -24,7 +24,7 @@ public class DotDangKyController(IDotDangKyService service) : ApiControllerBase
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<DotDangKyDto>>> Create([FromBody] DotDangKyRequest request) =>
-        Execute(() => service.CreateAsync(request), StatusCodes.Status201Created, "Đã tạo đợt đăng ký.");
+        ExecuteCreated(() => service.CreateAsync(request), x => x.Id, "Đã tạo đợt đăng ký.");
 
     // REG-01 Cập nhật tên, thời gian đợt đăng ký
     [Authorize(Roles = "Admin,PhongDaoTao")]

@@ -82,7 +82,7 @@ public class SecurityTests(ApiFactory factory)
         for (var lan = 0; lan < 5; lan++) await DangNhapAsync(ten, "sai");
         Assert.Equal(HttpStatusCode.TooManyRequests, (await DangNhapAsync(ten, MatKhau)).Status);
 
-        await admin.DataAsync(HttpMethod.Put, $"/api/auth/accounts/{id}/reset-password", new { matKhauMoi = "Matkhau@2" });
+        await admin.DataAsync(HttpMethod.Post, $"/api/auth/accounts/{id}/reset-password", new { matKhauMoi = "Matkhau@2" });
 
         Assert.Equal(HttpStatusCode.OK, (await DangNhapAsync(ten, "Matkhau@2")).Status);
     }
@@ -173,7 +173,7 @@ public class SecurityTests(ApiFactory factory)
         var (ten, id) = await TaoTaiKhoanAsync(admin);
         var phien = (await DangNhapAsync(ten, MatKhau)).Body.GetProperty("data");
 
-        await admin.DataAsync(HttpMethod.Put, $"/api/auth/accounts/{id}/lock");
+        await admin.DataAsync(HttpMethod.Post, $"/api/auth/accounts/{id}/lock");
 
         var (status, body) = await factory.Anonymous().PostAsync("/api/auth/refresh", new { refreshToken = Refresh(phien) });
         Assert.Equal(HttpStatusCode.Unauthorized, status);
@@ -226,7 +226,7 @@ public class SecurityTests(ApiFactory factory)
         var admin = await factory.AdminAsync();
         var (ten, id) = await TaoTaiKhoanAsync(admin, vaiTro: 3);
 
-        await admin.DataAsync(HttpMethod.Put, $"/api/auth/accounts/{id}/vai-tro", new { vaiTro = 2 });
+        await admin.DataAsync(HttpMethod.Put, $"/api/auth/accounts/{id}/role", new { vaiTro = 2 });
 
         var log = await admin.DataAsync(HttpMethod.Get, $"/api/auth/activity-logs?hanhDong=Auth.ChangeRole&search={ten}");
         Assert.Contains("vai trò SinhVien -> GiangVien", log.Items().Single().GetProperty("chiTiet").GetString());
@@ -272,8 +272,8 @@ public class SecurityTests(ApiFactory factory)
         var hocPhi = (await admin.DataAsync(HttpMethod.Get,
             $"/api/cong-tac-sinh-vien/hoc-phi?sinhVienId={sinhVienId}&hocKyId={hocKyId}")).Items().Single();
 
-        await admin.DataAsync(HttpMethod.Put, $"/api/cong-tac-sinh-vien/hoc-phi/{hocPhi.Id()}/thanh-toan",
-            new { soTien = 500000, hinhThuc = "Tiền mặt" });
+        await admin.DataAsync(HttpMethod.Post, $"/api/cong-tac-sinh-vien/hoc-phi/{hocPhi.Id()}/thanh-toan",
+            new { soTien = 500000, hinhThuc = "Tiền mặt" }, HttpStatusCode.Created);
 
         var log = await admin.DataAsync(HttpMethod.Get,
             $"/api/auth/activity-logs?hanhDong=HocPhi.ThanhToan&search=/hoc-phi/{hocPhi.Id()}/");

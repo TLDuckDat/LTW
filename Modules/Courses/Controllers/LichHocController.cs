@@ -19,7 +19,7 @@ public class LichHocController(ILichHocService service) : ApiControllerBase
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<LichHocDto>>> Add(int lopHocPhanId, [FromBody] LichHocRequest request) =>
-        Execute(() => service.AddAsync(lopHocPhanId, request), StatusCodes.Status201Created, "Đã xếp lịch học.");
+        ExecuteCreated(() => service.AddAsync(lopHocPhanId, request), x => x.Id, "Đã xếp lịch học.");
 
     // CRS-05 Sửa buổi học
     [Authorize(Roles = "Admin,PhongDaoTao")]

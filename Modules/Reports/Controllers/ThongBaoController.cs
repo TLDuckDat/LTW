@@ -27,7 +27,7 @@ public class ThongBaoController(IThongBaoService service) : ApiControllerBase
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPost]
     public Task<ActionResult<ApiResponse<ThongBaoDto>>> Create([FromBody] ThongBaoRequest request) =>
-        Execute(() => service.CreateAsync(request, CurrentAccountId()), StatusCodes.Status201Created, "Đã tạo thông báo.");
+        ExecuteCreated(() => service.CreateAsync(request, CurrentAccountId()), x => x.Id, "Đã tạo thông báo.");
 
     [Authorize(Roles = "Admin,PhongDaoTao")]
     [HttpPut("{id:int}")]

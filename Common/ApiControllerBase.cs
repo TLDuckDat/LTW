@@ -15,14 +15,13 @@ namespace StudentManagement.Common;
 [ValidateRequest]
 public abstract class ApiControllerBase : ControllerBase
 {
-    /// <summary>Chạy action có dữ liệu trả về, ví dụ lấy chi tiết hoặc tạo mới.</summary>
-    protected async Task<ActionResult<ApiResponse<T>>> Execute<T>(
-        Func<Task<T>> action, int successStatus = StatusCodes.Status200OK, string? message = null)
+    /// <summary>Chạy action có dữ liệu trả về, ví dụ lấy chi tiết hoặc cập nhật.</summary>
+    protected async Task<ActionResult<ApiResponse<T>>> Execute<T>(Func<Task<T>> action, string? message = null)
     {
         try
         {
             var result = await action();
-            return StatusCode(successStatus, ApiResponse<T>.Ok(result, message));
+            return Ok(ApiResponse<T>.Ok(result, message));
         }
         catch (AppException ex)
         {
@@ -30,13 +29,17 @@ public abstract class ApiControllerBase : ControllerBase
         }
     }
 
-    /// <summary>Như trên, nhưng thông báo phụ thuộc kết quả (ví dụ "Đã khóa" / "Đã mở khóa").</summary>
-    protected async Task<ActionResult<ApiResponse<T>>> Execute<T>(Func<Task<T>> action, Func<T, string> message)
+    /// <summary>
+    /// Chạy action tạo mới: trả 201 kèm header Location = đường dẫn hiện tại + "/" + id của tài nguyên vừa tạo,
+    /// ví dụ POST /api/khoa tạo khoa 5 thì Location là /api/khoa/5.
+    /// </summary>
+    protected async Task<ActionResult<ApiResponse<T>>> ExecuteCreated<T>(
+        Func<Task<T>> action, Func<T, int> id, string message)
     {
         try
         {
             var result = await action();
-            return Ok(ApiResponse<T>.Ok(result, message(result)));
+            return Created($"{Request.PathBase}{Request.Path}/{id(result)}", ApiResponse<T>.Ok(result, message));
         }
         catch (AppException ex)
         {
