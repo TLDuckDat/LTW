@@ -18,6 +18,7 @@ public class HocPhiConfiguration : IEntityTypeConfiguration<HocPhi>
         });
         builder.Property(x => x.SoTien).HasPrecision(18, 2);
         builder.Property(x => x.SoTienDaNop).HasPrecision(18, 2);
+        builder.Property(x => x.RowVersion).IsRowVersion();
         builder.HasIndex(x => new { x.SinhVienId, x.HocKyId }).IsUnique();
         builder.HasOne<SinhVien>().WithMany().HasForeignKey(x => x.SinhVienId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<HocKy>().WithMany().HasForeignKey(x => x.HocKyId).OnDelete(DeleteBehavior.Restrict);

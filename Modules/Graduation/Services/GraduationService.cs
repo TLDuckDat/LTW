@@ -67,7 +67,7 @@ public class GraduationService(AppDbContext db, IDieuKienTotNghiepService dieuKi
         var result = new XetTotNghiep
         {
             SinhVienId = sinhVienId,
-            NgayXet = DateOnly.FromDateTime(DateTime.UtcNow),
+            NgayXet = ThoiGian.HomNay(),
             TongTinChiTichLuy = check.TinChiTichLuy,
             DiemTrungBinhTichLuy = check.Cpa,
             XepLoai = xepLoai,

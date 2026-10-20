@@ -14,6 +14,7 @@ public class PhucKhaoConfiguration : IEntityTypeConfiguration<PhucKhao>
         builder.Property(x => x.DiemCu).HasPrecision(4, 2);
         builder.Property(x => x.DiemMoi).HasPrecision(4, 2);
         builder.Property(x => x.TrangThai).HasConversion<string>().HasMaxLength(30);
+        builder.Property(x => x.RowVersion).IsRowVersion();
         builder.HasOne<DiemHocPhan>().WithMany().HasForeignKey(x => x.DiemHocPhanId).OnDelete(DeleteBehavior.Restrict);
     }
 }

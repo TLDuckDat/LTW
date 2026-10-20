@@ -1,3 +1,4 @@
+using StudentManagement.Common;
 using Microsoft.EntityFrameworkCore;
 using StudentManagement.Modules.Academic.Entities;
 using StudentManagement.Modules.Academic.Services;
@@ -60,7 +61,7 @@ public static class DbSeeder
         db.AddRange(boMon, nganh);
 
         // Năm học bắt đầu 15/8; "hôm nay" theo giờ Việt Nam
-        var homNay = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var homNay = ThoiGian.HomNay();
         var namBatDau = homNay >= new DateOnly(homNay.Year, 8, 15) ? homNay.Year : homNay.Year - 1;
         var namTruoc = TaoNamHoc(namBatDau - 1);
         var namNay = TaoNamHoc(namBatDau);
@@ -141,7 +142,7 @@ public static class DbSeeder
         db.Add(new DotDangKy
         {
             Ten = $"Đăng ký {hocKyNay.Ten} {namNay.Ten}", HocKyId = hocKyNay.Id,
-            NgayBatDau = DateTime.Now.AddDays(-1), NgayKetThuc = DateTime.Now.AddDays(14),
+            NgayBatDau = DateTime.UtcNow.AddDays(-1), NgayKetThuc = DateTime.UtcNow.AddDays(14),
             TrangThai = TrangThaiDotDangKy.DangMo
         });
         var lopIt002 = new LopHocPhan { Ma = "IT002-01", HocKyId = hocKyNay.Id, MonHocId = it002.Id, GiangVienId = gv.Id, SiSoToiDa = 60 };

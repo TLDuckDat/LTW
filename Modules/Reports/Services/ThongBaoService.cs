@@ -63,7 +63,7 @@ public class ThongBaoService(AppDbContext db) : IThongBaoService
         thongBao.TieuDe = tieuDe;
         thongBao.NoiDung = noiDung;
         thongBao.NgayDang = request.NgayDang is { } ngayDang
-            ? DateTime.SpecifyKind(ngayDang.ToUniversalTime(), DateTimeKind.Utc)
+            ? ThoiGian.VeUtc(ngayDang)
             : DateTime.UtcNow;
     }
 

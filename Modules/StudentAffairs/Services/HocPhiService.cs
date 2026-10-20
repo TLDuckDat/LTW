@@ -94,7 +94,14 @@ public class HocPhiService(AppDbContext db, NhatKyContext nhatKy) : IHocPhiServi
             hocPhi.DaThanhToan = hocPhi.SoTienDaNop >= hocPhi.SoTien;
         }
 
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw AppException.Conflict("Có khoản học phí vừa được nộp trong lúc tính, hãy chạy tính học phí lại.");
+        }
         _nhatKy.Ghi($"{hocKy.Ten}: đơn giá {donGia:0}, tạo {soTaoMoi}, cập nhật {soCapNhat} khoản học phí");
         return new TinhHocPhiResultDto(
             hocKy.Id, hocKy.Ten, donGia, hienCo.Count, soTaoMoi, soCapNhat, soKhongThayDoi,

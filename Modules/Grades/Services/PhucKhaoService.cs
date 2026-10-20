@@ -116,7 +116,14 @@ public class PhucKhaoService(AppDbContext db, NhatKyContext nhatKy) : IPhucKhaoS
             _nhatKy.Ghi("từ chối phúc khảo");
         }
 
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw AppException.Conflict("Yêu cầu phúc khảo vừa được người khác xử lý, hãy tải lại.");
+        }
         return await GetByIdAsync(phucKhao.Id);
     }
 

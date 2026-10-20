@@ -1,4 +1,3 @@
-using System.Data;
 using Microsoft.EntityFrameworkCore;
 using StudentManagement.Common;
 using StudentManagement.Data;
@@ -95,10 +94,21 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
     // REG-03 Đăng ký học phần: kiểm tra toàn bộ điều kiện rồi mới ghi, trong một giao dịch
     public async Task<DangKyDto> DangKyAsync(int sinhVienId, int lopHocPhanId, bool xacNhanHocCaiThien = false)
     {
-        // Serializable để hai sinh viên cùng đăng ký chỗ cuối cùng không cùng vượt sĩ số
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var transaction = await _db.Database.BeginTransactionAsync();
 
-        var lop = await _db.Set<LopHocPhan>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == lopHocPhanId);
+        // Khóa dòng sinh viên rồi dòng lớp đến hết giao dịch (luôn theo thứ tự này để không deadlock):
+        // - khóa lớp: hai sinh viên cùng giành chỗ cuối thì người sau chờ và thấy lớp đã đủ sĩ số;
+        // - khóa sinh viên: một sinh viên đăng ký hai lớp cùng lúc không cùng vượt tín chỉ hoặc trùng lịch.
+        // Serializable trước đây cũng tránh được hai trường hợp trên nhưng dễ deadlock (lỗi 1205 -> 500).
+        await _db.Set<SinhVien>()
+            .FromSqlInterpolated($"SELECT * FROM dbo.SinhVien WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE Id = {sinhVienId}")
+            .AsNoTracking()
+            .ToListAsync();
+        var lop = (await _db.Set<LopHocPhan>()
+                .FromSqlInterpolated($"SELECT * FROM dbo.LopHocPhan WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE Id = {lopHocPhanId}")
+                .AsNoTracking()
+                .ToListAsync())
+            .SingleOrDefault();
         if (lop is null) throw AppException.NotFound("sinh viên hoặc lớp học phần");
 
         var ketQua = await _dieuKien.KiemTraAsync(sinhVienId, [lop]);
@@ -258,7 +268,7 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
         // Sinh viên tự hủy phải trong thời gian của đợt đăng ký; phòng đào tạo không bị giới hạn này
         if (chiSinhVienId is not null)
         {
-            var bay = DateTime.Now;
+            var bay = DateTime.UtcNow;
             var trongDot = await _db.Set<DotDangKy>().AnyAsync(x =>
                 x.HocKyId == lop.HocKyId && x.TrangThai == TrangThaiDotDangKy.DangMo
                 && x.NgayBatDau <= bay && bay <= x.NgayKetThuc);
@@ -287,7 +297,7 @@ public class DangKyHocPhanService(AppDbContext db, IDieuKienDangKyService dieuKi
             .FirstOrDefaultAsync();
         if (dotDangMo is not null) return dotDangMo;
 
-        var homNay = DateOnly.FromDateTime(DateTime.Today);
+        var homNay = ThoiGian.HomNay();
         return await _db.Set<HocKy>().AsNoTracking()
             .OrderByDescending(x => x.NgayBatDau <= homNay && homNay <= x.NgayKetThuc)
             .ThenByDescending(x => x.NgayBatDau)

@@ -127,7 +127,7 @@ public class CanhBaoHocVuService(AppDbContext db, IBangDiemService bangDiem) : I
         // Xét thứ tự 1/2 như hai kỳ chính; các thứ tự khác chưa đủ căn cứ để xét riêng.
         if (hocKy.SoThuTu is not (1 or 2))
             lyDo.Add("Học kỳ này chưa được xác định là học kỳ chính để xét cảnh báo.");
-        if (hocKy.NgayKetThuc >= HomNayTheoGioVietNam())
+        if (hocKy.NgayKetThuc >= ThoiGian.HomNay())
             lyDo.Add("Học kỳ chưa kết thúc; chưa thể kết luận cảnh báo chính thức.");
         if (diemHocKy is null || diemHocKy.DanhSachMonHoc.Count == 0)
             lyDo.Add("Sinh viên chưa có đăng ký còn hiệu lực trong học kỳ.");
@@ -139,7 +139,4 @@ public class CanhBaoHocVuService(AppDbContext db, IBangDiemService bangDiem) : I
             lyDo.Add("Chưa xác định được khóa tuyển để áp dụng ngưỡng GPA.");
         return lyDo;
     }
-
-    // Việt Nam dùng UTC+7 quanh năm (không đổi giờ theo mùa), nên cộng thẳng 7 giờ là đủ.
-    private static DateOnly HomNayTheoGioVietNam() => DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
 }

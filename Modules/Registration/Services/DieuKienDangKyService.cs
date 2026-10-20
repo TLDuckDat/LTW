@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using StudentManagement.Common;
 using StudentManagement.Data;
 using StudentManagement.Modules.Academic.Entities;
 using StudentManagement.Modules.Academic.Services;
@@ -39,8 +40,8 @@ public class DieuKienDangKyService(AppDbContext db) : IDieuKienDangKyService
         var monIds = cacLop.Select(l => l.MonHocId).Distinct().ToList();
         var hocKyIds = cacLop.Select(l => l.HocKyId).Distinct().ToList();
 
-        // Đợt đăng ký đang mở và còn trong thời gian (giờ máy chủ)
-        var bay = DateTime.Now;
+        // Đợt đăng ký đang mở và còn trong thời gian (so theo UTC)
+        var bay = DateTime.UtcNow;
         var hocKyDangMo = (await _db.Set<DotDangKy>().AsNoTracking()
                 .Where(x => hocKyIds.Contains(x.HocKyId) && x.TrangThai == TrangThaiDotDangKy.DangMo
                             && x.NgayBatDau <= bay && bay <= x.NgayKetThuc)

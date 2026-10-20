@@ -13,4 +13,6 @@ public class HocPhi : BaseEntity
     public decimal SoTien { get; set; }
     public decimal SoTienDaNop { get; set; }
     public bool DaThanhToan { get; set; }
+    /// <summary>Do SQL Server tự tăng; tính lại học phí đúng lúc có lần nộp mới thì báo 409 thay vì ghi DaThanhToan sai.</summary>
+    public byte[] RowVersion { get; set; } = [];
 }

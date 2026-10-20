@@ -265,7 +265,7 @@ public class SinhVienService(AppDbContext db, NhatKyContext nhatKy) : ISinhVienS
                 TrangThaiMoi = request.TrangThai,
                 LyDo = request.LyDo ?? "Thay đổi trạng thái học tập",
                 SoQuyetDinh = request.SoQuyetDinh,
-                NgayHieuLuc = DateOnly.FromDateTime(DateTime.UtcNow)
+                NgayHieuLuc = ThoiGian.HomNay()
             };
             _db.Add(lichSu);
             _nhatKy.Ghi($"sinh viên {sv.MSSV}: {sv.TrangThai} -> {request.TrangThai}");
@@ -295,7 +295,7 @@ public class SinhVienService(AppDbContext db, NhatKyContext nhatKy) : ISinhVienS
             TrangThaiMoi = TrangThaiSinhVien.BaoLuu,
             LyDo = request.LyDo,
             SoQuyetDinh = request.SoQuyetDinh,
-            NgayHieuLuc = request.NgayHieuLuc ?? DateOnly.FromDateTime(DateTime.UtcNow),
+            NgayHieuLuc = request.NgayHieuLuc ?? ThoiGian.HomNay(),
             GhiChu = request.GhiChu
         };
 
@@ -325,7 +325,7 @@ public class SinhVienService(AppDbContext db, NhatKyContext nhatKy) : ISinhVienS
             TrangThaiMoi = TrangThaiSinhVien.ThoiHoc,
             LyDo = request.LyDo,
             SoQuyetDinh = request.SoQuyetDinh,
-            NgayHieuLuc = request.NgayHieuLuc ?? DateOnly.FromDateTime(DateTime.UtcNow),
+            NgayHieuLuc = request.NgayHieuLuc ?? ThoiGian.HomNay(),
             GhiChu = request.GhiChu
         };
 
@@ -354,7 +354,7 @@ public class SinhVienService(AppDbContext db, NhatKyContext nhatKy) : ISinhVienS
             TrangThaiCu = sv.TrangThai,
             TrangThaiMoi = TrangThaiSinhVien.DangHoc,
             LyDo = "Hết thời gian bảo lưu / khôi phục học tập",
-            NgayHieuLuc = DateOnly.FromDateTime(DateTime.UtcNow),
+            NgayHieuLuc = ThoiGian.HomNay(),
             GhiChu = ghiChu
         };
 

@@ -43,7 +43,7 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
     // REG-01 Tạo đợt đăng ký cho học kỳ, ban đầu chưa mở
     public async Task<DotDangKyDto> CreateAsync(DotDangKyRequest request)
     {
-        KiemTraThoiGian(request.NgayBatDau, request.NgayKetThuc);
+        var (batDau, ketThuc) = KiemTraThoiGian(request.NgayBatDau, request.NgayKetThuc);
         if (!await _db.Set<HocKy>().AnyAsync(x => x.Id == request.HocKyId))
             throw AppException.Conflict("Học kỳ không tồn tại.");
 
@@ -51,8 +51,8 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
         {
             Ten = request.Ten.Trim(),
             HocKyId = request.HocKyId,
-            NgayBatDau = request.NgayBatDau,
-            NgayKetThuc = request.NgayKetThuc
+            NgayBatDau = batDau,
+            NgayKetThuc = ketThuc
         };
         _db.Add(entity);
         await _db.SaveChangesAsync();
@@ -66,11 +66,11 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
 
         if (entity.TrangThai == TrangThaiDotDangKy.DaDong)
             throw AppException.Conflict("Đợt đăng ký đã đóng, không thể chỉnh sửa.");
-        KiemTraThoiGian(request.NgayBatDau, request.NgayKetThuc);
+        var (batDau, ketThuc) = KiemTraThoiGian(request.NgayBatDau, request.NgayKetThuc);
 
         entity.Ten = request.Ten.Trim();
-        entity.NgayBatDau = request.NgayBatDau;
-        entity.NgayKetThuc = request.NgayKetThuc;
+        entity.NgayBatDau = batDau;
+        entity.NgayKetThuc = ketThuc;
         await _db.SaveChangesAsync();
         return ToDto(entity);
     }
@@ -118,10 +118,14 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
         return ToDto(entity);
     }
 
-    private static void KiemTraThoiGian(DateTime batDau, DateTime ketThuc)
+    // Chuẩn hóa về UTC trước khi so sánh: hai mốc có thể gửi lên với múi giờ khác nhau
+    private static (DateTime BatDau, DateTime KetThuc) KiemTraThoiGian(DateTime batDau, DateTime ketThuc)
     {
+        batDau = ThoiGian.VeUtc(batDau);
+        ketThuc = ThoiGian.VeUtc(ketThuc);
         if (ketThuc <= batDau)
             throw AppException.Conflict("Thời điểm kết thúc phải sau thời điểm bắt đầu.");
+        return (batDau, ketThuc);
     }
 
     private static DotDangKyDto ToDto(DotDangKy x) =>

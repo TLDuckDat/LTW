@@ -833,6 +833,12 @@ namespace StudentManagement.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<string>("TrangThai")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -1322,6 +1328,12 @@ namespace StudentManagement.Data.Migrations
 
                     b.Property<int>("HocKyId")
                         .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<int>("SinhVienId")
                         .HasColumnType("int");
