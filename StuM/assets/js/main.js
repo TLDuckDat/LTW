@@ -22,6 +22,7 @@ const PAGE_TITLES = {
   academic: 'Danh mục học vụ',
   graduation: 'Tốt nghiệp',
   reports: 'Báo cáo',
+  studentAffairs: 'Công tác sinh viên',
 };
 
 /** Trang chỉ dành cho một số vai trò; vai trò khác bị chuyển về Dashboard. */
@@ -30,6 +31,7 @@ const PAGE_ROLES = {
   academic: ['Admin', 'PhongDaoTao'],
   graduation: ['Admin', 'PhongDaoTao'],
   reports: ['Admin', 'PhongDaoTao'],
+  studentAffairs: ['Admin', 'PhongDaoTao'],
 };
 
 const PAGE_MODULES = {
@@ -44,6 +46,7 @@ const PAGE_MODULES = {
   academic: () => import('./pages/academic.js'),
   graduation: () => import('./pages/graduation.js'),
   reports: () => import('./pages/reports.js'),
+  studentAffairs: () => import('./pages/student-affairs.js'),
 };
 
 async function bootstrap() {

@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { route: 'academic', label: 'Danh mục học vụ', icon: 'library', roles: ['Admin', 'PhongDaoTao'] },
   { route: 'graduation', label: 'Tốt nghiệp', icon: 'graduation-cap', roles: ['Admin', 'PhongDaoTao'] },
   { route: 'reports', label: 'Báo cáo', icon: 'chart-column', roles: ['Admin', 'PhongDaoTao'] },
+  { route: 'studentAffairs', label: 'Công tác sinh viên', icon: 'wallet', roles: ['Admin', 'PhongDaoTao'] },
   { route: 'accounts', label: 'Tài khoản', icon: 'user-cog', roles: ['Admin'] },
   { route: 'grades', label: 'Điểm', icon: 'clipboard-list' },
 ];

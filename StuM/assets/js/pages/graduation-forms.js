@@ -23,6 +23,16 @@ function valueOf(field, raw) {
   return value;
 }
 
+/**
+ * Giá trị thô của một ô. Ô chọn có tìm kiếm (datalist) chứa nhãn, nên đổi về giá trị theo danh sách lựa chọn.
+ */
+function rawValueOf(element, field) {
+  if (field.kind === 'select' && element.tagName !== 'SELECT') {
+    return Select.getValue(element, field.options ?? []);
+  }
+  return element.value;
+}
+
 function fieldMarkup(field, initial) {
   const value = initial[field.name] ?? field.value ?? '';
   if (field.kind === 'select') {
@@ -59,7 +69,8 @@ export function openFormModal({ title, fields, initial = {}, submitText = 'Lưu'
     let valid = true;
     fields.forEach((field) => {
       const input = form.elements.namedItem(field.name);
-      if (field.required && String(input.value).trim() === '') {
+      const empty = field.required && String(rawValueOf(input, field)).trim() === '';
+      if (empty) {
         if (field.kind === 'select') input.focus();
         Input.setError(input, 'Vui lòng nhập hoặc chọn thông tin này');
         valid = false;
@@ -71,7 +82,7 @@ export function openFormModal({ title, fields, initial = {}, submitText = 'Lưu'
 
     const payload = {};
     fields.forEach((field) => {
-      payload[field.name] = valueOf(field, form.elements.namedItem(field.name).value);
+      payload[field.name] = valueOf(field, rawValueOf(form.elements.namedItem(field.name), field));
     });
 
     Button.setLoading(saveButton, true);

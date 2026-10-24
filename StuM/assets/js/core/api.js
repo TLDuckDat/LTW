@@ -243,6 +243,37 @@ export const api = {
     },
   },
 
+  /** Công tác sinh viên (module StudentAffairs). */
+  congTacSinhVien: {
+    hocPhi: {
+      list: ({ conNo, hocKyId, sinhVienId, ...params } = {}) =>
+        listPaged('/cong-tac-sinh-vien/hoc-phi', { ...params, ConNo: conNo, HocKyId: hocKyId, SinhVienId: sinhVienId }),
+      get: (id) => request(`/cong-tac-sinh-vien/hoc-phi/${id}`),
+      /** Tính học phí cho cả học kỳ từ các lớp đã đăng ký. */
+      tinh: (hocKyId) => request(`/cong-tac-sinh-vien/hoc-phi/tinh/${hocKyId}`, { method: 'POST' }),
+      thanhToan: (id, payload) => request(`/cong-tac-sinh-vien/hoc-phi/${id}/thanh-toan`, { method: 'POST', body: payload }),
+      lichSuThanhToan: (id) => request(`/cong-tac-sinh-vien/hoc-phi/${id}/thanh-toan`),
+    },
+    hocBong: {
+      list: ({ hocKyId, sinhVienId, ...params } = {}) =>
+        listPaged('/cong-tac-sinh-vien/hoc-bong', { ...params, HocKyId: hocKyId, SinhVienId: sinhVienId }),
+      xet: (hocKyId) => request(`/cong-tac-sinh-vien/hoc-bong/xet/${hocKyId}`, { method: 'POST' }),
+      remove: (id) => request(`/cong-tac-sinh-vien/hoc-bong/${id}`, { method: 'DELETE' }),
+    },
+    mienGiam: crudAt('/cong-tac-sinh-vien/mien-giam'),
+    diemRenLuyen: crudAt('/cong-tac-sinh-vien/diem-ren-luyen'),
+    khenThuongKyLuat: crudAt('/cong-tac-sinh-vien/khen-thuong-ky-luat'),
+  },
+
+  /** Phúc khảo điểm (module Grades). */
+  phucKhao: {
+    list: ({ trangThai, ...params } = {}) => listPaged('/phuc-khao', { ...params, trangThai }),
+    get: (id) => request(`/phuc-khao/${id}`),
+    create: (payload) => request('/phuc-khao', { method: 'POST', body: payload }),
+    /** @param {{ chapNhan: boolean, diemMoi?: number }} payload */
+    xuLy: (id, payload) => request(`/phuc-khao/${id}/xu-ly`, { method: 'POST', body: payload }),
+  },
+
   /** Quản trị tài khoản (module Auth): chỉ Admin. */
   taiKhoan: {
     list: (params) => listPaged('/auth/accounts', params),

@@ -17,6 +17,7 @@ export const ROUTES = {
   academic: 'academic.html',
   graduation: 'graduation.html',
   reports: 'reports.html',
+  studentAffairs: 'student-affairs.html',
   'ui-kit': 'ui-kit.html',
 };
 
