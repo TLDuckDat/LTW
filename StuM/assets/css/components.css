@@ -515,7 +515,8 @@
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  z-index: 50;
+  /* Trên hộp thoại (1000) nhưng dưới toast (1100) */
+  z-index: 1050;
   min-width: 180px;
   padding: 4px;
   background-color: hsl(var(--card));

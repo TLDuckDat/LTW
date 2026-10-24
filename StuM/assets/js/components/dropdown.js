@@ -1,13 +1,16 @@
 /**
  * Dropdown menu: action menu của bảng, user menu, thông báo.
- * Menu dùng position: fixed để không bị cắt bởi vùng cuộn của bảng.
+ *
+ * Khi mở, menu được chuyển ra cuối <body> và định vị cố định theo nút mở. Nhờ vậy không bị cắt
+ * bởi vùng cuộn của bảng (overflow) hay lớp phủ của hộp thoại. Khi đóng, menu trả về đúng chỗ cũ.
+ *
  * - render(props) -> HTML string
- * - init(rootEl, { onAction }) -> bắt click mục menu trong rootEl (gọi một lần cho mỗi root)
- * - initGlobal() -> mở/đóng, click ra ngoài, ESC, mũi tên lên/xuống (gọi một lần trong main)
- * - closeAll() -> đóng menu đang mở
+ * - init(rootEl, { onAction }) -> đăng ký nhận sự kiện chọn mục menu của các nút nằm trong rootEl
+ * - initGlobal() -> mở/đóng, click ra ngoài, ESC, mũi tên lên/xuống, định vị lại khi cuộn (gọi một lần)
+ * - closeAll({ restoreFocus }) -> đóng menu đang mở
  */
 
-import { escapeHtml } from '../core/dom.js';
+import { escapeHtml, nextId } from '../core/dom.js';
 
 const MENU_GAP = 4;
 const VIEWPORT_PADDING = 8;
@@ -15,6 +18,9 @@ const VIEWPORT_PADDING = 8;
 let openMenu = null;
 let openTrigger = null;
 let globalBound = false;
+
+/** Các root đã đăng ký nhận sự kiện: { rootEl, onAction }. */
+const owners = [];
 
 /**
  * @typedef {Object} DropdownItem
@@ -50,7 +56,8 @@ function renderItems(items) {
  *   align?: 'right'|'left',
  *   wide?: boolean,
  *   rowId?: string|number,
- *   className?: string
+ *   className?: string,
+ *   triggerClass?: string
  * }} props
  * @returns {string}
  */
@@ -74,15 +81,16 @@ function render({
     .join(' ');
   const role = menuHtml ? 'region' : 'menu';
   const idAttr = rowId !== undefined ? ` data-id="${escapeHtml(rowId)}"` : '';
+  const menuId = nextId('dropdown');
 
   return `<div class="dropdown${className ? ` ${escapeHtml(className)}` : ''}">
-    <button type="button" class="${triggerClass}" data-dropdown-trigger aria-haspopup="${role === 'menu' ? 'menu' : 'true'}" aria-expanded="false" aria-label="${escapeHtml(label)}">${trigger}</button>
-    <div class="${menuClasses}" role="${role}" aria-label="${escapeHtml(label)}" hidden${idAttr}>${menuHtml ?? renderItems(items)}</div>
+    <button type="button" class="${triggerClass}" data-dropdown-trigger aria-haspopup="${role === 'menu' ? 'menu' : 'true'}" aria-expanded="false" aria-controls="${menuId}" aria-label="${escapeHtml(label)}">${trigger}</button>
+    <div class="${menuClasses}" id="${menuId}" role="${role}" aria-label="${escapeHtml(label)}" hidden${idAttr}>${menuHtml ?? renderItems(items)}</div>
   </div>`;
 }
 
 /**
- * Đặt vị trí menu cố định so với nút mở. Lật lên trên nếu không đủ chỗ bên dưới.
+ * Định vị menu theo nút mở (tọa độ khung nhìn). Lật lên trên nếu không đủ chỗ bên dưới.
  * @param {HTMLElement} menu
  * @param {HTMLElement} trigger
  */
@@ -107,16 +115,39 @@ function position(menu, trigger) {
 }
 
 /**
+ * Đưa menu về đúng vị trí trong DOM ban đầu (hoặc gỡ bỏ nếu vị trí đó không còn).
+ * @param {HTMLElement} menu
+ */
+function returnHome(menu) {
+  const home = menu.__home;
+  menu.__home = null;
+  if (!home) return;
+  if (home.parent.isConnected) {
+    const next = home.next && home.next.parentNode === home.parent ? home.next : null;
+    home.parent.insertBefore(menu, next);
+  } else {
+    menu.remove();
+  }
+}
+
+/**
  * Đóng menu đang mở.
  * @param {{ restoreFocus?: boolean }} [options]
  */
 function closeAll({ restoreFocus = false } = {}) {
   if (!openMenu) return;
-  openMenu.hidden = true;
-  openTrigger.setAttribute('aria-expanded', 'false');
-  if (restoreFocus) openTrigger.focus();
+  const menu = openMenu;
+  const trigger = openTrigger;
   openMenu = null;
   openTrigger = null;
+  menu.hidden = true;
+  menu.style.position = '';
+  menu.style.top = '';
+  menu.style.left = '';
+  menu.style.right = '';
+  returnHome(menu);
+  trigger.setAttribute('aria-expanded', 'false');
+  if (restoreFocus) trigger.focus();
 }
 
 /**
@@ -125,7 +156,10 @@ function closeAll({ restoreFocus = false } = {}) {
  */
 function openFor(trigger, menu) {
   closeAll();
+  menu.__home = { parent: menu.parentNode, next: menu.nextSibling };
+  document.body.append(menu);
   menu.hidden = false;
+  menu.__trigger = trigger;
   trigger.setAttribute('aria-expanded', 'true');
   position(menu, trigger);
   openMenu = menu;
@@ -134,15 +168,30 @@ function openFor(trigger, menu) {
   menu.querySelector('[role="menuitem"], a, button')?.focus({ preventScroll: true });
 }
 
+/** @param {string} controlsId */
+function menuFor(trigger) {
+  return document.getElementById(trigger.getAttribute('aria-controls'));
+}
+
 function handleClick(event) {
   const trigger = event.target.closest('[data-dropdown-trigger]');
   if (trigger) {
-    const menu = trigger.closest('.dropdown')?.querySelector(':scope > .dropdown-menu');
+    const menu = menuFor(trigger);
     const wasOpen = menu && openMenu === menu;
     closeAll();
     if (menu && !wasOpen) openFor(trigger, menu);
     return;
   }
+
+  const item = event.target.closest('[data-dropdown-item]');
+  if (item && item.closest('.dropdown-menu')) {
+    const menu = item.closest('.dropdown-menu');
+    const owner = menu.__trigger ? owners.find((o) => o.rootEl.contains(menu.__trigger)) : null;
+    closeAll({ restoreFocus: true });
+    owner?.onAction?.(item.dataset.action, menu.dataset.id, item, event);
+    return;
+  }
+
   if (openMenu && !event.target.closest('.dropdown-menu')) {
     closeAll();
   }
@@ -184,31 +233,28 @@ function initGlobal() {
   window.addEventListener('resize', () => closeAll());
   // Menu dùng position: fixed nên khi trang cuộn thì định vị lại theo nút mở;
   // chỉ đóng khi nút mở đã cuộn ra khỏi màn hình.
-  document.addEventListener('scroll', () => {
-    if (!openMenu) return;
-    const rect = openTrigger.getBoundingClientRect();
-    if (rect.bottom < 0 || rect.top > window.innerHeight) {
-      closeAll();
-    } else {
-      position(openMenu, openTrigger);
-    }
-  }, true);
+  document.addEventListener(
+    'scroll',
+    () => {
+      if (!openMenu) return;
+      const rect = openTrigger.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > window.innerHeight) {
+        closeAll();
+      } else {
+        position(openMenu, openTrigger);
+      }
+    },
+    true,
+  );
 }
 
 /**
- * Bắt click trên mục menu trong rootEl. Gọi một lần cho mỗi root cố định.
+ * Đăng ký nhận sự kiện chọn mục menu của các nút nằm trong rootEl.
  * @param {HTMLElement} rootEl
  * @param {{ onAction?: (action: string, rowId: string|undefined, item: HTMLElement, event: Event) => void }} [props]
  */
 function init(rootEl, { onAction } = {}) {
-  rootEl.addEventListener('click', (event) => {
-    const item = event.target.closest('[data-dropdown-item]');
-    if (!item || !rootEl.contains(item)) return;
-
-    const rowId = item.closest('.dropdown-menu')?.dataset.id;
-    closeAll({ restoreFocus: true });
-    onAction?.(item.dataset.action, rowId, item, event);
-  });
+  owners.push({ rootEl, onAction });
 }
 
 export const Dropdown = { render, init, initGlobal, closeAll };

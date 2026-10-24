@@ -19,6 +19,7 @@ import { Table } from '../components/table.js';
 import { Toast } from '../components/toast.js';
 import { renderPageHeader } from '../layout/shell.js';
 import { openAssignModal, openScheduleModal } from './classes-modals.js';
+import { openClassRoster } from './class-roster.js';
 
 export const CLASS_STATUS_META = {
   MoDangKy: { label: 'Mở đăng ký', variant: 'info' },
@@ -31,6 +32,7 @@ const ROW_ACTIONS = [
   { action: 'edit', label: 'Chỉnh sửa', icon: 'pencil' },
   { action: 'assign', label: 'Phân giảng viên', icon: 'user-round' },
   { action: 'schedule', label: 'Lịch học', icon: 'calendar' },
+  { action: 'roster', label: 'Sinh viên trong lớp', icon: 'users' },
   { divider: true },
   { action: 'start', label: 'Bắt đầu học', icon: 'play' },
   { action: 'end', label: 'Kết thúc lớp', icon: 'flag' },
@@ -261,6 +263,7 @@ function handleRowAction(action, rowId) {
   if (action === 'edit') openClassForm({ record });
   if (action === 'assign') openAssignModal({ record, giangViens: refs.giangViens, onDone: loadTable });
   if (action === 'schedule') openScheduleModal({ record, phongs: refs.phongs, onDone: loadTable });
+  if (action === 'roster') openClassRoster({ record, onDone: loadTable });
   if (action === 'start') runAction(() => api.lopHocPhan.batDauHoc(record.id), `Lớp ${record.ma} đã bắt đầu học`);
   if (action === 'end') runAction(() => api.lopHocPhan.ketThuc(record.id), `Lớp ${record.ma} đã kết thúc`);
   if (action === 'cancel') {

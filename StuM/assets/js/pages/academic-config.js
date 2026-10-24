@@ -9,6 +9,7 @@
  */
 
 import { api } from '../core/api.js';
+import { escapeHtml } from '../core/dom.js';
 import { formatDate, formatNumber } from '../core/format.js';
 
 const yesNo = (value) => (value ? 'Có' : 'Không');
@@ -160,6 +161,66 @@ export const DANH_MUC = {
     ],
     filters: [{ name: 'nganhId', label: 'Ngành', param: 'NganhId', refKey: 'nganh' }],
     extraRowActions: [{ action: 'monHoc', label: 'Môn học trong CTĐT', icon: 'book-open' }],
+  },
+  giangVien: {
+    label: 'Giảng viên',
+    title: 'Giảng viên',
+    api: () => api.giangVien,
+    columns: [
+      { key: 'ma', label: 'Mã', primary: true },
+      { key: 'hoTen', label: 'Họ và tên' },
+      { key: 'hocVi', label: 'Học vị' },
+      { key: 'tenBoMon', label: 'Bộ môn' },
+    ],
+    fields: [
+      { name: 'ma', label: 'Mã giảng viên', kind: 'text', required: true },
+      { name: 'hoTen', label: 'Họ và tên', kind: 'text', required: true },
+      { name: 'hocVi', label: 'Học vị', kind: 'text' },
+      { name: 'email', label: 'Email', kind: 'text' },
+      { name: 'soDienThoai', label: 'Điện thoại', kind: 'text' },
+      { name: 'boMonId', label: 'Bộ môn', kind: 'ref', refKey: 'boMon', required: true },
+    ],
+    filters: [],
+  },
+  lopHanhChinh: {
+    label: 'Lớp hành chính',
+    title: 'Lớp hành chính',
+    api: () => api.lopHanhChinh,
+    columns: [
+      { key: 'ma', label: 'Mã lớp', primary: true },
+      { key: 'ten', label: 'Tên lớp' },
+      { key: 'tenNganh', label: 'Ngành' },
+      { key: 'tenCoVan', label: 'Cố vấn', render: (row) => escapeHtml(row.tenCoVan ?? 'Chưa gán') },
+      { key: 'soSinhVien', label: 'Sĩ số', align: 'right' },
+    ],
+    fields: [
+      { name: 'ma', label: 'Mã lớp', kind: 'text', required: true },
+      { name: 'ten', label: 'Tên lớp', kind: 'text', required: true },
+      { name: 'nganhId', label: 'Ngành', kind: 'ref', refKey: 'nganh', required: true },
+      { name: 'khoaTuyen', label: 'Khóa tuyển', kind: 'int', required: true },
+      { name: 'coVanId', label: 'Cố vấn học tập', kind: 'ref', refKey: 'giangVien' },
+    ],
+    filters: [],
+    extraRowActions: [
+      { action: 'phanLop', label: 'Phân sinh viên vào lớp', icon: 'user-plus' },
+      { action: 'coVan', label: 'Gán cố vấn', icon: 'user-round' },
+    ],
+  },
+  thongBao: {
+    label: 'Thông báo',
+    title: 'Thông báo',
+    api: () => api.thongBao,
+    columns: [
+      { key: 'tieuDe', label: 'Tiêu đề', primary: true },
+      { key: 'ngayDang', label: 'Ngày đăng', render: (row) => formatDate(row.ngayDang) },
+      { key: 'tenNguoiTao', label: 'Người đăng', render: (row) => escapeHtml(row.tenNguoiTao ?? '—') },
+    ],
+    fields: [
+      { name: 'tieuDe', label: 'Tiêu đề', kind: 'text', required: true },
+      { name: 'noiDung', label: 'Nội dung', kind: 'text', required: true },
+      { name: 'ngayDang', label: 'Ngày đăng', kind: 'date', required: true },
+    ],
+    filters: [],
   },
 };
 

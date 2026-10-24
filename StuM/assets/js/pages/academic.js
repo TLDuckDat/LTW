@@ -24,19 +24,29 @@ const state = { key: 'khoa', page: 1, pageSize: 10, search: '', filters: {}, row
 let refs = {};
 
 /** Tải các danh mục dùng làm lựa chọn (khóa ngoại) trong form và bộ lọc. */
+/** Sinh viên để phân vào lớp hành chính (tải cùng danh mục tham chiếu). */
+let students = [];
+
 async function loadRefs() {
-  const [khoa, nganh, namHoc, monHoc] = await Promise.all([
+  const [khoa, nganh, namHoc, monHoc, boMon, giangVien, sv] = await Promise.all([
     api.khoa.getAll(),
     api.nganh.getAll(),
     api.namHoc.getAll(),
     api.monHoc.getAll(),
+    api.boMon.getAll(),
+    api.giangVien.getAll(),
+    api.students.list({ pageSize: 100 }).then((r) => r.data),
   ]);
+  const withLabel = (items, label) => items.map((item) => ({ value: item.id, label: label(item) }));
   refs = {
-    khoa: khoa.map((item) => ({ value: item.id, label: `${item.ma} - ${item.ten}` })),
-    nganh: nganh.map((item) => ({ value: item.id, label: `${item.ma} - ${item.ten}` })),
-    namHoc: namHoc.map((item) => ({ value: item.id, label: item.ten })),
-    monHoc: monHoc.map((item) => ({ value: item.id, label: `${item.ma} - ${item.ten}` })),
+    khoa: withLabel(khoa, (i) => `${i.ma} - ${i.ten}`),
+    nganh: withLabel(nganh, (i) => `${i.ma} - ${i.ten}`),
+    namHoc: withLabel(namHoc, (i) => i.ten),
+    monHoc: withLabel(monHoc, (i) => `${i.ma} - ${i.ten}`),
+    boMon: withLabel(boMon, (i) => `${i.ma} - ${i.ten}`),
+    giangVien: withLabel(giangVien, (i) => `${i.ma} - ${i.hoTen}`),
   };
+  students = sv;
 }
 
 const current = () => DANH_MUC[state.key];
@@ -111,7 +121,7 @@ function loadList() {
         columns: columnsOf(def),
         rows: result.data,
         actions: rowActions(),
-        actionLabel: (row) => `Thao tác cho ${row.ma ?? row.ten}`,
+        actionLabel: (row) => `Thao tác cho ${row[def.columns[0].key] ?? row.id}`,
         caption: def.title,
         footer: Pagination.render({ page: result.page, pageSize: result.pageSize, total: result.total }),
       }),
@@ -347,12 +357,79 @@ function editCtdtSubject(ctdt, row, onDone) {
   });
 }
 
+/** Phân sinh viên vào lớp hành chính bằng cách đánh dấu danh sách. */
+function openAssignStudents(lop) {
+  const formId = nextId('assign-students');
+  const handle = Modal.open({
+    title: `Phân sinh viên vào ${lop.ma}`,
+    size: 'lg',
+    content: `<form class="modal-form" id="${formId}">
+      ${students.map((sv) => `<label class="checkbox-row"><input type="checkbox" name="sinhVien" value="${sv.id}"> <span>${escapeHtml(sv.mssv)} - ${escapeHtml(sv.hoTen)}</span></label>`).join('') || '<p class="form-hint">Chưa có sinh viên.</p>'}
+    </form>`,
+    footer: [
+      Button.render({ label: 'Hủy', variant: 'outline', action: 'cancel' }),
+      Button.render({ label: 'Phân lớp', variant: 'primary', action: 'save' }),
+    ].join(''),
+  });
+  const form = handle.element.querySelector(`#${formId}`);
+  const saveButton = handle.element.querySelector('[data-action="save"]');
+  handle.element.querySelector('[data-action="cancel"]').addEventListener('click', handle.close);
+  saveButton.addEventListener('click', async () => {
+    const ids = [...form.querySelectorAll('input[name="sinhVien"]:checked')].map((input) => Number(input.value));
+    if (ids.length === 0) {
+      Toast.warning('Chọn ít nhất một sinh viên');
+      return;
+    }
+    Button.setLoading(saveButton, true);
+    try {
+      await api.lopHanhChinh.phanLop(lop.id, ids);
+      Toast.success(`Đã phân ${ids.length} sinh viên vào lớp`);
+      handle.close();
+      loadList();
+    } catch (error) {
+      Button.setLoading(saveButton, false);
+      Toast.error(error.message);
+    }
+  });
+}
+
+/** Gán cố vấn học tập cho lớp hành chính. */
+function openAssignAdvisor(lop) {
+  const formId = nextId('advisor');
+  const handle = Modal.open({
+    title: `Cố vấn học tập của ${lop.ma}`,
+    content: `<form class="modal-form" id="${formId}">${Select.render({ name: 'coVanId', label: 'Giảng viên', options: refs.giangVien, value: lop.coVanId ?? '', placeholder: 'Chưa gán', searchable: true })}</form>`,
+    footer: [
+      Button.render({ label: 'Hủy', variant: 'outline', action: 'cancel' }),
+      Button.render({ label: 'Lưu', variant: 'primary', action: 'save' }),
+    ].join(''),
+  });
+  const form = handle.element.querySelector(`#${formId}`);
+  const saveButton = handle.element.querySelector('[data-action="save"]');
+  handle.element.querySelector('[data-action="cancel"]').addEventListener('click', handle.close);
+  saveButton.addEventListener('click', async () => {
+    const value = Select.getValue(form.elements.namedItem('coVanId'), refs.giangVien);
+    Button.setLoading(saveButton, true);
+    try {
+      await api.lopHanhChinh.coVan(lop.id, value === '' ? null : Number(value));
+      Toast.success('Đã cập nhật cố vấn');
+      handle.close();
+      loadList();
+    } catch (error) {
+      Button.setLoading(saveButton, false);
+      Toast.error(error.message);
+    }
+  });
+}
+
 function handleRowAction(action, rowId) {
   const record = state.rows.find((row) => String(row.id) === rowId);
   if (!record) return;
   if (action === 'edit') openForm(record);
   if (action === 'delete') confirmDelete(record);
   if (action === 'monHoc') openCtdtSubjects(record);
+  if (action === 'phanLop') openAssignStudents(record);
+  if (action === 'coVan') openAssignAdvisor(record);
 }
 
 function switchTab(root, key) {

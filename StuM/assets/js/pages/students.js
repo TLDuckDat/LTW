@@ -18,6 +18,7 @@ import { Table } from '../components/table.js';
 import { Toast } from '../components/toast.js';
 import { renderPageHeader } from '../layout/shell.js';
 import { openStatusForm, openStudentDetail, openStudentForm, statusBadge, STATUS_META } from './students-form.js';
+import { openTranscript } from './class-roster.js';
 
 const COLUMNS = [
   { key: 'mssv', label: 'MSSV' },
@@ -31,6 +32,7 @@ const COLUMNS = [
 const ROW_ACTIONS = [
   { action: 'view', label: 'Xem chi tiết', icon: 'eye' },
   { action: 'edit', label: 'Chỉnh sửa', icon: 'pencil' },
+  { action: 'transcript', label: 'Bảng điểm', icon: 'file-text' },
   { divider: true },
   { action: 'bao-luu', label: 'Bảo lưu', icon: 'pause' },
   { action: 'thoi-hoc', label: 'Thôi học', icon: 'user-x' },
@@ -147,6 +149,7 @@ function handleRowAction(action, rowId) {
   const record = state.rows.find((row) => String(row.id) === String(rowId));
   if (!record) return;
   if (action === 'view') openStudentDetail(record.id);
+  if (action === 'transcript') openTranscript(record.id);
   if (action === 'edit') openForm(record);
   if (action === 'delete') confirmDelete(record);
   if (['bao-luu', 'thoi-hoc', 'quay-lai-hoc'].includes(action)) {

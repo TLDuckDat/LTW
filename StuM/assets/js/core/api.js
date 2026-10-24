@@ -119,14 +119,18 @@ export const api = {
     canhBao: (hocKyId, params) => listPaged(`/bao-cao/canh-bao-hoc-vu/${hocKyId}`, params),
   },
 
-  thongBao: {
-    list: (params) => listPaged('/thong-bao', params),
-  },
+  thongBao: crud('/thong-bao'),
 
   khoa: crud('/khoa'),
   nganh: crud('/nganh'),
-  lopHanhChinh: { getAll: () => listAll('/lop-hanh-chinh') },
-  giangVien: { getAll: () => listAll('/giang-vien') },
+  lopHanhChinh: {
+    ...crud('/lop-hanh-chinh'),
+    /** Gán danh sách sinh viên vào lớp hành chính. */
+    phanLop: (id, sinhVienIds) => request(`/lop-hanh-chinh/${id}/phan-lop`, { method: 'POST', body: { sinhVienIds } }),
+    /** Gán cố vấn học tập cho lớp (coVanId null để bỏ). */
+    coVan: (id, coVanId) => request(`/lop-hanh-chinh/${id}/co-van`, { method: 'PUT', body: { coVanId } }),
+  },
+  giangVien: crud('/giang-vien'),
   phongHoc: { getAll: () => listAll('/phong-hoc') },
   hocKy: crud('/hoc-ky'),
   boMon: crud('/bo-mon'),
@@ -362,6 +366,24 @@ export const api = {
     capNhatSiSo: (lopHocPhanId, siSoToiDa) =>
       request(`/dang-ky-hoc-phan/si-so/${lopHocPhanId}`, { method: 'PUT', body: { siSoToiDa } }),
   },
+
+  /** Sinh viên trong một lớp học phần (module Grades). */
+  sinhVienLopHocPhan: {
+    list: (lopHocPhanId, params) => listPaged(`/diem/lop-hoc-phan/${lopHocPhanId}/sinh-vien`, params),
+    them: (lopHocPhanId, sinhVienId) =>
+      request(`/diem/lop-hoc-phan/${lopHocPhanId}/sinh-vien`, { method: 'POST', body: { sinhVienId } }),
+    xoa: (lopHocPhanId, dangKyHocPhanId) =>
+      request(`/diem/lop-hoc-phan/${lopHocPhanId}/sinh-vien/${dangKyHocPhanId}`, { method: 'DELETE' }),
+    /** Chuyển sinh viên sang lớp học phần khác cùng học kỳ. */
+    chuyenLop: (lopHocPhanId, dangKyHocPhanId, lopHocPhanMoiId) =>
+      request(`/diem/lop-hoc-phan/${lopHocPhanId}/sinh-vien/${dangKyHocPhanId}/chuyen-lop`, {
+        method: 'POST',
+        body: { lopHocPhanMoiId },
+      }),
+  },
+
+  /** Bảng điểm đầy đủ của một sinh viên theo học kỳ (BangDiemSinhVienDto). */
+  bangDiemSinhVien: (sinhVienId) => request(`/diem/sinh-vien/${sinhVienId}`),
 
   diem: {
     /** Bảng điểm của một lớp học phần (BangDiemLopDto). */
