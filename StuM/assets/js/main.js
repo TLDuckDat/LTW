@@ -17,6 +17,7 @@ const PAGE_TITLES = {
   courses: 'Môn học',
   classes: 'Lớp học phần',
   grades: 'Điểm',
+  registration: 'Đăng ký học phần',
 };
 
 const PAGE_MODULES = {
@@ -26,6 +27,7 @@ const PAGE_MODULES = {
   courses: () => import('./pages/courses.js'),
   classes: () => import('./pages/classes.js'),
   grades: () => import('./pages/grades.js'),
+  registration: () => import('./pages/registration.js'),
 };
 
 async function bootstrap() {

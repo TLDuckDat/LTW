@@ -130,7 +130,8 @@ function openFor(trigger, menu) {
   position(menu, trigger);
   openMenu = menu;
   openTrigger = trigger;
-  menu.querySelector('[role="menuitem"], a, button')?.focus();
+  // preventScroll: focus không được cuộn trang, nếu không sự kiện cuộn sẽ đóng menu ngay khi vừa mở
+  menu.querySelector('[role="menuitem"], a, button')?.focus({ preventScroll: true });
 }
 
 function handleClick(event) {
@@ -181,7 +182,17 @@ function initGlobal() {
   document.addEventListener('click', handleClick);
   document.addEventListener('keydown', handleKeydown);
   window.addEventListener('resize', () => closeAll());
-  document.addEventListener('scroll', () => closeAll(), true);
+  // Menu dùng position: fixed nên khi trang cuộn thì định vị lại theo nút mở;
+  // chỉ đóng khi nút mở đã cuộn ra khỏi màn hình.
+  document.addEventListener('scroll', () => {
+    if (!openMenu) return;
+    const rect = openTrigger.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      closeAll();
+    } else {
+      position(openMenu, openTrigger);
+    }
+  }, true);
 }
 
 /**

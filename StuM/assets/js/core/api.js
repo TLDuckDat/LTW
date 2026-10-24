@@ -100,6 +100,8 @@ export const api = {
       return listPaged('/sinh-vien', { ...params, KhoaId: khoaId, TrangThai: trangThai });
     },
     get: (id) => request(`/sinh-vien/${id}`),
+    /** Hồ sơ của chính sinh viên đang đăng nhập (vai trò SinhVien). */
+    me: () => request('/sinh-vien/toi'),
     create: (payload) => request('/sinh-vien', { method: 'POST', body: payload }),
     update: (id, payload) => request(`/sinh-vien/${id}`, { method: 'PUT', body: payload }),
     remove: (id) => request(`/sinh-vien/${id}`, { method: 'DELETE' }),
@@ -149,6 +151,60 @@ export const api = {
     themLichHoc: (id, payload) => request(`/lop-hoc-phan/${id}/lich-hoc`, { method: 'POST', body: payload }),
     xoaLichHoc: (id, lichHocId) =>
       request(`/lop-hoc-phan/${id}/lich-hoc/${lichHocId}`, { method: 'DELETE' }),
+  },
+
+  dotDangKy: {
+    list({ hocKyId, trangThai, ...params } = {}) {
+      return listPaged('/dot-dang-ky', { ...params, HocKyId: hocKyId, TrangThai: trangThai });
+    },
+    create: (payload) => request('/dot-dang-ky', { method: 'POST', body: payload }),
+    update: (id, payload) => request(`/dot-dang-ky/${id}`, { method: 'PUT', body: payload }),
+    mo: (id) => request(`/dot-dang-ky/${id}/mo`, { method: 'POST' }),
+    dong: (id) => request(`/dot-dang-ky/${id}/dong`, { method: 'POST' }),
+    remove: (id) => request(`/dot-dang-ky/${id}`, { method: 'DELETE' }),
+  },
+
+  dangKy: {
+    /** Lớp mở đăng ký kèm điều kiện của sinh viên (LopMoDto). */
+    lopMo({ sinhVienId, hocKyId, monHocId, search, page = 1, pageSize = 100 } = {}) {
+      return listPaged('/dang-ky-hoc-phan/lop-mo', {
+        page,
+        pageSize,
+        search,
+        SinhVienId: sinhVienId,
+        HocKyId: hocKyId,
+        MonHocId: monHocId,
+      });
+    },
+    /** Học phần đã đăng ký trong học kỳ (DaDangKyDto). */
+    daDangKy: (sinhVienId, hocKyId) =>
+      request('/dang-ky-hoc-phan/da-dang-ky', { query: { SinhVienId: sinhVienId, HocKyId: hocKyId } }),
+    /** Thời khóa biểu của sinh viên trong học kỳ (ThoiKhoaBieuDto). */
+    thoiKhoaBieu: (sinhVienId, hocKyId) =>
+      request('/dang-ky-hoc-phan/thoi-khoa-bieu', { query: { SinhVienId: sinhVienId, HocKyId: hocKyId } }),
+    /**
+     * @param {{ sinhVienId?: number, lopHocPhanId: number, xacNhanHocCaiThien?: boolean }} payload
+     * sinhVienId bắt buộc với nhân viên; sinh viên tự đăng ký thì bỏ qua.
+     */
+    dangKy: ({ sinhVienId, lopHocPhanId, xacNhanHocCaiThien = false }) =>
+      request('/dang-ky-hoc-phan', {
+        method: 'POST',
+        body: { sinhVienId: sinhVienId ?? null, lopHocPhanId, xacNhanHocCaiThien },
+      }),
+    huy: (dangKyId) => request(`/dang-ky-hoc-phan/${dangKyId}`, { method: 'DELETE' }),
+    /** Theo dõi sĩ số các lớp trong học kỳ (SiSoLopDto). */
+    siSo({ hocKyId, monHocId, tinhTrang, page = 1, pageSize = 100, search } = {}) {
+      return listPaged('/dang-ky-hoc-phan/si-so', {
+        page,
+        pageSize,
+        search,
+        HocKyId: hocKyId,
+        MonHocId: monHocId,
+        TinhTrang: tinhTrang,
+      });
+    },
+    capNhatSiSo: (lopHocPhanId, siSoToiDa) =>
+      request(`/dang-ky-hoc-phan/si-so/${lopHocPhanId}`, { method: 'PUT', body: { siSoToiDa } }),
   },
 
   diem: {

@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { route: 'students', label: 'Sinh viên', icon: 'users' },
   { route: 'courses', label: 'Môn học', icon: 'book-open' },
   { route: 'classes', label: 'Lớp học phần', icon: 'school' },
+  { route: 'registration', label: 'Đăng ký học phần', icon: 'calendar-check' },
   { route: 'grades', label: 'Điểm', icon: 'clipboard-list' },
 ];
 
