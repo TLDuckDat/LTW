@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { route: 'courses', label: 'Môn học', icon: 'book-open' },
   { route: 'classes', label: 'Lớp học phần', icon: 'school' },
   { route: 'registration', label: 'Đăng ký học phần', icon: 'calendar-check' },
+  { route: 'academic', label: 'Danh mục học vụ', icon: 'library', roles: ['Admin', 'PhongDaoTao'] },
   { route: 'accounts', label: 'Tài khoản', icon: 'user-cog', roles: ['Admin'] },
   { route: 'grades', label: 'Điểm', icon: 'clipboard-list' },
 ];

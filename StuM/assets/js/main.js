@@ -19,10 +19,11 @@ const PAGE_TITLES = {
   grades: 'Điểm',
   registration: 'Đăng ký học phần',
   accounts: 'Tài khoản',
+  academic: 'Danh mục học vụ',
 };
 
 /** Trang chỉ dành cho một số vai trò; vai trò khác bị chuyển về Dashboard. */
-const PAGE_ROLES = { accounts: ['Admin'] };
+const PAGE_ROLES = { accounts: ['Admin'], academic: ['Admin', 'PhongDaoTao'] };
 
 const PAGE_MODULES = {
   login: () => import('./pages/login.js'),
@@ -33,6 +34,7 @@ const PAGE_MODULES = {
   grades: () => import('./pages/grades.js'),
   registration: () => import('./pages/registration.js'),
   accounts: () => import('./pages/accounts.js'),
+  academic: () => import('./pages/academic.js'),
 };
 
 async function bootstrap() {

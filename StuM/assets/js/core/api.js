@@ -44,6 +44,21 @@ async function listAll(path, query = {}) {
   return result.items;
 }
 
+/**
+ * CRUD chuẩn của một danh mục: danh sách phân trang, lấy đầy đủ, chi tiết, tạo, sửa, xóa.
+ * @param {string} path
+ */
+function crud(path) {
+  return {
+    list: (params) => listPaged(path, params),
+    getAll: () => listAll(path),
+    get: (id) => request(`${path}/${id}`),
+    create: (payload) => request(path, { method: 'POST', body: payload }),
+    update: (id, payload) => request(`${path}/${id}`, { method: 'PUT', body: payload }),
+    remove: (id) => request(`${path}/${id}`, { method: 'DELETE' }),
+  };
+}
+
 export const api = {
   auth: {
     /**
@@ -85,12 +100,24 @@ export const api = {
     list: (params) => listPaged('/thong-bao', params),
   },
 
-  khoa: { getAll: () => listAll('/khoa') },
-  nganh: { getAll: () => listAll('/nganh') },
+  khoa: crud('/khoa'),
+  nganh: crud('/nganh'),
   lopHanhChinh: { getAll: () => listAll('/lop-hanh-chinh') },
   giangVien: { getAll: () => listAll('/giang-vien') },
   phongHoc: { getAll: () => listAll('/phong-hoc') },
-  hocKy: { getAll: () => listAll('/hoc-ky') },
+  hocKy: crud('/hoc-ky'),
+  boMon: crud('/bo-mon'),
+  chuyenNganh: crud('/chuyen-nganh'),
+  namHoc: crud('/nam-hoc'),
+  quyCheHocVu: crud('/quy-che'),
+  chuongTrinhDaoTao: {
+    ...crud('/chuong-trinh-dao-tao'),
+    monHoc: (id) => request(`/chuong-trinh-dao-tao/${id}/mon-hoc`),
+    themMonHoc: (id, payload) => request(`/chuong-trinh-dao-tao/${id}/mon-hoc`, { method: 'POST', body: payload }),
+    capNhatMonHoc: (id, monHocId, payload) =>
+      request(`/chuong-trinh-dao-tao/${id}/mon-hoc/${monHocId}`, { method: 'PUT', body: payload }),
+    boMonHoc: (id, monHocId) => request(`/chuong-trinh-dao-tao/${id}/mon-hoc/${monHocId}`, { method: 'DELETE' }),
+  },
 
   students: {
     /**

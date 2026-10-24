@@ -14,6 +14,7 @@ export const ROUTES = {
   grades: 'grades.html',
   registration: 'registration.html',
   accounts: 'accounts.html',
+  academic: 'academic.html',
   'ui-kit': 'ui-kit.html',
 };
 
