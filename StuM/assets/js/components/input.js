@@ -7,7 +7,7 @@
 
 import { escapeHtml, refreshIcons } from '../core/dom.js';
 
-const TYPES = ['text', 'email', 'number', 'password'];
+const TYPES = ['text', 'email', 'number', 'password', 'date'];
 
 let uid = 0;
 

@@ -4,6 +4,33 @@
  */
 
 /**
+ * Trì hoãn gọi hàm cho tới khi ngừng gọi trong `ms` mili giây (dùng cho ô tìm kiếm).
+ * @template {(...args: any[]) => void} F
+ * @param {F} fn
+ * @param {number} ms
+ * @returns {F}
+ */
+export function debounce(fn, ms = 300) {
+  let timerId = null;
+  return (...args) => {
+    clearTimeout(timerId);
+    timerId = setTimeout(() => fn(...args), ms);
+  };
+}
+
+let idCounter = 0;
+
+/**
+ * Sinh id duy nhất cho phần tử (dùng cho label/for, aria-describedby...).
+ * @param {string} [prefix='el']
+ * @returns {string}
+ */
+export function nextId(prefix = 'el') {
+  idCounter += 1;
+  return `${prefix}-${idCounter}`;
+}
+
+/**
  * Render lại icon Lucide cho các thẻ <i data-lucide> mới được thêm vào DOM.
  */
 export function refreshIcons() {

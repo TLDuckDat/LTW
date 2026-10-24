@@ -12,16 +12,16 @@
 
   <link rel="stylesheet" href="assets/css/tokens.css">
   <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/layout.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
 
   <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js" defer></script>
   <script type="module" src="assets/js/main.js" defer></script>
 </head>
-<body>
-  <a class="skip-link" href="#main-content">Bỏ qua và đi tới nội dung chính</a>
-
-  <main id="main-content" class="flex flex-col items-center justify-center p-lg" style="min-height: 100vh;">
-    <h1 class="h1">StuM</h1>
-    <p class="text-body text-muted mt-sm">Hệ thống Quản lý Sinh viên & Đào tạo</p>
-  </main>
+<body data-page="login">
+  <div id="app" aria-busy="true">
+    <p class="sr-only">Đang tải trang đăng nhập</p>
+  </div>
 </body>
 </html>

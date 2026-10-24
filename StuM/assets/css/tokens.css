@@ -23,14 +23,14 @@
   --success-foreground: 0 0% 100%;
   --warning: 38 92% 50%;
   --warning-foreground: 0 0% 100%;
-  --destructive: 0 84% 60%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   --info: 199 89% 48%;
   --info-foreground: 0 0% 100%;
 
   /* Border & Ring */
   --border: 214 32% 91%;
-  --input: 214 32% 91%;
+  --input: 215 16% 47%;
   --ring: 221 83% 53%;
   --radius: 0.5rem;
 
@@ -56,7 +56,7 @@
   --secondary-foreground: 210 40% 98%;
 
   --border: 217 33% 17%;
-  --input: 217 33% 17%;
+  --input: 217 19% 45%;
   --ring: 217 91% 60%;
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);

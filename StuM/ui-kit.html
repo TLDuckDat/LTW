@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="assets/css/tokens.css">
   <link rel="stylesheet" href="assets/css/base.css">
   <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/layout.css">
   <link rel="stylesheet" href="assets/css/pages.css">
 
   <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js" defer></script>
@@ -23,36 +24,18 @@
 
   <header class="ui-kit-header">
     <h1 class="h1">StuM UI Kit</h1>
-    <p class="text-body text-muted">Showcase component ở cả hai theme. Panel bên trái là Light, panel bên phải là Dark.</p>
+    <p class="text-body text-muted">Showcase toàn bộ component ở hai theme. Panel bên trái là Light, panel bên phải là Dark. Modal và toast hiển thị theo theme của trang.</p>
   </header>
 
   <main id="ui-kit-main" class="ui-kit-grid">
     <section class="ui-kit-panel" data-ui-panel="light" aria-labelledby="panel-light-title">
       <h2 id="panel-light-title" class="h2">Light theme</h2>
-
-      <div class="ui-kit-section">
-        <h3 class="h3">Button</h3>
-        <div data-demo="button"></div>
-      </div>
-
-      <div class="ui-kit-section">
-        <h3 class="h3">Input</h3>
-        <div data-demo="input"></div>
-      </div>
+      <div data-ui-sections class="page-stack"></div>
     </section>
 
     <section class="ui-kit-panel dark" data-ui-panel="dark" aria-labelledby="panel-dark-title">
       <h2 id="panel-dark-title" class="h2">Dark theme</h2>
-
-      <div class="ui-kit-section">
-        <h3 class="h3">Button</h3>
-        <div data-demo="button"></div>
-      </div>
-
-      <div class="ui-kit-section">
-        <h3 class="h3">Input</h3>
-        <div data-demo="input"></div>
-      </div>
+      <div data-ui-sections class="page-stack"></div>
     </section>
   </main>
 </body>
