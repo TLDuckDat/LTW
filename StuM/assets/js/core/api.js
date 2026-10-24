@@ -278,6 +278,25 @@ export const api = {
     xuLy: (id, payload) => request(`/phuc-khao/${id}/xu-ly`, { method: 'POST', body: payload }),
   },
 
+  /** Chức năng "Của tôi" cho sinh viên và giảng viên (backend tự lấy hồ sơ theo tài khoản đăng nhập). */
+  cuaToi: {
+    sinhVien: () => request('/sinh-vien/toi'),
+    lichSuHocTap: () => request('/sinh-vien/toi/lich-su-hoc-tap'),
+    bangDiem: () => request('/diem/toi/bang-diem'),
+    canhBao: (hocKyId) => request('/diem/toi/canh-bao', { query: { hocKyId } }),
+    phucKhao: ({ trangThai, ...params } = {}) => listPaged('/diem/toi/phuc-khao', { ...params, trangThai }),
+    taoPhucKhao: (payload) => request('/diem/toi/phuc-khao', { method: 'POST', body: payload }),
+    hocPhi: ({ conNo, hocKyId, ...params } = {}) =>
+      listPaged('/cong-tac-sinh-vien/toi/hoc-phi', { ...params, ConNo: conNo, HocKyId: hocKyId }),
+    lichSuThanhToan: (hocPhiId) => request(`/cong-tac-sinh-vien/toi/hoc-phi/${hocPhiId}/thanh-toan`),
+    hocBong: ({ hocKyId, ...params } = {}) => listPaged('/cong-tac-sinh-vien/toi/hoc-bong', { ...params, HocKyId: hocKyId }),
+    diemRenLuyen: ({ hocKyId, ...params } = {}) =>
+      listPaged('/cong-tac-sinh-vien/toi/diem-ren-luyen', { ...params, HocKyId: hocKyId }),
+    khenThuong: ({ loai, ...params } = {}) => listPaged('/cong-tac-sinh-vien/toi/khen-thuong-ky-luat', { ...params, Loai: loai }),
+    giangVien: () => request('/giang-vien/toi'),
+    lopDay: ({ hocKyId, ...params } = {}) => listPaged('/giang-vien/toi/lop-hoc-phan', { ...params, HocKyId: hocKyId }),
+  },
+
   /** Quản trị tài khoản (module Auth): chỉ Admin. */
   taiKhoan: {
     list: (params) => listPaged('/auth/accounts', params),

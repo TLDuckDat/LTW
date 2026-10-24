@@ -7,6 +7,7 @@
 
 export const ROUTES = {
   login: 'index.html',
+  portal: 'portal.html',
   dashboard: 'dashboard.html',
   students: 'students.html',
   courses: 'courses.html',
@@ -20,6 +21,15 @@ export const ROUTES = {
   studentAffairs: 'student-affairs.html',
   'ui-kit': 'ui-kit.html',
 };
+
+/**
+ * Trang chính sau khi đăng nhập: sinh viên và giảng viên vào Trang cá nhân, các vai trò còn lại vào Dashboard.
+ * @param {string} [vaiTro]
+ * @returns {string} tên route
+ */
+export function homeRouteFor(vaiTro) {
+  return vaiTro === 'SinhVien' || vaiTro === 'GiangVien' ? 'portal' : 'dashboard';
+}
 
 export const router = {
   /** @returns {string} tên trang hiện tại, lấy từ data-page của <body> */

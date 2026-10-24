@@ -5,7 +5,7 @@
 
 import { api, ApiError } from '../core/api.js';
 import { refreshIcons } from '../core/dom.js';
-import { router } from '../core/router.js';
+import { homeRouteFor, router } from '../core/router.js';
 import { Storage } from '../core/storage.js';
 import { Button } from '../components/button.js';
 import { Input } from '../components/input.js';
@@ -116,13 +116,13 @@ async function handleSubmit(form) {
   Button.setLoading(submitButton, true);
 
   try {
-    await api.auth.login(username.value.trim(), password.value);
+    const login = await api.auth.login(username.value.trim(), password.value);
     if (remember) {
       Storage.set(REMEMBER_KEY, username.value.trim());
     } else {
       Storage.remove(REMEMBER_KEY);
     }
-    router.navigate('dashboard');
+    router.navigate(homeRouteFor(login.vaiTro));
   } catch (error) {
     // Thông báo từ backend đã là tiếng Việt (sai mật khẩu, bị khóa tạm thời, không kết nối được máy chủ...)
     Button.setLoading(submitButton, false);

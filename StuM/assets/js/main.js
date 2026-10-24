@@ -1,17 +1,18 @@
 /**
  * Entry point của StuM cho các trang ứng dụng và trang đăng nhập.
- * Áp dụng theme, bảo vệ route bằng phiên đăng nhập, dựng shell rồi nạp module của trang.
+ * Áp dụng theme, bảo vệ route bằng phiên đăng nhập và vai trò, dựng shell rồi nạp module của trang.
  * ui-kit.html không dùng file này vì cần giữ theme riêng cho từng panel.
  */
 
 import { api } from './core/api.js';
 import { refreshIcons } from './core/dom.js';
-import { router } from './core/router.js';
+import { homeRouteFor, router } from './core/router.js';
 import { theme } from './core/theme.js';
 import { Dropdown } from './components/dropdown.js';
 import { mountShell } from './layout/shell.js';
 
 const PAGE_TITLES = {
+  portal: 'Trang cá nhân',
   dashboard: 'Dashboard',
   students: 'Sinh viên',
   courses: 'Môn học',
@@ -25,17 +26,27 @@ const PAGE_TITLES = {
   studentAffairs: 'Công tác sinh viên',
 };
 
-/** Trang chỉ dành cho một số vai trò; vai trò khác bị chuyển về Dashboard. */
+const STAFF = ['Admin', 'PhongDaoTao'];
+
+/** Trang chỉ dành cho một số vai trò; vai trò khác được chuyển về trang chính của mình. Khớp với backend. */
 const PAGE_ROLES = {
+  portal: ['SinhVien', 'GiangVien'],
+  dashboard: STAFF,
+  students: [...STAFF, 'GiangVien'],
+  courses: STAFF,
+  classes: STAFF,
+  grades: [...STAFF, 'GiangVien'],
+  registration: [...STAFF, 'SinhVien'],
   accounts: ['Admin'],
-  academic: ['Admin', 'PhongDaoTao'],
-  graduation: ['Admin', 'PhongDaoTao'],
-  reports: ['Admin', 'PhongDaoTao'],
-  studentAffairs: ['Admin', 'PhongDaoTao'],
+  academic: STAFF,
+  graduation: STAFF,
+  reports: STAFF,
+  studentAffairs: STAFF,
 };
 
 const PAGE_MODULES = {
   login: () => import('./pages/login.js'),
+  portal: () => import('./pages/portal.js'),
   dashboard: () => import('./pages/dashboard.js'),
   students: () => import('./pages/students.js'),
   courses: () => import('./pages/courses.js'),
@@ -62,7 +73,7 @@ async function bootstrap() {
 
   if (page === 'login') {
     if (session) {
-      router.navigate('dashboard');
+      router.navigate(homeRouteFor(session.vaiTro));
       return;
     }
     const loginModule = await loadModule();
@@ -77,7 +88,7 @@ async function bootstrap() {
   }
 
   if (PAGE_ROLES[page] && !PAGE_ROLES[page].includes(session.vaiTro)) {
-    router.navigate('dashboard');
+    router.navigate(homeRouteFor(session.vaiTro));
     return;
   }
 

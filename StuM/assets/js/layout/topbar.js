@@ -52,8 +52,26 @@ function initialsOf(name) {
     .toUpperCase();
 }
 
+/** Vai trò được mở trang Sinh viên (khớp với PAGE_ROLES trong main.js); chỉ các vai trò này thấy ô tìm kiếm. */
+const STUDENT_PAGE_ROLES = ['Admin', 'PhongDaoTao', 'GiangVien'];
+
 /**
- * @param {{ breadcrumb: Array<{ label: string, href?: string }>, user?: { name?: string } | null }} props
+ * @param {{ vaiTro?: string } | null} user
+ * @returns {string}
+ */
+function renderSearch(user) {
+  if (!STUDENT_PAGE_ROLES.includes(user?.vaiTro)) return '';
+  return `<form class="topbar-search" role="search" data-global-search>
+      <label class="sr-only" for="global-search">Tìm sinh viên theo MSSV hoặc họ tên</label>
+      <div class="input-wrap has-icon-left">
+        <i data-lucide="search" class="input-icon input-icon-left" aria-hidden="true"></i>
+        <input class="input" id="global-search" type="search" name="globalSearch" placeholder="Tìm sinh viên theo MSSV, họ tên..." autocomplete="off">
+      </div>
+    </form>`;
+}
+
+/**
+ * @param {{ breadcrumb: Array<{ label: string, href?: string }>, user?: { name?: string, vaiTro?: string } | null }} props
  * @returns {string}
  */
 function render({ breadcrumb, user }) {
@@ -80,13 +98,7 @@ function render({ breadcrumb, user }) {
   return `<header class="topbar">
     <button type="button" class="btn btn-ghost btn-sm btn-icon-only topbar-menu-toggle" data-action="toggle-drawer" aria-controls="app-sidebar" aria-expanded="false" aria-label="Mở menu"><i data-lucide="menu" class="btn-icon" aria-hidden="true"></i></button>
     ${renderBreadcrumb(breadcrumb)}
-    <form class="topbar-search" role="search" data-global-search>
-      <label class="sr-only" for="global-search">Tìm sinh viên theo MSSV hoặc họ tên</label>
-      <div class="input-wrap has-icon-left">
-        <i data-lucide="search" class="input-icon input-icon-left" aria-hidden="true"></i>
-        <input class="input" id="global-search" type="search" name="globalSearch" placeholder="Tìm sinh viên theo MSSV, họ tên..." autocomplete="off">
-      </div>
-    </form>
+    ${renderSearch(user)}
     <div class="topbar-actions">
       ${renderThemeButton(theme.current())}
       ${notifications}
