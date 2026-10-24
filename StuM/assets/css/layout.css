@@ -232,6 +232,11 @@
   padding: 0 8px;
 }
 
+/* Người dùng ẩn tên trên thanh công cụ: chỉ còn avatar */
+.topbar.is-name-hidden .topbar-user-trigger .text-truncate {
+  display: none;
+}
+
 .avatar {
   display: inline-flex;
   align-items: center;

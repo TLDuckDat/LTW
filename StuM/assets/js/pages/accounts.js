@@ -1,6 +1,8 @@
 /**
- * Trang Quản trị tài khoản (chỉ Admin): danh sách tài khoản, tạo, đổi vai trò, liên kết hồ sơ,
- * khóa/mở khóa, đặt lại mật khẩu; và nhật ký hoạt động có bộ lọc. Dữ liệu từ /api/auth/*.
+ * Trang Quản trị tài khoản (chỉ Admin), chia hai tab:
+ * - Tài khoản: danh sách, tạo, đổi vai trò, liên kết hồ sơ, khóa/mở khóa, đặt lại mật khẩu.
+ * - Nhật ký hoạt động: đăng nhập, đăng xuất và mọi thao tác ghi, có bộ lọc. Chỉ tải khi mở tab.
+ * Dữ liệu từ /api/auth/*.
  */
 
 import { api } from '../core/api.js';
@@ -38,7 +40,12 @@ const ROW_ACTIONS = [
   { action: 'unlock', label: 'Mở khóa tài khoản', icon: 'lock-open' },
 ];
 
-const state = { search: '', page: 1, pageSize: 10, accounts: [], logPage: 1, logPageSize: 10 };
+const TABS = [
+  { key: 'accounts', label: 'Tài khoản' },
+  { key: 'logs', label: 'Nhật ký hoạt động' },
+];
+
+const state = { search: '', page: 1, pageSize: 10, accounts: [], logPage: 1, logPageSize: 10, activeTab: 'accounts' };
 let refs = { students: [], lecturers: [] };
 
 const badgeVaiTro = (vaiTro) => Badge.render({ label: VAI_TRO[vaiTro] ?? vaiTro, variant: vaiTro === 'Admin' ? 'primary' : 'neutral' });
@@ -167,6 +174,19 @@ function handleRowAction(action, rowId) {
 }
 
 /**
+ * Chuyển tab. Nhật ký được tải mỗi lần mở tab để luôn có dữ liệu mới nhất.
+ * @param {HTMLElement} root
+ * @param {string} key
+ */
+function switchTab(root, key) {
+  state.activeTab = key;
+  root.querySelectorAll('[data-tab]').forEach((tab) => tab.setAttribute('aria-selected', String(tab.dataset.tab === key)));
+  root.querySelector('#tab-accounts').hidden = key !== 'accounts';
+  root.querySelector('#tab-logs').hidden = key !== 'logs';
+  if (key === 'logs') loadLogs(root);
+}
+
+/**
  * @param {HTMLElement} root
  */
 function bindEvents(root) {
@@ -176,6 +196,11 @@ function bindEvents(root) {
     loadAccounts();
   }, 300);
 
+  const debouncedLogs = debounce(() => {
+    state.logPage = 1;
+    loadLogs(root);
+  }, 300);
+
   Input.init(root, {
     onInput: (input) => {
       if (input.name === 'q') debouncedSearch();
@@ -183,16 +208,16 @@ function bindEvents(root) {
     },
   });
 
-  const debouncedLogs = debounce(() => {
-    state.logPage = 1;
-    loadLogs(root);
-  }, 300);
-
   root.addEventListener('change', (event) => {
     if (['thanhCong', 'tuNgay', 'denNgay'].includes(event.target.name)) {
       state.logPage = 1;
       loadLogs(root);
     }
+  });
+
+  root.querySelector('.tabs').addEventListener('click', (event) => {
+    const tab = event.target.closest('[data-tab]');
+    if (tab) switchTab(root, tab.dataset.tab);
   });
 
   Button.init(root, {
@@ -241,16 +266,18 @@ export async function mount(root) {
     description: 'Cấp tài khoản, phân vai trò, liên kết hồ sơ và xem nhật ký hoạt động của hệ thống.',
     actions: Button.render({ label: 'Tạo tài khoản', variant: 'primary', icon: 'plus', action: 'create' }),
   })}
-  <section class="card" aria-label="Danh sách tài khoản">
+  <nav class="tabs" role="tablist" aria-label="Quản trị tài khoản">
+    ${TABS.map((tab) => `<button type="button" class="tab" role="tab" data-tab="${tab.key}" aria-selected="${tab.key === state.activeTab}">${escapeHtml(tab.label)}</button>`).join('')}
+  </nav>
+  <section class="card" id="tab-accounts" aria-label="Danh sách tài khoản">
     <div class="filter-bar" role="search">
       ${Input.render({ id: 'acc-search', name: 'q', label: 'Tìm tài khoản', placeholder: 'Tên đăng nhập, họ tên', iconLeft: 'search' })}
     </div>
     <div class="card-body is-flush" id="accounts-container"></div>
   </section>
-  <section class="card" aria-label="Nhật ký hoạt động" style="margin-top: 24px;">
-    <header class="card-header"><div class="card-header-text"><h2 class="card-title">Nhật ký hoạt động</h2><p class="card-subtitle">Đăng nhập, đăng xuất và mọi thao tác ghi của người dùng</p></div></header>
+  <section class="card" id="tab-logs" aria-label="Nhật ký hoạt động" hidden>
     <div class="filter-bar" role="search">
-      ${Input.render({ name: 'logSearch', label: 'Tìm kiếm', placeholder: 'Người dùng, đường dẫn', iconLeft: 'search', }).replace('name="logSearch"', 'name="logSearch" data-log-filter')}
+      ${Input.render({ name: 'logSearch', label: 'Tìm kiếm', placeholder: 'Người dùng, đường dẫn', iconLeft: 'search' }).replace('name="logSearch"', 'name="logSearch" data-log-filter')}
       ${Input.render({ name: 'hanhDong', label: 'Hành động', placeholder: 'Ví dụ: HocPhi.' }).replace('name="hanhDong"', 'name="hanhDong" data-log-filter')}
       ${Select.render({ name: 'thanhCong', label: 'Kết quả', value: '', options: [{ value: '', label: 'Tất cả' }, { value: 'true', label: 'Thành công' }, { value: 'false', label: 'Thất bại' }] }).replace('<select', '<select data-log-filter')}
       ${Input.render({ name: 'tuNgay', type: 'date', label: 'Từ ngày' }).replace('name="tuNgay"', 'name="tuNgay" data-log-filter')}
@@ -271,5 +298,5 @@ export async function mount(root) {
     lecturers: lecturers.map((gv) => ({ value: gv.id, label: `${gv.ma} - ${gv.hoTen}` })),
   };
 
-  await Promise.all([loadAccounts(), loadLogs(root)]);
+  await loadAccounts();
 }

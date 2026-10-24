@@ -10,6 +10,7 @@ import { formatDate } from '../core/format.js';
 import { renderAsync } from '../core/async-view.js';
 import { router } from '../core/router.js';
 import { theme } from '../core/theme.js';
+import { Storage } from '../core/storage.js';
 import { Dropdown } from '../components/dropdown.js';
 import { EmptyState } from '../components/empty-state.js';
 import { Skeleton } from '../components/skeleton.js';
@@ -52,6 +53,10 @@ function initialsOf(name) {
     .toUpperCase();
 }
 
+const SHOW_NAME_KEY = 'topbar-show-user-name';
+const SHOW_NAME_LABEL = 'Ẩn tên trên thanh công cụ';
+const HIDE_NAME_LABEL = 'Hiện tên trên thanh công cụ';
+
 /** Vai trò được mở trang Sinh viên (khớp với PAGE_ROLES trong main.js); chỉ các vai trò này thấy ô tìm kiếm. */
 const STUDENT_PAGE_ROLES = ['Admin', 'PhongDaoTao', 'GiangVien'];
 
@@ -76,6 +81,7 @@ function renderSearch(user) {
  */
 function render({ breadcrumb, user }) {
   const name = user?.name ?? user?.tenDangNhap ?? 'Người dùng';
+  const showName = Storage.get(SHOW_NAME_KEY, true);
   const notifications = Dropdown.render({
     label: 'Thông báo',
     icon: 'bell',
@@ -90,12 +96,13 @@ function render({ breadcrumb, user }) {
     triggerClass: 'btn btn-ghost btn-sm topbar-user-trigger',
     items: [
       { action: 'settings', label: 'Cài đặt', icon: 'settings' },
+      { action: 'toggle-name', label: showName ? SHOW_NAME_LABEL : HIDE_NAME_LABEL, icon: showName ? 'eye-off' : 'eye' },
       { divider: true },
       { action: 'logout', label: 'Đăng xuất', icon: 'log-out', danger: true },
     ],
   });
 
-  return `<header class="topbar">
+  return `<header class="topbar${showName ? '' : ' is-name-hidden'}">
     <button type="button" class="btn btn-ghost btn-sm btn-icon-only topbar-menu-toggle" data-action="toggle-drawer" aria-controls="app-sidebar" aria-expanded="false" aria-label="Mở menu"><i data-lucide="menu" class="btn-icon" aria-hidden="true"></i></button>
     ${renderBreadcrumb(breadcrumb)}
     ${renderSearch(user)}
@@ -146,6 +153,18 @@ function loadNotifications(topbarEl) {
 }
 
 /**
+ * Ẩn hoặc hiện tên người dùng trên thanh công cụ, chỉ giữ avatar khi ẩn. Lựa chọn được lưu trên trình duyệt.
+ * @param {HTMLElement} topbarEl
+ */
+function toggleUserName(topbarEl) {
+  const hide = !topbarEl.classList.contains('is-name-hidden');
+  topbarEl.classList.toggle('is-name-hidden', hide);
+  Storage.set(SHOW_NAME_KEY, !hide);
+  const label = topbarEl.querySelector('[data-action="toggle-name"] span');
+  if (label) label.textContent = hide ? HIDE_NAME_LABEL : SHOW_NAME_LABEL;
+}
+
+/**
  * @param {string} action
  * @param {() => void} onSettings
  */
@@ -182,7 +201,10 @@ function init(topbarEl, { onToggleDrawer, onSettings }) {
   });
 
   Dropdown.init(topbarEl, {
-    onAction: (action) => handleUserAction(action, onSettings),
+    onAction: (action) => {
+      if (action === 'toggle-name') toggleUserName(topbarEl);
+      else handleUserAction(action, onSettings);
+    },
   });
 
   loadNotifications(topbarEl);

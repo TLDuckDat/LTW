@@ -12,7 +12,7 @@ import { theme } from '../core/theme.js';
 import { Button } from '../components/button.js';
 import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
-import { openChangePasswordModal } from '../pages/accounts-modals.js';
+import { openChangePasswordModal, VAI_TRO } from '../pages/accounts-modals.js';
 import { Sidebar } from './sidebar.js';
 import { Topbar } from './topbar.js';
 
@@ -38,23 +38,29 @@ export function openSettings() {
   const checkboxId = nextId('setting-dark');
   const checked = theme.current() === 'dark' ? ' checked' : '';
   const content = `<div class="modal-form">
-    <label class="checkbox-row" for="${checkboxId}"><input type="checkbox" id="${checkboxId}"${checked}><span>Giao diện tối</span></label>
-    <p class="form-hint">Lựa chọn được lưu trên trình duyệt này.</p>
-    <p class="form-hint" data-account>Đang tải thông tin tài khoản...</p>
+    <section class="settings-section" aria-labelledby="settings-theme-title">
+      <h3 class="settings-title" id="settings-theme-title">Giao diện</h3>
+      <label class="checkbox-row" for="${checkboxId}"><input type="checkbox" id="${checkboxId}"${checked}><span>Giao diện tối</span></label>
+      <p class="form-hint">Lựa chọn được lưu trên trình duyệt này.</p>
+    </section>
+    <section class="settings-section" aria-labelledby="settings-account-title">
+      <h3 class="settings-title" id="settings-account-title">Tài khoản</h3>
+      <p class="form-hint" data-account>Đang tải thông tin tài khoản...</p>
+      <div class="settings-actions">
+        ${Button.render({ label: 'Đổi mật khẩu', variant: 'outline', icon: 'key-round', action: 'change-password', block: true })}
+        ${Button.render({ label: 'Đăng xuất mọi thiết bị', variant: 'outline', icon: 'log-out', action: 'logout-all', block: true })}
+        ${Button.render({ label: 'Đăng xuất', variant: 'destructive', icon: 'log-out', action: 'logout', block: true })}
+      </div>
+    </section>
   </div>`;
-  const footer = [
-    Button.render({ label: 'Đổi mật khẩu', variant: 'outline', icon: 'key-round', action: 'change-password' }),
-    Button.render({ label: 'Đăng xuất mọi thiết bị', variant: 'outline', icon: 'log-out', action: 'logout-all' }),
-    Button.render({ label: 'Đăng xuất', variant: 'destructive', icon: 'log-out', action: 'logout' }),
-    Button.render({ label: 'Đóng', variant: 'primary', action: 'close' }),
-  ].join('');
+  const footer = Button.render({ label: 'Đóng', variant: 'primary', action: 'close' });
 
   const handle = Modal.open({ title: 'Cài đặt', content, footer });
   const accountEl = handle.element.querySelector('[data-account]');
   api.phien
     .me()
     .then((me) => {
-      accountEl.textContent = `Đang đăng nhập: ${me.tenDangNhap} (${me.vaiTro})`;
+      accountEl.textContent = `Đang đăng nhập: ${me.tenDangNhap} · ${VAI_TRO[me.vaiTro] ?? me.vaiTro}`;
     })
     .catch(() => {
       accountEl.textContent = '';
