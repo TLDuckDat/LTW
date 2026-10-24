@@ -13,6 +13,8 @@ public interface IReportService
     Task<ThongKeKetQuaHocTapDto> ThongKeKetQuaAsync(int hocKyId);
     // RPT-03 Báo cáo công nợ học phí
     Task<BaoCaoCongNoDto> BaoCaoCongNoAsync(int hocKyId, PagedQuery query);
+    // RPT-05 Số liệu tổng quan cho Dashboard (một lần gọi thay cho nhiều thống kê)
+    Task<TongQuanDto> TongQuanAsync();
     // RPT-04 Danh sách sinh viên cảnh báo học vụ
     Task<PagedResult<CanhBaoHocVuDto>> CanhBaoHocVuAsync(int hocKyId, PagedQuery query);
 }

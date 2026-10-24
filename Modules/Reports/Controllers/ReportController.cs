@@ -17,6 +17,11 @@ public class ReportController(IReportService service) : ApiControllerBase
     public Task<ActionResult<ApiResponse<ThongKeSinhVienDto>>> ThongKeSinhVien() =>
         Execute(() => service.ThongKeSinhVienAsync());
 
+    // RPT-05 Số liệu tổng quan cho Dashboard (KPI, phân bố theo khoa, GPA học kỳ mốc)
+    [HttpGet("tong-quan")]
+    public Task<ActionResult<ApiResponse<TongQuanDto>>> TongQuan() =>
+        Execute(() => service.TongQuanAsync());
+
     // RPT-02 Thống kê kết quả học tập theo học kỳ
     [HttpGet("ket-qua-hoc-tap/{hocKyId:int}")]
     public Task<ActionResult<ApiResponse<ThongKeKetQuaHocTapDto>>> ThongKeKetQua(int hocKyId) =>

@@ -133,6 +133,14 @@ builder.Services.AddEndpointsApiExplorer();
 // 6. Swagger (kèm nút Authorize để gửi JWT)
 builder.Services.AddSwaggerGen(options =>
 {
+    // Mô tả cho người dùng Swagger: frontend StuM gọi các API này (xem StuM/README.md)
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "StudentManagement API",
+        Version = "v1",
+        Description = "API cho frontend StuM (chạy ở http://localhost:8000). Đăng nhập bằng POST /api/auth/login, "
+                    + "rồi bấm Authorize để gửi JWT. Dashboard dùng GET /api/bao-cao/tong-quan."
+    });
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Type = SecuritySchemeType.Http,

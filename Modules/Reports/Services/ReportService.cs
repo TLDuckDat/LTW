@@ -145,6 +145,37 @@ public class ReportService(AppDbContext db, IBangDiemService bangDiem, ICanhBaoH
     public Task<PagedResult<CanhBaoHocVuDto>> CanhBaoHocVuAsync(int hocKyId, PagedQuery query)
         => _canhBao.GetDanhSachCanhBaoAsync(hocKyId, query);
 
+    // RPT-05 Số liệu tổng quan: học kỳ mốc là học kỳ đang diễn ra, nếu không có thì học kỳ mới nhất
+    public async Task<TongQuanDto> TongQuanAsync()
+    {
+        var thongKe = await ThongKeSinhVienAsync();
+        var today = ThoiGian.HomNay();
+
+        var dangDienRa = await (from hk in _db.Set<HocKy>().AsNoTracking()
+                                join nh in _db.Set<NamHoc>().AsNoTracking() on hk.NamHocId equals nh.Id
+                                where hk.NgayBatDau <= today && today <= hk.NgayKetThuc
+                                select new HocKyBaoCao(hk.Id, hk.Ten, nh.Ten)).FirstOrDefaultAsync();
+        var hocKy = dangDienRa ?? await (from hk in _db.Set<HocKy>().AsNoTracking()
+                                         join nh in _db.Set<NamHoc>().AsNoTracking() on hk.NamHocId equals nh.Id
+                                         orderby hk.NgayBatDau descending
+                                         select new HocKyBaoCao(hk.Id, hk.Ten, nh.Ten)).FirstOrDefaultAsync();
+
+        var gpa = hocKy is null ? null : (await ThongKeKetQuaAsync(hocKy.Id)).GpaTrungBinh;
+        var tongSo = thongKe.TongSoSinhVien;
+        var dangHoc = thongKe.TheoTrangThai.FirstOrDefault(x => x.Ma == nameof(TrangThaiSinhVien.DangHoc))?.SoLuong ?? 0;
+        var daTotNghiep = thongKe.TheoTrangThai.FirstOrDefault(x => x.Ma == nameof(TrangThaiSinhVien.DaTotNghiep))?.SoLuong ?? 0;
+        var tyLe = tongSo == 0 ? 0m : Math.Round(daTotNghiep / (decimal)tongSo, 4);
+
+        return new TongQuanDto(
+            tongSo,
+            dangHoc,
+            tyLe,
+            gpa,
+            hocKy is null ? null : new HocKyTongQuanDto(hocKy.Id, hocKy.Ten, hocKy.TenNamHoc),
+            thongKe.TheoKhoa,
+            thongKe.TheoTrangThai);
+    }
+
     private sealed record HocKyBaoCao(int Id, string Ten, string TenNamHoc);
 
     private async Task<HocKyBaoCao> GetHocKyAsync(int hocKyId) =>

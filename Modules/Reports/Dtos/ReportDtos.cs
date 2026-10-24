@@ -5,6 +5,23 @@ namespace StudentManagement.Modules.Reports.Dtos;
 /// <summary>Một dòng thống kê số lượng theo nhóm. Id là khóa của nhóm (khoa, ngành...) nếu có.</summary>
 public record ThongKeItemDto(int? Id, string Ma, string Ten, int SoLuong);
 
+/// <summary>Học kỳ được chọn làm mốc cho số liệu tổng quan (học kỳ đang diễn ra, nếu không có thì học kỳ mới nhất).</summary>
+public record HocKyTongQuanDto(int Id, string Ten, string TenNamHoc);
+
+/// <summary>
+/// Số liệu tổng quan cho trang Dashboard, gom trong một lần gọi: KPI sinh viên, phân bố theo khoa và trạng thái,
+/// GPA trung bình của học kỳ mốc (null nếu chưa có học kỳ hoặc chưa có GPA chính thức).
+/// TyLeTotNghiep là tỷ lệ 0-1 trên tổng số sinh viên.
+/// </summary>
+public record TongQuanDto(
+    int TongSoSinhVien,
+    int SoSinhVienDangHoc,
+    decimal TyLeTotNghiep,
+    decimal? GpaTrungBinh,
+    HocKyTongQuanDto? HocKyMoc,
+    IReadOnlyList<ThongKeItemDto> TheoKhoa,
+    IReadOnlyList<ThongKeItemDto> TheoTrangThai);
+
 // RPT-01
 /// <summary>Số sinh viên theo khoa, ngành và trạng thái học tập (kể cả nhóm chưa có sinh viên).</summary>
 public record ThongKeSinhVienDto(
