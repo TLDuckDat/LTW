@@ -153,6 +153,41 @@ export const api = {
       request(`/lop-hoc-phan/${id}/lich-hoc/${lichHocId}`, { method: 'DELETE' }),
   },
 
+  /** Quản trị tài khoản (module Auth): chỉ Admin. */
+  taiKhoan: {
+    list: (params) => listPaged('/auth/accounts', params),
+    get: (id) => request(`/auth/accounts/${id}`),
+    create: (payload) => request('/auth/accounts', { method: 'POST', body: payload }),
+    doiVaiTro: (id, vaiTro) => request(`/auth/accounts/${id}/role`, { method: 'PUT', body: { vaiTro } }),
+    lienKetSinhVien: (id, sinhVienId) =>
+      request(`/auth/accounts/${id}/student`, { method: 'PUT', body: { sinhVienId } }),
+    lienKetGiangVien: (id, giangVienId) =>
+      request(`/auth/accounts/${id}/lecturer`, { method: 'PUT', body: { giangVienId } }),
+    khoa: (id) => request(`/auth/accounts/${id}/lock`, { method: 'POST' }),
+    moKhoa: (id) => request(`/auth/accounts/${id}/unlock`, { method: 'POST' }),
+    datLaiMatKhau: (id, matKhauMoi) =>
+      request(`/auth/accounts/${id}/reset-password`, { method: 'POST', body: { matKhauMoi } }),
+    /** Nhật ký hoạt động (chỉ Admin). Lọc: taiKhoanId, hanhDong, thanhCong, tuNgay, denNgay. */
+    nhatKy({ taiKhoanId, hanhDong, thanhCong, tuNgay, denNgay, ...params } = {}) {
+      return listPaged('/auth/activity-logs', {
+        ...params,
+        TaiKhoanId: taiKhoanId,
+        HanhDong: hanhDong,
+        ThanhCong: thanhCong,
+        TuNgay: tuNgay,
+        DenNgay: denNgay,
+      });
+    },
+  },
+
+  /** Tài khoản đang đăng nhập: đổi mật khẩu, đăng xuất mọi thiết bị. */
+  phien: {
+    me: () => request('/auth/me'),
+    doiMatKhau: (matKhauCu, matKhauMoi) =>
+      request('/auth/change-password', { method: 'POST', body: { matKhauCu, matKhauMoi } }),
+    dangXuatTatCa: () => request('/auth/logout-all', { method: 'POST' }),
+  },
+
   dotDangKy: {
     list({ hocKyId, trangThai, ...params } = {}) {
       return listPaged('/dot-dang-ky', { ...params, HocKyId: hocKyId, TrangThai: trangThai });

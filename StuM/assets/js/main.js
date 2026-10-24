@@ -18,7 +18,11 @@ const PAGE_TITLES = {
   classes: 'Lớp học phần',
   grades: 'Điểm',
   registration: 'Đăng ký học phần',
+  accounts: 'Tài khoản',
 };
+
+/** Trang chỉ dành cho một số vai trò; vai trò khác bị chuyển về Dashboard. */
+const PAGE_ROLES = { accounts: ['Admin'] };
 
 const PAGE_MODULES = {
   login: () => import('./pages/login.js'),
@@ -28,6 +32,7 @@ const PAGE_MODULES = {
   classes: () => import('./pages/classes.js'),
   grades: () => import('./pages/grades.js'),
   registration: () => import('./pages/registration.js'),
+  accounts: () => import('./pages/accounts.js'),
 };
 
 async function bootstrap() {
@@ -54,6 +59,11 @@ async function bootstrap() {
 
   if (!session) {
     router.navigate('login');
+    return;
+  }
+
+  if (PAGE_ROLES[page] && !PAGE_ROLES[page].includes(session.vaiTro)) {
+    router.navigate('dashboard');
     return;
   }
 

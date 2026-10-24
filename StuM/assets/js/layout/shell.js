@@ -11,6 +11,8 @@ import { ROUTES, router } from '../core/router.js';
 import { theme } from '../core/theme.js';
 import { Button } from '../components/button.js';
 import { Modal } from '../components/modal.js';
+import { Toast } from '../components/toast.js';
+import { openChangePasswordModal } from '../pages/accounts-modals.js';
 import { Sidebar } from './sidebar.js';
 import { Topbar } from './topbar.js';
 
@@ -40,7 +42,9 @@ export function openSettings() {
     <p class="form-hint">Lựa chọn được lưu trên trình duyệt này.</p>
   </div>`;
   const footer = [
-    Button.render({ label: 'Đăng xuất', variant: 'outline', icon: 'log-out', action: 'logout' }),
+    Button.render({ label: 'Đổi mật khẩu', variant: 'outline', icon: 'key-round', action: 'change-password' }),
+    Button.render({ label: 'Đăng xuất mọi thiết bị', variant: 'outline', icon: 'log-out', action: 'logout-all' }),
+    Button.render({ label: 'Đăng xuất', variant: 'destructive', icon: 'log-out', action: 'logout' }),
     Button.render({ label: 'Đóng', variant: 'primary', action: 'close' }),
   ].join('');
 
@@ -49,8 +53,19 @@ export function openSettings() {
     .querySelector(`#${checkboxId}`)
     .addEventListener('change', (event) => theme.apply(event.target.checked ? 'dark' : 'light'));
   handle.element.querySelector('[data-action="close"]').addEventListener('click', handle.close);
+  handle.element.querySelector('[data-action="change-password"]').addEventListener('click', openChangePasswordModal);
   handle.element.querySelector('[data-action="logout"]').addEventListener('click', async () => {
     await api.auth.logout();
+    router.navigate('login');
+  });
+  handle.element.querySelector('[data-action="logout-all"]').addEventListener('click', async () => {
+    try {
+      await api.phien.dangXuatTatCa();
+    } catch (error) {
+      Toast.error(error.message);
+      return;
+    }
+    api.auth.logout();
     router.navigate('login');
   });
 }
@@ -67,7 +82,7 @@ export function mountShell(container, { page, title }) {
   container.innerHTML = `
     <a class="skip-link" href="#page-content">Bỏ qua và đi tới nội dung chính</a>
     <div class="app-shell${collapsed ? ' is-collapsed' : ''}" data-shell>
-      ${Sidebar.render({ activePage: page, collapsed })}
+      ${Sidebar.render({ activePage: page, collapsed, vaiTro: api.auth.getSession()?.vaiTro })}
       <div class="drawer-overlay" data-action="close-drawer"></div>
       <div class="app-main">
         ${Topbar.render({ breadcrumb, user: api.auth.getSession() })}

@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { route: 'courses', label: 'Môn học', icon: 'book-open' },
   { route: 'classes', label: 'Lớp học phần', icon: 'school' },
   { route: 'registration', label: 'Đăng ký học phần', icon: 'calendar-check' },
+  { route: 'accounts', label: 'Tài khoản', icon: 'user-cog', roles: ['Admin'] },
   { route: 'grades', label: 'Điểm', icon: 'clipboard-list' },
 ];
 
@@ -50,8 +51,8 @@ function syncCollapsedState(shellEl) {
  * @param {{ activePage: string, collapsed: boolean }} props
  * @returns {string}
  */
-function render({ activePage, collapsed }) {
-  const links = NAV_ITEMS.map((item) => {
+function render({ activePage, collapsed, vaiTro }) {
+  const links = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(vaiTro)).map((item) => {
     const current = item.route === activePage ? ' aria-current="page"' : '';
     return `<a class="nav-link" href="${ROUTES[item.route]}"${current}><i data-lucide="${item.icon}" aria-hidden="true"></i><span class="nav-label">${escapeHtml(item.label)}</span></a>`;
   }).join('');
