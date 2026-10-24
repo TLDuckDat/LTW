@@ -19,7 +19,7 @@ import { Skeleton } from '../components/skeleton.js';
 import { Table } from '../components/table.js';
 import { Toast } from '../components/toast.js';
 import { renderPageHeader } from '../layout/shell.js';
-import { openDetailModal, openFormModal } from './graduation-forms.js';
+import { openDetailModal, openFormModal, openRecordDetailModal } from './graduation-forms.js';
 
 const PHUC_KHAO_STATUS = {
   ChoXuLy: ['neutral', 'Chờ xử lý'],
@@ -178,10 +178,18 @@ const TABS = {
     createLabel: 'Thêm miễn giảm',
     create: () => miemGiamForm(null),
     actions: [
+      { action: 'detail', label: 'Chi tiết', icon: 'eye' },
       { action: 'edit', label: 'Chỉnh sửa', icon: 'pencil' },
       { action: 'delete', label: 'Xóa', icon: 'trash-2', danger: true },
     ],
     onAction: (action, row) => {
+      if (action === 'detail') {
+        openRecordDetailModal({
+          title: `Miễn giảm của ${row.mssv}`,
+          load: () => api.congTacSinhVien.mienGiam.get(row.id),
+          labels: { mssv: 'MSSV', hoTen: 'Họ và tên', tenHocKy: 'Học kỳ', tyLe: 'Tỷ lệ miễn giảm (%)', lyDo: 'Lý do' },
+        });
+      }
       if (action === 'edit') miemGiamForm(row);
       if (action === 'delete') confirmRemove(`Xóa miễn giảm của ${row.mssv}?`, () => api.congTacSinhVien.mienGiam.remove(row.id));
     },
@@ -203,10 +211,18 @@ const TABS = {
     createLabel: 'Nhập điểm rèn luyện',
     create: () => diemRenLuyenForm(null),
     actions: [
+      { action: 'detail', label: 'Chi tiết', icon: 'eye' },
       { action: 'edit', label: 'Sửa điểm', icon: 'pencil' },
       { action: 'delete', label: 'Xóa', icon: 'trash-2', danger: true },
     ],
     onAction: (action, row) => {
+      if (action === 'detail') {
+        openRecordDetailModal({
+          title: `Điểm rèn luyện của ${row.mssv}`,
+          load: () => api.congTacSinhVien.diemRenLuyen.get(row.id),
+          labels: { mssv: 'MSSV', hoTen: 'Họ và tên', tenHocKy: 'Học kỳ', diem: 'Điểm rèn luyện', xepLoai: 'Xếp loại' },
+        });
+      }
       if (action === 'edit') diemRenLuyenForm(row);
       if (action === 'delete') confirmRemove(`Xóa điểm rèn luyện của ${row.mssv}?`, () => api.congTacSinhVien.diemRenLuyen.remove(row.id));
     },
@@ -229,10 +245,18 @@ const TABS = {
     createLabel: 'Thêm khen thưởng / kỷ luật',
     create: () => khenThuongForm(null),
     actions: [
+      { action: 'detail', label: 'Chi tiết', icon: 'eye' },
       { action: 'edit', label: 'Chỉnh sửa', icon: 'pencil' },
       { action: 'delete', label: 'Xóa', icon: 'trash-2', danger: true },
     ],
     onAction: (action, row) => {
+      if (action === 'detail') {
+        openRecordDetailModal({
+          title: `Khen thưởng, kỷ luật của ${row.mssv}`,
+          load: () => api.congTacSinhVien.khenThuongKyLuat.get(row.id),
+          labels: { mssv: 'MSSV', hoTen: 'Họ và tên', loai: 'Loại', soQuyetDinh: 'Số quyết định', ngayQuyetDinh: 'Ngày quyết định', noiDung: 'Nội dung' },
+        });
+      }
       if (action === 'edit') khenThuongForm(row);
       if (action === 'delete') confirmRemove(`Xóa quyết định của ${row.mssv}?`, () => api.congTacSinhVien.khenThuongKyLuat.remove(row.id));
     },
@@ -265,8 +289,30 @@ const TABS = {
         onSubmit: (payload) => api.phucKhao.create(payload),
         onDone: () => loadTab(),
       }),
-    actions: [{ action: 'xuLy', label: 'Xử lý yêu cầu', icon: 'gavel' }],
+    actions: [
+      { action: 'detail', label: 'Chi tiết', icon: 'eye' },
+      { action: 'xuLy', label: 'Xử lý yêu cầu', icon: 'gavel' },
+    ],
     onAction: (action, row) => {
+      if (action === 'detail') {
+        api.phucKhao
+          .get(row.id)
+          .then((item) =>
+            openDetailModal({
+              title: `Phúc khảo của ${item.mssv}`,
+              rows: [
+                ['Sinh viên', escapeHtml(`${item.mssv} - ${item.hoTen}`)],
+                ['Lý do', escapeHtml(item.lyDo ?? '—')],
+                ['Điểm cũ', escapeHtml(item.diemCu ?? '—')],
+                ['Điểm mới', escapeHtml(item.diemMoi ?? '—')],
+                ['Trạng thái', badgeOf(PHUC_KHAO_STATUS, item.trangThai)],
+                ['Ngày gửi', escapeHtml(formatDate(item.ngayTao))],
+              ],
+            }),
+          )
+          .catch((error) => Toast.error(error.message));
+        return;
+      }
       if (action !== 'xuLy') return;
       openFormModal({
         title: `Xử lý phúc khảo: ${row.mssv}`,

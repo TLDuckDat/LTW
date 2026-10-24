@@ -18,7 +18,9 @@ import { Skeleton } from '../components/skeleton.js';
 import { Table } from '../components/table.js';
 import { Toast } from '../components/toast.js';
 import { renderPageHeader } from '../layout/shell.js';
-import { openAssignModal, openScheduleModal } from './classes-modals.js';
+import { openAssignModal } from './classes-modals.js';
+import { openClassDetail, openMergeModal } from './classes-detail.js';
+import { openScheduleModal } from './classes-schedule.js';
 import { openClassRoster } from './class-roster.js';
 
 export const CLASS_STATUS_META = {
@@ -29,10 +31,12 @@ export const CLASS_STATUS_META = {
 };
 
 const ROW_ACTIONS = [
+  { action: 'detail', label: 'Xem chi tiết', icon: 'eye' },
   { action: 'edit', label: 'Chỉnh sửa', icon: 'pencil' },
   { action: 'assign', label: 'Phân giảng viên', icon: 'user-round' },
   { action: 'schedule', label: 'Lịch học', icon: 'calendar' },
   { action: 'roster', label: 'Sinh viên trong lớp', icon: 'users' },
+  { action: 'merge', label: 'Gộp vào lớp khác', icon: 'git-merge' },
   { divider: true },
   { action: 'start', label: 'Bắt đầu học', icon: 'play' },
   { action: 'end', label: 'Kết thúc lớp', icon: 'flag' },
@@ -260,6 +264,8 @@ function handleRowAction(action, rowId) {
   const record = state.rows.find((row) => String(row.id) === String(rowId));
   if (!record) return;
 
+  if (action === 'detail') openClassDetail({ record, hocKys: refs.hocKys, giangViens: refs.giangViens });
+  if (action === 'merge') openMergeModal({ record, onDone: loadTable });
   if (action === 'edit') openClassForm({ record });
   if (action === 'assign') openAssignModal({ record, giangViens: refs.giangViens, onDone: loadTable });
   if (action === 'schedule') openScheduleModal({ record, phongs: refs.phongs, onDone: loadTable });

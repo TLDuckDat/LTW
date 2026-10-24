@@ -19,6 +19,13 @@ import { Toast } from '../components/toast.js';
 import { renderPageHeader } from '../layout/shell.js';
 import { openStatusForm, openStudentDetail, openStudentForm, statusBadge, STATUS_META } from './students-form.js';
 import { openTranscript } from './class-roster.js';
+import {
+  openChangeClassModal,
+  openChangeStatusModal,
+  openStudentHistory,
+  openStudentWarning,
+  openWarningList,
+} from './students-extra.js';
 
 const COLUMNS = [
   { key: 'mssv', label: 'MSSV' },
@@ -33,7 +40,11 @@ const ROW_ACTIONS = [
   { action: 'view', label: 'Xem chi tiết', icon: 'eye' },
   { action: 'edit', label: 'Chỉnh sửa', icon: 'pencil' },
   { action: 'transcript', label: 'Bảng điểm', icon: 'file-text' },
+  { action: 'warning', label: 'Cảnh báo học vụ', icon: 'shield-alert' },
+  { action: 'history', label: 'Lịch sử học tập', icon: 'history' },
   { divider: true },
+  { action: 'class', label: 'Đổi lớp hành chính', icon: 'arrow-left-right' },
+  { action: 'status', label: 'Đổi trạng thái', icon: 'refresh-cw' },
   { action: 'bao-luu', label: 'Bảo lưu', icon: 'pause' },
   { action: 'thoi-hoc', label: 'Thôi học', icon: 'user-x' },
   { action: 'quay-lai-hoc', label: 'Quay lại học', icon: 'undo-2' },
@@ -145,11 +156,24 @@ async function openForm(record = null) {
   }
 }
 
+async function openClassChange(record) {
+  try {
+    const lists = await loadFormLists();
+    openChangeClassModal({ record, lops: lists.lops, onDone: loadTable });
+  } catch (error) {
+    Toast.error(error.message);
+  }
+}
+
 function handleRowAction(action, rowId) {
   const record = state.rows.find((row) => String(row.id) === String(rowId));
   if (!record) return;
   if (action === 'view') openStudentDetail(record.id);
   if (action === 'transcript') openTranscript(record.id);
+  if (action === 'warning') openStudentWarning(record);
+  if (action === 'history') openStudentHistory(record);
+  if (action === 'class') openClassChange(record);
+  if (action === 'status') openChangeStatusModal({ record, onDone: loadTable });
   if (action === 'edit') openForm(record);
   if (action === 'delete') confirmDelete(record);
   if (['bao-luu', 'thoi-hoc', 'quay-lai-hoc'].includes(action)) {
@@ -209,6 +233,7 @@ function bindEvents(root) {
   Button.init(root, {
     onAction: (action) => {
       if (action === 'add') openForm();
+      if (action === 'warning-list') openWarningList();
       if (action === 'reset-filters') resetFilters(root);
     },
   });
@@ -238,7 +263,9 @@ export async function mount(root, { query }) {
   root.innerHTML = `${renderPageHeader({
     title: 'Sinh viên',
     description: 'Hồ sơ sinh viên toàn trường, lấy trực tiếp từ cơ sở dữ liệu',
-    actions: Button.render({ label: 'Thêm sinh viên', variant: 'primary', icon: 'plus', id: 'btn-add-student', action: 'add' }),
+    actions:
+      Button.render({ label: 'Cảnh báo học vụ', variant: 'outline', icon: 'shield-alert', action: 'warning-list' }) +
+      Button.render({ label: 'Thêm sinh viên', variant: 'primary', icon: 'plus', id: 'btn-add-student', action: 'add' }),
   })}
   <section class="card" aria-label="Danh sách sinh viên">
     <div id="filters-slot"></div>

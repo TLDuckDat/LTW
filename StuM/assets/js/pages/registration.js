@@ -22,6 +22,7 @@ import { Table } from '../components/table.js';
 import { Toast } from '../components/toast.js';
 import { renderPageHeader } from '../layout/shell.js';
 import { openPeriodForm, openSiSoForm } from './registration-modals.js';
+import { openDetailModal } from './graduation-forms.js';
 
 const THU = { 2: 'Thứ 2', 3: 'Thứ 3', 4: 'Thứ 4', 5: 'Thứ 5', 6: 'Thứ 6', 7: 'Thứ 7', 8: 'Chủ nhật' };
 
@@ -43,6 +44,7 @@ const LOP_STATUS = {
 };
 
 const PERIOD_ACTIONS = [
+  { action: 'detail', label: 'Xem chi tiết', icon: 'eye' },
   { action: 'open', label: 'Mở đợt', icon: 'door-open' },
   { action: 'close', label: 'Đóng đợt', icon: 'door-closed' },
   { action: 'edit', label: 'Chỉnh sửa', icon: 'pencil' },
@@ -378,7 +380,30 @@ async function periodAction(action, period) {
   }
 }
 
+/** Chi tiết một đợt đăng ký, lấy từ GET /api/dot-dang-ky/{id}. */
+async function openPeriodDetail(id) {
+  try {
+    const period = await api.dotDangKy.get(id);
+    const hocKy = state.hocKys.find((item) => item.id === period.hocKyId);
+    openDetailModal({
+      title: `Đợt ${period.ten}`,
+      rows: [
+        ['Học kỳ', escapeHtml(hocKy ? `${hocKy.ten} (${hocKy.tenNamHoc})` : '—')],
+        ['Bắt đầu', escapeHtml(formatDateTime(period.ngayBatDau))],
+        ['Kết thúc', escapeHtml(formatDateTime(period.ngayKetThuc))],
+        ['Trạng thái', badge(DOT_STATUS, period.trangThai)],
+      ],
+    });
+  } catch (error) {
+    Toast.error(error.message);
+  }
+}
+
 function handleTableAction(action, rowId) {
+  if (action === 'detail') {
+    openPeriodDetail(Number(rowId));
+    return;
+  }
   if (['open', 'close', 'edit', 'delete'].includes(action)) {
     const period = state.periods.find((item) => String(item.id) === rowId);
     if (!period) return;

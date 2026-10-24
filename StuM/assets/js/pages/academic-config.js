@@ -134,6 +134,7 @@ export const DANH_MUC = {
       { name: 'moTa', label: 'Mô tả', kind: 'text' },
     ],
     filters: [],
+    extraRowActions: [{ action: 'traCuu', label: 'Tra cứu theo mã', icon: 'search' }],
   },
   chuongTrinhDaoTao: {
     label: 'Chương trình đào tạo',
@@ -205,6 +206,20 @@ export const DANH_MUC = {
       { action: 'phanLop', label: 'Phân sinh viên vào lớp', icon: 'user-plus' },
       { action: 'coVan', label: 'Gán cố vấn', icon: 'user-round' },
     ],
+  },
+  phongHoc: {
+    label: 'Phòng học',
+    title: 'Phòng học',
+    api: () => api.phongHoc,
+    columns: [
+      { key: 'ma', label: 'Mã phòng', primary: true },
+      { key: 'sucChua', label: 'Sức chứa', align: 'right' },
+    ],
+    fields: [
+      { name: 'ma', label: 'Mã phòng', kind: 'text', required: true },
+      { name: 'sucChua', label: 'Sức chứa', kind: 'int', required: true },
+    ],
+    filters: [],
   },
   thongBao: {
     label: 'Thông báo',

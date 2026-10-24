@@ -17,6 +17,8 @@ import { Skeleton } from '../components/skeleton.js';
 import { Table } from '../components/table.js';
 import { Toast } from '../components/toast.js';
 import { renderPageHeader } from '../layout/shell.js';
+import { formatDate } from '../core/format.js';
+import { openDetailModal } from './graduation-forms.js';
 
 const COLUMNS = [
   { key: 'ma', label: 'Mã môn', primary: true },
@@ -25,6 +27,7 @@ const COLUMNS = [
 ];
 
 const ROW_ACTIONS = [
+  { action: 'detail', label: 'Xem chi tiết', icon: 'eye' },
   { action: 'edit', label: 'Chỉnh sửa', icon: 'pencil' },
   { action: 'prerequisites', label: 'Môn tiên quyết', icon: 'git-branch' },
   { divider: true },
@@ -255,6 +258,25 @@ function confirmDelete(record) {
   }).catch(() => {});
 }
 
+/** Chi tiết một môn học, lấy từ GET /api/mon-hoc/{id}. */
+async function openCourseDetail(record) {
+  try {
+    const mon = await api.monHoc.get(record.id);
+    openDetailModal({
+      title: `Môn ${mon.ma}`,
+      rows: [
+        ['Mã môn', escapeHtml(mon.ma)],
+        ['Tên môn', escapeHtml(mon.ten)],
+        ['Số tín chỉ', escapeHtml(mon.soTinChi)],
+        ['Ngày tạo', escapeHtml(formatDate(mon.createdAt))],
+        ['Cập nhật gần nhất', escapeHtml(mon.updatedAt ? formatDate(mon.updatedAt) : '—')],
+      ],
+    });
+  } catch (error) {
+    Toast.error(error.message);
+  }
+}
+
 function bindEvents(root) {
   const debouncedSearch = debounce(() => {
     state.search = root.querySelector('[name="q"]').value.trim();
@@ -286,6 +308,7 @@ function bindEvents(root) {
     onAction: (action, rowId) => {
       const record = state.rows.find((row) => String(row.id) === String(rowId));
       if (!record) return;
+      if (action === 'detail') openCourseDetail(record);
       if (action === 'edit') openCourseForm({ record });
       if (action === 'prerequisites') openPrerequisites(record);
       if (action === 'delete') confirmDelete(record);

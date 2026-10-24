@@ -131,12 +131,16 @@ export const api = {
     coVan: (id, coVanId) => request(`/lop-hanh-chinh/${id}/co-van`, { method: 'PUT', body: { coVanId } }),
   },
   giangVien: crud('/giang-vien'),
-  phongHoc: { getAll: () => listAll('/phong-hoc') },
+  phongHoc: { ...crud('/phong-hoc'), getAll: () => listAll('/phong-hoc') },
   hocKy: crud('/hoc-ky'),
   boMon: crud('/bo-mon'),
   chuyenNganh: crud('/chuyen-nganh'),
   namHoc: crud('/nam-hoc'),
-  quyCheHocVu: crud('/quy-che'),
+  quyCheHocVu: {
+    ...crud('/quy-che'),
+    /** Tra cứu một quy chế theo mã (ví dụ TC_TOI_DA). */
+    getByMa: (ma) => request(`/quy-che/ma/${encodeURIComponent(ma)}`),
+  },
   chuongTrinhDaoTao: {
     ...crud('/chuong-trinh-dao-tao'),
     monHoc: (id) => request(`/chuong-trinh-dao-tao/${id}/mon-hoc`),
@@ -167,11 +171,19 @@ export const api = {
      */
     changeStatus: (id, action, body = {}) =>
       request(`/sinh-vien/${id}/${action}`, { method: 'POST', body }),
+    /** Đổi trạng thái học tập bằng PUT (ChangeStatusRequest: trangThai, lyDo, soQuyetDinh). */
+    trangThai: (id, payload) => request(`/sinh-vien/${id}/trang-thai`, { method: 'PUT', body: payload }),
+    /** Chuyển lớp hành chính; lopHanhChinhId null để gỡ sinh viên khỏi lớp. */
+    chuyenLop: (id, lopHanhChinhId) =>
+      request(`/sinh-vien/${id}/lop-hanh-chinh`, { method: 'PUT', body: { lopHanhChinhId } }),
+    /** Lịch sử thay đổi trạng thái học tập của một sinh viên (STU-07). */
+    lichSuHocTap: (id) => request(`/sinh-vien/${id}/lich-su-hoc-tap`),
   },
 
   monHoc: {
     list: (params) => listPaged('/mon-hoc', params),
     getAll: () => listAll('/mon-hoc'),
+    get: (id) => request(`/mon-hoc/${id}`),
     create: (payload) => request('/mon-hoc', { method: 'POST', body: payload }),
     update: (id, payload) => request(`/mon-hoc/${id}`, { method: 'PUT', body: payload }),
     remove: (id) => request(`/mon-hoc/${id}`, { method: 'DELETE' }),
@@ -192,6 +204,9 @@ export const api = {
       });
     },
     getAll: () => listAll('/lop-hoc-phan'),
+    get: (id) => request(`/lop-hoc-phan/${id}`),
+    /** Gộp lớp nguồn vào lớp đích cùng môn, cùng học kỳ (CRS-07). */
+    gop: (id, lopDichId) => request(`/lop-hoc-phan/${id}/gop`, { method: 'POST', body: { lopDichId } }),
     create: (payload) => request('/lop-hoc-phan', { method: 'POST', body: payload }),
     update: (id, payload) => request(`/lop-hoc-phan/${id}`, { method: 'PUT', body: payload }),
     remove: (id) => request(`/lop-hoc-phan/${id}`, { method: 'DELETE' }),
@@ -203,6 +218,12 @@ export const api = {
     huy: (id) => request(`/lop-hoc-phan/${id}/huy`, { method: 'POST' }),
     lichHoc: (id) => request(`/lop-hoc-phan/${id}/lich-hoc`),
     themLichHoc: (id, payload) => request(`/lop-hoc-phan/${id}/lich-hoc`, { method: 'POST', body: payload }),
+    /** Sửa một buổi học (LichHocRequest). */
+    suaLichHoc: (id, lichHocId, payload) =>
+      request(`/lop-hoc-phan/${id}/lich-hoc/${lichHocId}`, { method: 'PUT', body: payload }),
+    /** Kiểm tra xung đột phòng và giảng viên trước khi xếp hoặc sửa buổi học (lichHocId: buổi đang sửa, nếu có). */
+    kiemTraXungDot: (id, payload, lichHocId) =>
+      request(`/lop-hoc-phan/${id}/lich-hoc/kiem-tra-xung-dot`, { method: 'POST', body: payload, query: { lichHocId } }),
     xoaLichHoc: (id, lichHocId) =>
       request(`/lop-hoc-phan/${id}/lich-hoc/${lichHocId}`, { method: 'DELETE' }),
   },
@@ -286,6 +307,7 @@ export const api = {
     canhBao: (hocKyId) => request('/diem/toi/canh-bao', { query: { hocKyId } }),
     phucKhao: ({ trangThai, ...params } = {}) => listPaged('/diem/toi/phuc-khao', { ...params, trangThai }),
     taoPhucKhao: (payload) => request('/diem/toi/phuc-khao', { method: 'POST', body: payload }),
+    phucKhaoChiTiet: (id) => request(`/diem/toi/phuc-khao/${id}`),
     hocPhi: ({ conNo, hocKyId, ...params } = {}) =>
       listPaged('/cong-tac-sinh-vien/toi/hoc-phi', { ...params, ConNo: conNo, HocKyId: hocKyId }),
     lichSuThanhToan: (hocPhiId) => request(`/cong-tac-sinh-vien/toi/hoc-phi/${hocPhiId}/thanh-toan`),
@@ -333,6 +355,7 @@ export const api = {
   },
 
   dotDangKy: {
+    get: (id) => request(`/dot-dang-ky/${id}`),
     list({ hocKyId, trangThai, ...params } = {}) {
       return listPaged('/dot-dang-ky', { ...params, HocKyId: hocKyId, TrangThai: trangThai });
     },
@@ -405,6 +428,10 @@ export const api = {
   bangDiemSinhVien: (sinhVienId) => request(`/diem/sinh-vien/${sinhVienId}`),
 
   diem: {
+    /** Đánh giá cảnh báo học vụ của một sinh viên trong học kỳ (kể cả khi chưa đủ dữ liệu). */
+    canhBaoSinhVien: (sinhVienId, hocKyId) => request(`/diem/sinh-vien/${sinhVienId}/canh-bao`, { query: { hocKyId } }),
+    /** Danh sách sinh viên bị cảnh báo học vụ trong học kỳ, có phân trang. */
+    canhBaoDanhSach: (hocKyId, params) => listPaged('/diem/canh-bao', { ...params, hocKyId }),
     /** Bảng điểm của một lớp học phần (BangDiemLopDto). */
     bangDiem: (lopHocPhanId) => request(`/diem/lop-hoc-phan/${lopHocPhanId}`),
     /** @param {Array<{ dangKyHocPhanId: number, diemQuaTrinh: number, diemGiuaKy: number, diemCuoiKy: number }>} danhSachDiem */

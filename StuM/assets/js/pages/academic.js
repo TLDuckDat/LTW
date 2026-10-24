@@ -19,6 +19,7 @@ import { Table } from '../components/table.js';
 import { Toast } from '../components/toast.js';
 import { renderPageHeader } from '../layout/shell.js';
 import { DANH_MUC, toPayloadValue } from './academic-config.js';
+import { openDetailModal, openRecordDetailModal } from './graduation-forms.js';
 
 const state = { key: 'khoa', page: 1, pageSize: 10, search: '', filters: {}, rows: [] };
 let refs = {};
@@ -78,6 +79,7 @@ function filtersMarkup() {
 
 function rowActions() {
   const actions = [
+    { action: 'detail', label: 'Xem chi tiết', icon: 'eye' },
     { action: 'edit', label: 'Chỉnh sửa', icon: 'pencil' },
     ...(current().extraRowActions ?? []),
     { divider: true },
@@ -422,9 +424,36 @@ function openAssignAdvisor(lop) {
   });
 }
 
+/** Chi tiết một bản ghi danh mục, lấy từ GET /{id}. Nhãn lấy từ cột và trường của cấu hình. */
+function openRecordDetail(def, record) {
+  const labels = Object.fromEntries([...def.columns, ...def.fields].map((item) => [item.key ?? item.name, item.label]));
+  openRecordDetailModal({ title: def.title, load: () => def.api().get(record.id), labels });
+}
+
+/** Tra cứu quy chế theo mã, lấy từ GET /api/quy-che/ma/{ma}. */
+async function openQuyCheLookup(record) {
+  try {
+    const quyChe = await api.quyCheHocVu.getByMa(record.ma);
+    openDetailModal({
+      title: `Quy chế ${quyChe.ma}`,
+      rows: [
+        ['Mã', escapeHtml(quyChe.ma)],
+        ['Tên', escapeHtml(quyChe.ten)],
+        ['Giá trị', escapeHtml(`${quyChe.giaTri}${quyChe.donVi ? ` ${quyChe.donVi}` : ''}`)],
+        ['Áp dụng từ khóa', escapeHtml(quyChe.apDungTuKhoa ?? '—')],
+        ['Mô tả', escapeHtml(quyChe.moTa ?? '—')],
+      ],
+    });
+  } catch (error) {
+    Toast.error(error.message);
+  }
+}
+
 function handleRowAction(action, rowId) {
   const record = state.rows.find((row) => String(row.id) === rowId);
   if (!record) return;
+  if (action === 'detail') openRecordDetail(current(), record);
+  if (action === 'traCuu') openQuyCheLookup(record);
   if (action === 'edit') openForm(record);
   if (action === 'delete') confirmDelete(record);
   if (action === 'monHoc') openCtdtSubjects(record);

@@ -16,7 +16,7 @@ import { Select } from '../components/select.js';
 import { Skeleton } from '../components/skeleton.js';
 import { Table } from '../components/table.js';
 import { Toast } from '../components/toast.js';
-import { openFormModal } from './graduation-forms.js';
+import { openDetailModal, openFormModal } from './graduation-forms.js';
 
 // Giá trị enum được backend trả về dạng chuỗi (xem các DTO trong Modules/*/Dtos).
 const TRANG_THAI_SINH_VIEN = { DangHoc: ['success', 'Đang học'], BaoLuu: ['warning', 'Bảo lưu'], ThoiHoc: ['destructive', 'Thôi học'], DaTotNghiep: ['info', 'Đã tốt nghiệp'] };
@@ -352,10 +352,33 @@ export function khenThuongTab(container) {
 
 /* ----- Phúc khảo ----- */
 
+/** Chi tiết một yêu cầu phúc khảo của sinh viên, lấy từ GET /api/diem/toi/phuc-khao/{id}. */
+async function showReviewDetail(id) {
+  try {
+    const item = await api.cuaToi.phucKhaoChiTiet(id);
+    openDetailModal({
+      title: 'Chi tiết phúc khảo',
+      rows: [
+        ['Lý do', dash(item.lyDo)],
+        ['Điểm cũ', number(item.diemCu)],
+        ['Điểm mới', number(item.diemMoi)],
+        ['Trạng thái', badgeOf(PHUC_KHAO, item.trangThai)],
+        ['Ngày gửi', dash(formatDate(item.ngayTao))],
+      ],
+    });
+  } catch (error) {
+    Toast.error(error.message);
+  }
+}
+
 export function phucKhaoTab(container) {
   pagedTable(container, {
     load: (params) => api.cuaToi.phucKhao(params),
     caption: 'Yêu cầu phúc khảo',
+    actions: [{ action: 'detail', label: 'Chi tiết', icon: 'eye' }],
+    onAction: (action, row) => {
+      if (action === 'detail') showReviewDetail(row.id);
+    },
     columns: [
       { key: 'lyDo', label: 'Lý do', primary: true, render: (r) => dash(r.lyDo) },
       { key: 'diemCu', label: 'Điểm cũ', align: 'right', render: (r) => number(r.diemCu) },

@@ -5,6 +5,7 @@
  */
 
 import { escapeHtml, nextId } from '../core/dom.js';
+import { formatDate } from '../core/format.js';
 import { Button } from '../components/button.js';
 import { Input } from '../components/input.js';
 import { Modal } from '../components/modal.js';
@@ -114,4 +115,28 @@ export function openDetailModal({ title, rows, extra = '' }) {
   });
   handle.element.querySelector('[data-action="close"]').addEventListener('click', handle.close);
   return handle;
+}
+
+/** Giá trị hiển thị trong chi tiết: ngày theo dd/MM/yyyy, có/không cho đúng-sai, "—" khi trống. */
+function displayValue(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'boolean') return value ? 'Có' : 'Không';
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return formatDate(value);
+  return String(value);
+}
+
+/**
+ * Chi tiết một bản ghi lấy từ máy chủ. Chỉ hiện trường đơn (bỏ mảng và đối tượng lồng nhau).
+ * @param {{ title: string, load: () => Promise<object>, labels?: Record<string, string> }} options
+ */
+export async function openRecordDetailModal({ title, load, labels = {} }) {
+  try {
+    const record = await load();
+    const rows = Object.entries(record)
+      .filter(([key, value]) => key !== 'id' && (value === null || typeof value !== 'object'))
+      .map(([key, value]) => [labels[key] ?? key, escapeHtml(displayValue(value))]);
+    openDetailModal({ title, rows });
+  } catch (error) {
+    Toast.error(error.message);
+  }
 }

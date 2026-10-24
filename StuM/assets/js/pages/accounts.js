@@ -25,8 +25,10 @@ import {
   openRoleModal,
   VAI_TRO,
 } from './accounts-modals.js';
+import { openRecordDetailModal } from './graduation-forms.js';
 
 const ROW_ACTIONS = [
+  { action: 'detail', label: 'Xem chi tiết', icon: 'eye' },
   { action: 'role', label: 'Đổi vai trò', icon: 'shield' },
   { action: 'link-student', label: 'Liên kết sinh viên', icon: 'graduation-cap' },
   { action: 'link-lecturer', label: 'Liên kết giảng viên', icon: 'user-round' },
@@ -125,6 +127,13 @@ function handleRowAction(action, rowId) {
   const record = state.accounts.find((row) => String(row.id) === rowId);
   if (!record) return;
 
+  if (action === 'detail') {
+    openRecordDetailModal({
+      title: `Tài khoản ${record.tenDangNhap}`,
+      load: () => api.taiKhoan.get(record.id),
+      labels: { tenDangNhap: 'Tên đăng nhập', hoTen: 'Họ và tên', vaiTro: 'Vai trò', daKhoa: 'Bị khóa', ngayTao: 'Ngày tạo', sinhVienId: 'Mã sinh viên liên kết', giangVienId: 'Mã giảng viên liên kết' },
+    });
+  }
   if (action === 'role') openRoleModal({ record, onDone: loadAccounts });
   if (action === 'link-student') {
     openLinkModal({ record, kind: 'sinhVien', options: refs.students, onDone: loadAccounts });

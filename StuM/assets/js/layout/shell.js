@@ -40,6 +40,7 @@ export function openSettings() {
   const content = `<div class="modal-form">
     <label class="checkbox-row" for="${checkboxId}"><input type="checkbox" id="${checkboxId}"${checked}><span>Giao diện tối</span></label>
     <p class="form-hint">Lựa chọn được lưu trên trình duyệt này.</p>
+    <p class="form-hint" data-account>Đang tải thông tin tài khoản...</p>
   </div>`;
   const footer = [
     Button.render({ label: 'Đổi mật khẩu', variant: 'outline', icon: 'key-round', action: 'change-password' }),
@@ -49,6 +50,15 @@ export function openSettings() {
   ].join('');
 
   const handle = Modal.open({ title: 'Cài đặt', content, footer });
+  const accountEl = handle.element.querySelector('[data-account]');
+  api.phien
+    .me()
+    .then((me) => {
+      accountEl.textContent = `Đang đăng nhập: ${me.tenDangNhap} (${me.vaiTro})`;
+    })
+    .catch(() => {
+      accountEl.textContent = '';
+    });
   handle.element
     .querySelector(`#${checkboxId}`)
     .addEventListener('change', (event) => theme.apply(event.target.checked ? 'dark' : 'light'));

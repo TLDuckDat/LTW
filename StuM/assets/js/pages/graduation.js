@@ -19,7 +19,7 @@ import { Skeleton } from '../components/skeleton.js';
 import { Table } from '../components/table.js';
 import { Toast } from '../components/toast.js';
 import { renderPageHeader } from '../layout/shell.js';
-import { openDetailModal, openFormModal } from './graduation-forms.js';
+import { openDetailModal, openFormModal, openRecordDetailModal } from './graduation-forms.js';
 
 const yesNo = (value) => (value ? 'Có' : 'Không');
 const KET_LUAN = {
@@ -171,6 +171,7 @@ const TABS = {
       { key: 'diem', label: 'Điểm', align: 'right', render: (r) => (r.diem ?? '—') },
     ],
     actions: [
+      { action: 'detail', label: 'Chi tiết', icon: 'eye' },
       { action: 'edit', label: 'Đổi cơ sở / GV hướng dẫn', icon: 'pencil' },
       { action: 'ketQua', label: 'Nhập kết quả', icon: 'clipboard-check' },
       { action: 'huy', label: 'Hủy thực tập', icon: 'ban', danger: true },
@@ -191,6 +192,9 @@ const TABS = {
         onDone: () => loadTab(),
       }),
     onAction: async (action, row) => {
+      if (action === 'detail') {
+        openRecordDetailModal({ title: `Thực tập của ${row.mssv ?? row.id}`, load: () => api.totNghiep.thucTap.get(row.id) });
+      }
       if (action === 'edit') {
         openFormModal({
           title: `Đổi cơ sở và GV hướng dẫn: ${row.maSinhVien}`,
@@ -249,6 +253,7 @@ const TABS = {
       { key: 'dangTiepNhan', label: 'Tiếp nhận SV', render: (r) => (r.dangTiepNhan ? Badge.render({ label: 'Đang nhận', variant: 'success' }) : Badge.render({ label: 'Ngừng nhận', variant: 'neutral' })) },
     ],
     actions: [
+      { action: 'detail', label: 'Chi tiết', icon: 'eye' },
       { action: 'edit', label: 'Chỉnh sửa', icon: 'pencil' },
       { action: 'toggle', label: 'Đổi tiếp nhận', icon: 'toggle-right' },
       { divider: true },
@@ -256,6 +261,13 @@ const TABS = {
     ],
     create: () => coSoForm(null),
     onAction: async (action, row) => {
+      if (action === 'detail') {
+        openRecordDetailModal({
+          title: `Cơ sở ${row.ten}`,
+          load: () => api.totNghiep.coSo.get(row.id),
+          labels: { ma: 'Mã', ten: 'Tên cơ sở', nguoiLienHe: 'Người liên hệ', soDienThoai: 'Điện thoại', email: 'Email', dangTiepNhan: 'Đang tiếp nhận sinh viên' },
+        });
+      }
       if (action === 'edit') coSoForm(row);
       if (action === 'toggle') {
         try {
@@ -281,12 +293,20 @@ const TABS = {
       { key: 'giangVienHuongDan', label: 'GV hướng dẫn', render: (r) => escapeHtml(r.giangVienHuongDan ?? '—') },
     ],
     actions: [
+      { action: 'detail', label: 'Chi tiết', icon: 'eye' },
       { action: 'edit', label: 'Chỉnh sửa tên', icon: 'pencil' },
       { action: 'dangKy', label: 'Sinh viên đăng ký', icon: 'user-plus' },
       { action: 'phanGiangVien', label: 'Phân GV hướng dẫn', icon: 'user-round' },
     ],
     create: () => deTaiForm(null),
     onAction: (action, row) => {
+      if (action === 'detail') {
+        openRecordDetailModal({
+          title: `Đề tài ${row.tenDeTai}`,
+          load: () => api.totNghiep.deTai.get(row.id),
+          labels: { tenDeTai: 'Tên đề tài', maSinhVien: 'MSSV', hoTenSinhVien: 'Họ và tên sinh viên', giangVienHuongDan: 'Giảng viên hướng dẫn' },
+        });
+      }
       if (action === 'edit') deTaiForm(row);
       if (action === 'dangKy') {
         openFormModal({
@@ -323,11 +343,19 @@ const TABS = {
       { key: 'soDeTai', label: 'Số đề tài', align: 'right' },
     ],
     actions: [
+      { action: 'detail', label: 'Chi tiết', icon: 'eye' },
       { action: 'edit', label: 'Chỉnh sửa', icon: 'pencil' },
       { action: 'deTai', label: 'Đề tài của hội đồng', icon: 'list' },
     ],
     create: () => hoiDongForm(null),
     onAction: (action, row) => {
+      if (action === 'detail') {
+        openRecordDetailModal({
+          title: `Hội đồng ${row.ten}`,
+          load: () => api.totNghiep.hoiDong.get(row.id),
+          labels: { ten: 'Tên hội đồng', ngayBaoVe: 'Ngày bảo vệ', soDeTai: 'Số đề tài' },
+        });
+      }
       if (action === 'edit') hoiDongForm(row);
       if (action === 'deTai') openCouncilTopics(row);
     },
