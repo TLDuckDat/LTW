@@ -34,7 +34,7 @@ const COLUMNS = [
     render: (row) => {
       const full = row.siSo >= row.siSoToiDa;
       const badge = full ? Badge.render({ label: 'Đã đầy', variant: 'warning' }) : '';
-      return `<span class="text-nowrap">${row.siSo}/${row.siSoToiDa}</span> ${badge}`;
+      return `<span class="inline-flex items-center justify-end gap-sm text-nowrap">${row.siSo}/${row.siSoToiDa}${badge}</span>`;
     },
   },
   { key: 'lichHoc', label: 'Lịch học' },
