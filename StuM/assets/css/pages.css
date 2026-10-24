@@ -1,0 +1,94 @@
+/* ==========================================================================
+   StuM - Page styles
+   Style riêng cho từng trang. Hiện tại: ui-kit.html.
+   ========================================================================== */
+
+/* ---------- UI Kit showcase ---------- */
+
+.ui-kit-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 16px 0;
+}
+
+.ui-kit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.ui-kit-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) + 4px);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.ui-kit-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ui-kit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.ui-kit-row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.ui-kit-row-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: hsl(var(--foreground) / 0.6);
+}
+
+.ui-kit-row-items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ui-kit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ui-kit-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .ui-kit-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .ui-kit-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

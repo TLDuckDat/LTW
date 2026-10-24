@@ -4,6 +4,13 @@
  */
 
 /**
+ * Render lại icon Lucide cho các thẻ <i data-lucide> mới được thêm vào DOM.
+ */
+export function refreshIcons() {
+  window.lucide?.createIcons();
+}
+
+/**
  * Lấy phần tử đầu tiên khớp selector.
  * @param {string} selector
  * @param {ParentNode} [root=document]

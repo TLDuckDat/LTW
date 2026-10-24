@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="StuM - UI Kit: showcase component ở cả light và dark theme">
+  <title>StuM - UI Kit</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js" defer></script>
+  <script type="module" src="assets/js/pages/ui-kit.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#ui-kit-main">Bỏ qua và đi tới nội dung chính</a>
+
+  <header class="ui-kit-header">
+    <h1 class="h1">StuM UI Kit</h1>
+    <p class="text-body text-muted">Showcase component ở cả hai theme. Panel bên trái là Light, panel bên phải là Dark.</p>
+  </header>
+
+  <main id="ui-kit-main" class="ui-kit-grid">
+    <section class="ui-kit-panel" data-ui-panel="light" aria-labelledby="panel-light-title">
+      <h2 id="panel-light-title" class="h2">Light theme</h2>
+
+      <div class="ui-kit-section">
+        <h3 class="h3">Button</h3>
+        <div data-demo="button"></div>
+      </div>
+
+      <div class="ui-kit-section">
+        <h3 class="h3">Input</h3>
+        <div data-demo="input"></div>
+      </div>
+    </section>
+
+    <section class="ui-kit-panel dark" data-ui-panel="dark" aria-labelledby="panel-dark-title">
+      <h2 id="panel-dark-title" class="h2">Dark theme</h2>
+
+      <div class="ui-kit-section">
+        <h3 class="h3">Button</h3>
+        <div data-demo="button"></div>
+      </div>
+
+      <div class="ui-kit-section">
+        <h3 class="h3">Input</h3>
+        <div data-demo="input"></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -81,9 +81,9 @@ table {
   display: none !important;
 }
 
-/* Focus ring mặc định (đúng spec: 2px solid hsl(var(--ring) / 0.2)) */
+/* Focus ring toàn cục: dùng màu ring đầy đủ (không alpha) để đạt tương phản >= 3:1 */
 :focus-visible {
-  outline: 2px solid hsl(var(--ring) / 0.2);
+  outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
 }
 
