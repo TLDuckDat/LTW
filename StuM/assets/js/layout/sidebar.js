@@ -20,6 +20,8 @@ const NAV_ITEMS = [
   { route: 'classes', label: 'Lớp học phần', icon: 'school' },
   { route: 'registration', label: 'Đăng ký học phần', icon: 'calendar-check' },
   { route: 'academic', label: 'Danh mục học vụ', icon: 'library', roles: ['Admin', 'PhongDaoTao'] },
+  { route: 'graduation', label: 'Tốt nghiệp', icon: 'graduation-cap', roles: ['Admin', 'PhongDaoTao'] },
+  { route: 'reports', label: 'Báo cáo', icon: 'chart-column', roles: ['Admin', 'PhongDaoTao'] },
   { route: 'accounts', label: 'Tài khoản', icon: 'user-cog', roles: ['Admin'] },
   { route: 'grades', label: 'Điểm', icon: 'clipboard-list' },
 ];

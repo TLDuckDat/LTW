@@ -20,10 +20,17 @@ const PAGE_TITLES = {
   registration: 'Đăng ký học phần',
   accounts: 'Tài khoản',
   academic: 'Danh mục học vụ',
+  graduation: 'Tốt nghiệp',
+  reports: 'Báo cáo',
 };
 
 /** Trang chỉ dành cho một số vai trò; vai trò khác bị chuyển về Dashboard. */
-const PAGE_ROLES = { accounts: ['Admin'], academic: ['Admin', 'PhongDaoTao'] };
+const PAGE_ROLES = {
+  accounts: ['Admin'],
+  academic: ['Admin', 'PhongDaoTao'],
+  graduation: ['Admin', 'PhongDaoTao'],
+  reports: ['Admin', 'PhongDaoTao'],
+};
 
 const PAGE_MODULES = {
   login: () => import('./pages/login.js'),
@@ -35,6 +42,8 @@ const PAGE_MODULES = {
   registration: () => import('./pages/registration.js'),
   accounts: () => import('./pages/accounts.js'),
   academic: () => import('./pages/academic.js'),
+  graduation: () => import('./pages/graduation.js'),
+  reports: () => import('./pages/reports.js'),
 };
 
 async function bootstrap() {

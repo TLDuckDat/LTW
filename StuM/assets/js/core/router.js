@@ -15,6 +15,8 @@ export const ROUTES = {
   registration: 'registration.html',
   accounts: 'accounts.html',
   academic: 'academic.html',
+  graduation: 'graduation.html',
+  reports: 'reports.html',
   'ui-kit': 'ui-kit.html',
 };
 

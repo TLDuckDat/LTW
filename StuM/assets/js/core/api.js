@@ -45,6 +45,21 @@ async function listAll(path, query = {}) {
 }
 
 /**
+ * CRUD ở một đường dẫn bất kỳ (dùng cho các danh mục có tiền tố như /tot-nghiep/...).
+ * @param {string} path
+ * @param {{ noDelete?: boolean }} [options]
+ */
+function crudAt(path, options = {}) {
+  const base = {
+    list: (params) => listPaged(path, params),
+    get: (id) => request(`${path}/${id}`),
+    create: (payload) => request(path, { method: 'POST', body: payload }),
+    update: (id, payload) => request(`${path}/${id}`, { method: 'PUT', body: payload }),
+  };
+  return options.noDelete ? base : { ...base, remove: (id) => request(`${path}/${id}`, { method: 'DELETE' }) };
+}
+
+/**
  * CRUD chuẩn của một danh mục: danh sách phân trang, lấy đầy đủ, chi tiết, tạo, sửa, xóa.
  * @param {string} path
  */
@@ -94,6 +109,14 @@ export const api = {
   baoCao: {
     /** Số liệu tổng quan cho Dashboard (RPT-05). */
     tongQuan: () => request('/bao-cao/tong-quan'),
+    /** Thống kê sinh viên theo khoa, ngành và trạng thái (RPT-01). */
+    sinhVien: () => request('/bao-cao/sinh-vien'),
+    /** Kết quả học tập của học kỳ: GPA, xếp loại, điểm chữ, theo môn (RPT-02). */
+    ketQuaHocTap: (hocKyId) => request(`/bao-cao/ket-qua-hoc-tap/${hocKyId}`),
+    /** Công nợ học phí của học kỳ, danh sách còn nợ có phân trang (RPT-03). */
+    congNo: (hocKyId, params) => listPaged(`/bao-cao/cong-no/${hocKyId}`, params),
+    /** Sinh viên cảnh báo học vụ của học kỳ (RPT-04). */
+    canhBao: (hocKyId, params) => listPaged(`/bao-cao/canh-bao-hoc-vu/${hocKyId}`, params),
   },
 
   thongBao: {
@@ -178,6 +201,46 @@ export const api = {
     themLichHoc: (id, payload) => request(`/lop-hoc-phan/${id}/lich-hoc`, { method: 'POST', body: payload }),
     xoaLichHoc: (id, lichHocId) =>
       request(`/lop-hoc-phan/${id}/lich-hoc/${lichHocId}`, { method: 'DELETE' }),
+  },
+
+  /** Tốt nghiệp (module Graduation). */
+  totNghiep: {
+    dieuKien: (params) => listPaged('/tot-nghiep/dieu-kien', params),
+    dieuKienCuaSinhVien: (sinhVienId) => request(`/tot-nghiep/dieu-kien/${sinhVienId}`),
+    xetList: ({ ketQua, daTotNghiep, ...params } = {}) =>
+      listPaged('/tot-nghiep/xet', { ...params, KetQua: ketQua, DaTotNghiep: daTotNghiep }),
+    xetChiTiet: (sinhVienId) => request(`/tot-nghiep/xet/${sinhVienId}`),
+    /** Chạy xét tốt nghiệp cho một sinh viên (ghi kết quả vào lịch sử). */
+    xet: (sinhVienId) => request(`/tot-nghiep/xet/${sinhVienId}`, { method: 'POST' }),
+    coSo: {
+      ...crudAt('/tot-nghiep/co-so-thuc-tap'),
+      trangThai: (id, dangTiepNhan) =>
+        request(`/tot-nghiep/co-so-thuc-tap/${id}/trang-thai`, { method: 'PUT', body: { dangTiepNhan } }),
+    },
+    deTai: {
+      ...crudAt('/tot-nghiep/de-tai', { noDelete: true }),
+      dangKy: (id, sinhVienId) =>
+        request(`/tot-nghiep/de-tai/${id}/dang-ky`, { method: 'POST', body: { sinhVienId } }),
+      phanGiangVien: (id, giangVienHuongDanId) =>
+        request(`/tot-nghiep/de-tai/${id}/giang-vien`, { method: 'PUT', body: { giangVienHuongDanId } }),
+    },
+    hoiDong: {
+      ...crudAt('/tot-nghiep/hoi-dong', { noDelete: true }),
+      deTai: (id, params) => listPaged(`/tot-nghiep/hoi-dong/${id}/de-tai`, params),
+      phanDeTai: (id, deTaiId) => request(`/tot-nghiep/hoi-dong/${id}/de-tai/${deTaiId}`, { method: 'PUT' }),
+    },
+    thucTap: {
+      ...crudAt('/tot-nghiep/thuc-tap', { noDelete: true }),
+      capNhat: (id, payload) => request(`/tot-nghiep/thuc-tap/${id}`, { method: 'PUT', body: payload }),
+      huy: (id) => request(`/tot-nghiep/thuc-tap/${id}/huy`, { method: 'POST' }),
+      ketQua: (id) => request(`/tot-nghiep/thuc-tap/${id}/ket-qua`),
+      nhapKetQua: (id, payload) => request(`/tot-nghiep/thuc-tap/${id}/ket-qua`, { method: 'PUT', body: payload }),
+    },
+    ketQuaBaoVe: {
+      list: (params) => listPaged('/tot-nghiep/ket-qua-bao-ve', params),
+      get: (deTaiId) => request(`/tot-nghiep/ket-qua-bao-ve/${deTaiId}`),
+      nhap: (deTaiId, payload) => request(`/tot-nghiep/ket-qua-bao-ve/${deTaiId}`, { method: 'PUT', body: payload }),
+    },
   },
 
   /** Quản trị tài khoản (module Auth): chỉ Admin. */
