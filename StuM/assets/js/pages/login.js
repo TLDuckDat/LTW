@@ -1,9 +1,9 @@
 /**
  * Trang đăng nhập (index.html): layout 2 cột trên desktop, chỉ hiện form trên mobile.
- * Xác thực giả lập qua api.login; tài khoản demo: admin / admin123.
+ * Đăng nhập qua POST /api/auth/login của backend; phiên lưu trong localStorage (access + refresh token).
  */
 
-import { api } from '../core/api.js';
+import { api, ApiError } from '../core/api.js';
 import { refreshIcons } from '../core/dom.js';
 import { router } from '../core/router.js';
 import { Storage } from '../core/storage.js';
@@ -13,11 +13,8 @@ import { Input } from '../components/input.js';
 const REMEMBER_KEY = 'remembered-user';
 
 const RULES = {
-  username: { check: (value) => value.length > 0, message: 'Vui lòng nhập tên đăng nhập' },
-  password: {
-    check: (value) => value.length >= 6,
-    message: 'Mật khẩu phải có ít nhất 6 ký tự',
-  },
+  tenDangNhap: { check: (value) => value.length > 0, message: 'Vui lòng nhập tên đăng nhập' },
+  matKhau: { check: (value) => value.length > 0, message: 'Vui lòng nhập mật khẩu' },
 };
 
 /**
@@ -47,7 +44,7 @@ function brandMarkup() {
       <ul class="auth-brand-features">
         <li><i data-lucide="circle-check" aria-hidden="true"></i>Hồ sơ sinh viên và trạng thái học tập</li>
         <li><i data-lucide="circle-check" aria-hidden="true"></i>Lớp học phần, sĩ số và lịch học</li>
-        <li><i data-lucide="circle-check" aria-hidden="true"></i>Nhập điểm nhanh và xếp loại tự động</li>
+        <li><i data-lucide="circle-check" aria-hidden="true"></i>Nhập điểm theo lớp và xếp loại tự động</li>
       </ul>
     </div>
     <svg class="auth-brand-illustration" viewBox="0 0 420 260" role="img" aria-label="Minh họa sinh viên, sách và mũ tốt nghiệp">
@@ -72,18 +69,18 @@ function formMarkup(rememberedUser) {
     <form class="auth-form" id="login-form" novalidate>
       <div class="auth-form-header">
         <h1 class="auth-form-title">Đăng nhập</h1>
-        <p class="auth-form-subtitle">Nhập tài khoản để tiếp tục vào hệ thống</p>
+        <p class="auth-form-subtitle">Dùng tài khoản được cấp trong hệ thống</p>
       </div>
       <div id="login-alert" class="auth-alert" role="alert" hidden></div>
-      ${Input.render({ name: 'username', label: 'Tên đăng nhập', value: rememberedUser, placeholder: 'admin', iconLeft: 'user', autocomplete: 'username', required: true })}
-      ${Input.render({ name: 'password', type: 'password', label: 'Mật khẩu', placeholder: 'Nhập mật khẩu', iconLeft: 'lock', autocomplete: 'current-password', required: true })}
+      ${Input.render({ name: 'tenDangNhap', label: 'Tên đăng nhập', value: rememberedUser, placeholder: 'admin', iconLeft: 'user', autocomplete: 'username', required: true })}
+      ${Input.render({ name: 'matKhau', type: 'password', label: 'Mật khẩu', placeholder: 'Nhập mật khẩu', iconLeft: 'lock', autocomplete: 'current-password', required: true })}
       <div class="auth-form-footer">
         <label class="checkbox-row">
           <input type="checkbox" name="remember"${rememberedUser ? ' checked' : ''}>
           <span>Ghi nhớ tên đăng nhập</span>
         </label>
         ${Button.render({ label: 'Đăng nhập', type: 'submit', variant: 'primary', size: 'lg', block: true })}
-        <p class="auth-demo-hint">Tài khoản demo: <code>admin</code> / <code>admin123</code></p>
+        <p class="auth-demo-hint">Tài khoản quản trị mặc định khi seed dữ liệu: <code>admin</code> / <code>Admin@123</code></p>
       </div>
     </form>
   </main>`;
@@ -91,7 +88,7 @@ function formMarkup(rememberedUser) {
 
 function showAlert(form, message) {
   const alert = form.querySelector('#login-alert');
-  alert.innerHTML = `<i data-lucide="circle-alert" aria-hidden="true"></i><span></span>`;
+  alert.innerHTML = '<i data-lucide="circle-alert" aria-hidden="true"></i><span></span>';
   alert.querySelector('span').textContent = message;
   alert.hidden = false;
   refreshIcons();
@@ -106,8 +103,8 @@ function hideAlert(form) {
  */
 async function handleSubmit(form) {
   hideAlert(form);
-  const username = form.elements.namedItem('username');
-  const password = form.elements.namedItem('password');
+  const username = form.elements.namedItem('tenDangNhap');
+  const password = form.elements.namedItem('matKhau');
   const results = [validateInput(username), validateInput(password)];
   if (results.includes(false)) {
     (results[0] ? password : username).focus();
@@ -119,7 +116,7 @@ async function handleSubmit(form) {
   Button.setLoading(submitButton, true);
 
   try {
-    await api.login({ username: username.value.trim(), password: password.value });
+    await api.auth.login(username.value.trim(), password.value);
     if (remember) {
       Storage.set(REMEMBER_KEY, username.value.trim());
     } else {
@@ -127,8 +124,9 @@ async function handleSubmit(form) {
     }
     router.navigate('dashboard');
   } catch (error) {
+    // Thông báo từ backend đã là tiếng Việt (sai mật khẩu, bị khóa tạm thời, không kết nối được máy chủ...)
     Button.setLoading(submitButton, false);
-    showAlert(form, error.message);
+    showAlert(form, error instanceof ApiError ? error.message : 'Đã có lỗi xảy ra, vui lòng thử lại.');
     password.value = '';
     password.focus();
   }

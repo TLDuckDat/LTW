@@ -1,13 +1,11 @@
 /**
- * Trang Sinh viên: CRUD mẫu (template cho các trang danh mục khác).
- * Gồm: page header, filter bar (search debounce 300ms, khoa, trạng thái),
- * bảng sortable có phân trang, action menu, form thêm/sửa, xác nhận xóa, empty/skeleton/error.
+ * Trang Sinh viên: dữ liệu thật từ backend (GET/POST/PUT/DELETE /api/sinh-vien).
+ * Lọc, tìm kiếm và phân trang do server xử lý. Các thao tác trạng thái gọi endpoint nghiệp vụ của backend.
  */
 
 import { api } from '../core/api.js';
 import { renderAsync } from '../core/async-view.js';
 import { debounce } from '../core/dom.js';
-import { formatNumber } from '../core/format.js';
 import { router } from '../core/router.js';
 import { Button } from '../components/button.js';
 import { EmptyState } from '../components/empty-state.js';
@@ -19,21 +17,14 @@ import { Skeleton } from '../components/skeleton.js';
 import { Table } from '../components/table.js';
 import { Toast } from '../components/toast.js';
 import { renderPageHeader } from '../layout/shell.js';
-import { KHOA_LIST, openStudentDetail, openStudentForm, statusBadge, STATUS_META } from './students-form.js';
-
-const KHOA_OPTIONS = [{ value: '', label: 'Tất cả khoa' }, ...KHOA_LIST.map((item) => ({ value: item, label: item }))];
-const STATUS_OPTIONS = [
-  { value: '', label: 'Tất cả trạng thái' },
-  ...Object.entries(STATUS_META).map(([value, meta]) => ({ value, label: meta.label })),
-];
+import { openStatusForm, openStudentDetail, openStudentForm, statusBadge, STATUS_META } from './students-form.js';
 
 const COLUMNS = [
-  { key: 'mssv', label: 'MSSV', sortable: true },
-  { key: 'hoTen', label: 'Họ và tên', sortable: true, primary: true },
-  { key: 'email', label: 'Email' },
-  { key: 'khoa', label: 'Khoa' },
-  { key: 'lop', label: 'Lớp' },
-  { key: 'gpa', label: 'GPA', sortable: true, align: 'right', render: (row) => formatNumber(row.gpa, 2) },
+  { key: 'mssv', label: 'MSSV' },
+  { key: 'hoTen', label: 'Họ và tên', primary: true },
+  { key: 'email', label: 'Email', render: (row) => row.email ?? '—' },
+  { key: 'tenNganh', label: 'Ngành', render: (row) => row.tenNganh ?? '—' },
+  { key: 'tenLopHanhChinh', label: 'Lớp', render: (row) => row.tenLopHanhChinh ?? '—' },
   { key: 'trangThai', label: 'Trạng thái', render: (row) => statusBadge(row.trangThai) },
 ];
 
@@ -41,44 +32,37 @@ const ROW_ACTIONS = [
   { action: 'view', label: 'Xem chi tiết', icon: 'eye' },
   { action: 'edit', label: 'Chỉnh sửa', icon: 'pencil' },
   { divider: true },
+  { action: 'bao-luu', label: 'Bảo lưu', icon: 'pause' },
+  { action: 'thoi-hoc', label: 'Thôi học', icon: 'user-x' },
+  { action: 'quay-lai-hoc', label: 'Quay lại học', icon: 'undo-2' },
+  { divider: true },
   { action: 'delete', label: 'Xóa', icon: 'trash-2', danger: true },
 ];
 
-const state = {
-  search: '',
-  khoa: '',
-  trangThai: '',
-  page: 1,
-  pageSize: 10,
-  sort: { key: 'mssv', dir: 'asc' },
-  rows: [],
-};
+const STATUS_OPTIONS = [
+  { value: '', label: 'Tất cả trạng thái' },
+  ...Object.entries(STATUS_META).map(([value, meta]) => ({ value, label: meta.label })),
+];
+
+const state = { search: '', khoaId: '', trangThai: '', page: 1, pageSize: 10, rows: [] };
+let khoaOptions = [];
+let formLists = null;
 
 function hasActiveFilters() {
-  return Boolean(state.search || state.khoa || state.trangThai);
+  return Boolean(state.search || state.khoaId || state.trangThai);
 }
 
 function syncUrl() {
-  router.setQuery({ q: state.search, khoa: state.khoa, trangThai: state.trangThai });
+  router.setQuery({ q: state.search, khoaId: state.khoaId, trangThai: state.trangThai });
 }
 
-/**
- * @param {import('../core/api.js').ApiError|Error} error
- */
-function reportError(error) {
-  Toast.error(error.message);
-}
-
-function renderTable(result) {
-  return Table.render({
-    columns: COLUMNS,
-    rows: result.data,
-    sort: state.sort,
-    actions: ROW_ACTIONS,
-    actionLabel: (row) => `Thao tác cho ${row.mssv}`,
-    caption: 'Danh sách sinh viên',
-    footer: Pagination.render({ page: result.page, pageSize: result.pageSize, total: result.total }),
-  });
+/** Ngành và lớp hành chính cho form, tải một lần khi mở form lần đầu. */
+async function loadFormLists() {
+  if (!formLists) {
+    const [nganhs, lops] = await Promise.all([api.nganh.getAll(), api.lopHanhChinh.getAll()]);
+    formLists = { nganhs, lops };
+  }
+  return formLists;
 }
 
 function emptyMarkup() {
@@ -103,31 +87,35 @@ function emptyMarkup() {
 }
 
 function loadTable() {
-  const container = document.getElementById('table-container');
-  return renderAsync(container, {
+  return renderAsync(document.getElementById('table-container'), {
     load: async () => {
       const result = await api.students.list({
-        search: state.search,
-        filters: { khoa: state.khoa, trangThai: state.trangThai },
-        sort: state.sort,
         page: state.page,
         pageSize: state.pageSize,
+        search: state.search,
+        khoaId: state.khoaId,
+        trangThai: state.trangThai,
       });
       state.rows = result.data;
       return result;
     },
-    skeleton: () => Skeleton.table(5, 7),
+    skeleton: () => Skeleton.table(5, 6),
     isEmpty: (result) => result.total === 0,
     empty: emptyMarkup,
-    render: renderTable,
+    render: (result) =>
+      Table.render({
+        columns: COLUMNS,
+        rows: result.data,
+        actions: ROW_ACTIONS,
+        actionLabel: (row) => `Thao tác cho ${row.mssv}`,
+        caption: 'Danh sách sinh viên',
+        footer: Pagination.render({ page: result.page, pageSize: result.pageSize, total: result.total }),
+      }),
     errorTitle: 'Không tải được danh sách sinh viên',
   });
 }
 
-function confirmDelete(id) {
-  const record = state.rows.find((row) => row.id === id);
-  if (!record) return;
-
+function confirmDelete(record) {
   Modal.confirm({
     title: 'Xóa sinh viên',
     message: `Bạn có chắc muốn xóa sinh viên ${record.hoTen} (${record.mssv})? Hành động này không thể hoàn tác.`,
@@ -135,41 +123,54 @@ function confirmDelete(id) {
     danger: true,
     onConfirm: async () => {
       try {
-        await api.students.remove(id);
+        await api.students.remove(record.id);
         Toast.success(`Đã xóa sinh viên ${record.mssv}`);
         loadTable();
       } catch (error) {
-        reportError(error);
+        Toast.error(error.message);
         throw error;
       }
     },
   }).catch(() => {});
 }
 
+async function openForm(record = null) {
+  try {
+    const lists = await loadFormLists();
+    openStudentForm({ record, lists, onSaved: loadTable });
+  } catch (error) {
+    Toast.error(error.message);
+  }
+}
+
 function handleRowAction(action, rowId) {
-  const record = state.rows.find((row) => row.id === rowId);
-  if (action === 'delete') confirmDelete(rowId);
+  const record = state.rows.find((row) => String(row.id) === String(rowId));
   if (!record) return;
-  if (action === 'view') openStudentDetail(record);
-  if (action === 'edit') openStudentForm({ record, onSaved: loadTable });
+  if (action === 'view') openStudentDetail(record.id);
+  if (action === 'edit') openForm(record);
+  if (action === 'delete') confirmDelete(record);
+  if (['bao-luu', 'thoi-hoc', 'quay-lai-hoc'].includes(action)) {
+    openStatusForm({ record, action, onDone: loadTable });
+  }
 }
 
 function resetFilters(root) {
   state.search = '';
-  state.khoa = '';
+  state.khoaId = '';
   state.trangThai = '';
   state.page = 1;
   root.querySelector('[name="q"]').value = '';
-  root.querySelector('[name="khoa"]').value = '';
+  root.querySelector('[name="khoaId"]').value = '';
   root.querySelector('[name="trangThai"]').value = '';
   syncUrl();
   loadTable();
 }
 
 function filtersMarkup() {
+  const khoa = [{ value: '', label: 'Tất cả khoa' }, ...khoaOptions];
   return `<div class="filter-bar" role="search">
-    ${Input.render({ id: 'filter-search', name: 'q', label: 'Tìm kiếm', value: state.search, placeholder: 'MSSV, họ tên, email, lớp', iconLeft: 'search' })}
-    ${Select.render({ id: 'filter-khoa', name: 'khoa', label: 'Khoa', options: KHOA_OPTIONS, value: state.khoa })}
+    ${Input.render({ id: 'filter-search', name: 'q', label: 'Tìm kiếm', value: state.search, placeholder: 'MSSV, họ tên, email', iconLeft: 'search' })}
+    ${Select.render({ id: 'filter-khoa', name: 'khoaId', label: 'Khoa', options: khoa, value: state.khoaId })}
     ${Select.render({ id: 'filter-status', name: 'trangThai', label: 'Trạng thái', options: STATUS_OPTIONS, value: state.trangThai })}
     ${Button.render({ label: 'Đặt lại', variant: 'ghost', action: 'reset-filters' })}
   </div>`;
@@ -194,9 +195,8 @@ function bindEvents(root) {
 
   Select.init(root, {
     onChange: (element) => {
-      if (element.name === 'khoa') state.khoa = element.value;
-      if (element.name === 'trangThai') state.trangThai = element.value;
-      if (!['khoa', 'trangThai'].includes(element.name)) return;
+      if (!['khoaId', 'trangThai'].includes(element.name)) return;
+      state[element.name] = element.value;
       state.page = 1;
       syncUrl();
       loadTable();
@@ -205,23 +205,14 @@ function bindEvents(root) {
 
   Button.init(root, {
     onAction: (action) => {
-      if (action === 'add') openStudentForm({ onSaved: loadTable });
+      if (action === 'add') openForm();
       if (action === 'reset-filters') resetFilters(root);
     },
   });
 
-  const tableContainer = root.querySelector('#table-container');
-  Table.init(root, {
-    onSort: (key) => {
-      const dir = state.sort.key === key && state.sort.dir === 'asc' ? 'desc' : 'asc';
-      state.sort = { key, dir };
-      state.page = 1;
-      loadTable();
-    },
-    onAction: (action, rowId) => handleRowAction(action, rowId),
-  });
+  Table.init(root, { onAction: (action, rowId) => handleRowAction(action, rowId) });
 
-  Pagination.init(tableContainer, {
+  Pagination.init(root.querySelector('#table-container'), {
     onChange: ({ page, pageSize }) => {
       state.page = page;
       state.pageSize = pageSize;
@@ -234,21 +225,25 @@ function bindEvents(root) {
  * @param {HTMLElement} root
  * @param {{ query: Record<string, string> }} context
  */
-export function mount(root, { query }) {
+export async function mount(root, { query }) {
   state.search = query.q ?? '';
-  state.khoa = query.khoa ?? '';
+  state.khoaId = query.khoaId ?? '';
   state.trangThai = query.trangThai ?? '';
+  formLists = null;
 
+  const khoaReady = api.khoa.getAll().catch(() => []);
   root.innerHTML = `${renderPageHeader({
     title: 'Sinh viên',
-    description: 'Quản lý hồ sơ sinh viên toàn trường',
+    description: 'Hồ sơ sinh viên toàn trường, lấy trực tiếp từ cơ sở dữ liệu',
     actions: Button.render({ label: 'Thêm sinh viên', variant: 'primary', icon: 'plus', id: 'btn-add-student', action: 'add' }),
   })}
   <section class="card" aria-label="Danh sách sinh viên">
-    ${filtersMarkup()}
+    <div id="filters-slot"></div>
     <div class="card-body is-flush" id="table-container"></div>
   </section>`;
 
   bindEvents(root);
-  return loadTable();
+  const [khoas] = await Promise.all([khoaReady, loadTable()]);
+  khoaOptions = khoas.map((item) => ({ value: item.id, label: `${item.ma} - ${item.ten}` }));
+  root.querySelector('#filters-slot').outerHTML = filtersMarkup();
 }

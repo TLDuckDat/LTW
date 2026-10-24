@@ -322,3 +322,13 @@
   font-size: 16px;
   font-weight: 700;
 }
+
+/* ---------- Biểu đồ cột (dashboard) ---------- */
+
+.chart-bar {
+  fill: hsl(var(--primary) / 0.85);
+}
+
+.chart-bar:hover {
+  fill: hsl(var(--primary));
+}

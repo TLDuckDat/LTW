@@ -37,7 +37,7 @@ async function bootstrap() {
   if (!loadModule) return;
 
   const app = document.getElementById('app');
-  const session = api.getSession();
+  const session = api.auth.getSession();
 
   if (page === 'login') {
     if (session) {

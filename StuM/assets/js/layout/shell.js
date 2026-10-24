@@ -49,8 +49,8 @@ export function openSettings() {
     .querySelector(`#${checkboxId}`)
     .addEventListener('change', (event) => theme.apply(event.target.checked ? 'dark' : 'light'));
   handle.element.querySelector('[data-action="close"]').addEventListener('click', handle.close);
-  handle.element.querySelector('[data-action="logout"]').addEventListener('click', () => {
-    api.logout();
+  handle.element.querySelector('[data-action="logout"]').addEventListener('click', async () => {
+    await api.auth.logout();
     router.navigate('login');
   });
 }
@@ -70,7 +70,7 @@ export function mountShell(container, { page, title }) {
       ${Sidebar.render({ activePage: page, collapsed })}
       <div class="drawer-overlay" data-action="close-drawer"></div>
       <div class="app-main">
-        ${Topbar.render({ breadcrumb, user: api.getSession() })}
+        ${Topbar.render({ breadcrumb, user: api.auth.getSession() })}
         <main class="app-content" id="page-content" tabindex="-1"></main>
       </div>
     </div>`;

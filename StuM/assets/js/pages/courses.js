@@ -1,13 +1,12 @@
 /**
- * Trang Môn học: CRUD theo đúng pattern của trang Sinh viên.
- * Không cho xóa môn đang có lớp học phần.
+ * Trang Môn học: CRUD với backend (GET/POST/PUT/DELETE /api/mon-hoc) và quản lý môn tiên quyết.
+ * Backend chặn xóa môn đang được dùng (lớp học phần, chương trình đào tạo), lỗi được hiển thị nguyên văn.
  */
 
 import { api } from '../core/api.js';
 import { renderAsync } from '../core/async-view.js';
-import { debounce, nextId } from '../core/dom.js';
+import { debounce, escapeHtml, nextId } from '../core/dom.js';
 import { router } from '../core/router.js';
-import { Badge } from '../components/badge.js';
 import { Button } from '../components/button.js';
 import { EmptyState } from '../components/empty-state.js';
 import { Input } from '../components/input.js';
@@ -19,46 +18,32 @@ import { Table } from '../components/table.js';
 import { Toast } from '../components/toast.js';
 import { renderPageHeader } from '../layout/shell.js';
 
-const KHOA_LIST = ['CNTT', 'Kinh tế', 'Ngoại ngữ', 'Cơ khí'];
-const LOAI_MON_LIST = ['Bắt buộc', 'Tự chọn'];
-const MA_MON_PATTERN = /^[A-Z]{2,4}\d{4}$/i;
-
 const COLUMNS = [
-  { key: 'maMon', label: 'Mã môn', sortable: true },
-  { key: 'tenMon', label: 'Tên môn', sortable: true, primary: true },
-  { key: 'soTinChi', label: 'Số tín chỉ', sortable: true, align: 'right' },
-  { key: 'khoa', label: 'Khoa' },
-  {
-    key: 'loaiMon',
-    label: 'Loại môn',
-    render: (row) => Badge.render({ label: row.loaiMon, variant: row.loaiMon === 'Bắt buộc' ? 'primary' : 'neutral' }),
-  },
+  { key: 'ma', label: 'Mã môn', primary: true },
+  { key: 'ten', label: 'Tên môn' },
+  { key: 'soTinChi', label: 'Số tín chỉ', align: 'right' },
 ];
 
 const ROW_ACTIONS = [
   { action: 'edit', label: 'Chỉnh sửa', icon: 'pencil' },
+  { action: 'prerequisites', label: 'Môn tiên quyết', icon: 'git-branch' },
   { divider: true },
   { action: 'delete', label: 'Xóa', icon: 'trash-2', danger: true },
 ];
 
-const state = { search: '', khoa: '', loaiMon: '', page: 1, pageSize: 10, sort: { key: 'maMon', dir: 'asc' }, rows: [] };
-
-const toOptions = (list) => list.map((item) => ({ value: item, label: item }));
-
-function hasActiveFilters() {
-  return Boolean(state.search || state.khoa || state.loaiMon);
-}
+const MA_MON_PATTERN = /^[A-Z]{2,4}\d{4}$/i;
+const state = { search: '', page: 1, pageSize: 10, rows: [] };
 
 function syncUrl() {
-  router.setQuery({ q: state.search, khoa: state.khoa, loaiMon: state.loaiMon });
+  router.setQuery({ q: state.search });
 }
 
 function emptyMarkup() {
-  if (hasActiveFilters()) {
+  if (state.search) {
     return EmptyState.render({
       icon: 'search-x',
       title: 'Không tìm thấy môn học phù hợp',
-      description: 'Thử thay đổi từ khóa hoặc bộ lọc.',
+      description: 'Thử thay đổi từ khóa tìm kiếm.',
       actionText: 'Xóa bộ lọc',
       actionId: 'btn-clear-filters',
       action: 'reset-filters',
@@ -77,31 +62,49 @@ function emptyMarkup() {
 function loadTable() {
   return renderAsync(document.getElementById('table-container'), {
     load: async () => {
-      const result = await api.courses.list({
-        search: state.search,
-        filters: { khoa: state.khoa, loaiMon: state.loaiMon },
-        sort: state.sort,
-        page: state.page,
-        pageSize: state.pageSize,
-      });
+      const result = await api.monHoc.list({ page: state.page, pageSize: state.pageSize, search: state.search });
       state.rows = result.data;
       return result;
     },
-    skeleton: () => Skeleton.table(5, 5),
+    skeleton: () => Skeleton.table(5, 3),
     isEmpty: (result) => result.total === 0,
     empty: emptyMarkup,
     render: (result) =>
       Table.render({
         columns: COLUMNS,
         rows: result.data,
-        sort: state.sort,
         actions: ROW_ACTIONS,
-        actionLabel: (row) => `Thao tác cho ${row.maMon}`,
+        actionLabel: (row) => `Thao tác cho ${row.ma}`,
         caption: 'Danh sách môn học',
         footer: Pagination.render({ page: result.page, pageSize: result.pageSize, total: result.total }),
       }),
     errorTitle: 'Không tải được danh sách môn học',
   });
+}
+
+/**
+ * @param {HTMLInputElement} input
+ * @returns {boolean}
+ */
+function validateCourseInput(input) {
+  const value = input.value.trim();
+  let message = '';
+  if (input.name === 'ma') {
+    if (!value) message = 'Vui lòng nhập mã môn';
+    else if (!MA_MON_PATTERN.test(value)) message = 'Mã môn dạng 2-4 chữ cái và 4 chữ số, ví dụ INT1001';
+  } else if (input.name === 'ten' && !value) {
+    message = 'Vui lòng nhập tên môn';
+  } else if (input.name === 'soTinChi') {
+    const credits = Number(value);
+    if (!Number.isInteger(credits) || credits < 1 || credits > 6) message = 'Số tín chỉ là số nguyên từ 1 đến 6';
+  }
+
+  if (message) {
+    Input.setError(input, message);
+    return false;
+  }
+  Input.clearError(input);
+  return true;
 }
 
 /**
@@ -114,11 +117,9 @@ function openCourseForm({ record = null }) {
     title: isEdit ? 'Chỉnh sửa môn học' : 'Thêm môn học',
     content: `<form class="modal-form" id="${formId}" novalidate>
       <div class="form-grid">
-        ${Input.render({ name: 'maMon', label: 'Mã môn', value: record?.maMon ?? '', placeholder: 'INT1001', required: true, hint: '2-4 chữ cái và 4 chữ số' })}
-        ${Input.render({ name: 'tenMon', label: 'Tên môn', value: record?.tenMon ?? '', placeholder: 'Lập trình Web', required: true })}
+        ${Input.render({ name: 'ma', label: 'Mã môn', value: record?.ma ?? '', placeholder: 'INT1001', required: true, hint: '2-4 chữ cái và 4 chữ số' })}
+        ${Input.render({ name: 'ten', label: 'Tên môn', value: record?.ten ?? '', placeholder: 'Lập trình Web', required: true })}
         ${Input.render({ name: 'soTinChi', type: 'number', label: 'Số tín chỉ', value: record?.soTinChi ?? 3, min: 1, max: 6, step: 1, required: true })}
-        ${Select.render({ name: 'khoa', label: 'Khoa', value: record?.khoa ?? KHOA_LIST[0], options: toOptions(KHOA_LIST) })}
-        ${Select.render({ name: 'loaiMon', label: 'Loại môn', value: record?.loaiMon ?? LOAI_MON_LIST[0], options: toOptions(LOAI_MON_LIST) })}
       </div>
     </form>`,
     footer: [
@@ -137,20 +138,13 @@ function openCourseForm({ record = null }) {
 
   saveButton.addEventListener('click', () => {
     const inputs = Array.from(form.querySelectorAll('input[name]'));
-    const results = inputs.map(validateCourseInput);
-    if (results.includes(false)) return;
+    if (inputs.map(validateCourseInput).includes(false)) return;
 
     const field = (name) => form.elements.namedItem(name).value.trim();
-    const payload = {
-      maMon: field('maMon').toUpperCase(),
-      tenMon: field('tenMon'),
-      soTinChi: Number(field('soTinChi')),
-      khoa: field('khoa'),
-      loaiMon: field('loaiMon'),
-    };
+    const payload = { ma: field('ma').toUpperCase(), ten: field('ten'), soTinChi: Number(field('soTinChi')) };
 
     Button.setLoading(saveButton, true);
-    const request = isEdit ? api.courses.update(record.id, payload) : api.courses.create(payload);
+    const request = isEdit ? api.monHoc.update(record.id, payload) : api.monHoc.create(payload);
     request
       .then(() => {
         Toast.success(isEdit ? 'Cập nhật môn học thành công' : 'Thêm môn học thành công');
@@ -159,69 +153,99 @@ function openCourseForm({ record = null }) {
       })
       .catch((error) => {
         Button.setLoading(saveButton, false);
-        if (error.status === 409) {
-          Input.setError(form.elements.namedItem('maMon'), error.message);
-        } else {
-          Toast.error(error.message);
-        }
+        Toast.error(error.message);
       });
   });
 }
 
 /**
- * @param {HTMLInputElement} input
- * @returns {boolean}
+ * Quản lý môn tiên quyết: liệt kê, thêm, bỏ.
+ * @param {object} record
  */
-function validateCourseInput(input) {
-  const value = input.value.trim();
-  let message = '';
-  if (input.name === 'maMon') {
-    if (!value) message = 'Vui lòng nhập mã môn';
-    else if (!MA_MON_PATTERN.test(value)) message = 'Mã môn dạng 2-4 chữ cái và 4 chữ số, ví dụ INT1001';
-  } else if (input.name === 'tenMon') {
-    if (!value) message = 'Vui lòng nhập tên môn';
-  } else if (input.name === 'soTinChi') {
-    const credits = Number(value);
-    if (!Number.isInteger(credits) || credits < 1 || credits > 6) message = 'Số tín chỉ là số nguyên từ 1 đến 6';
-  }
+async function openPrerequisites(record) {
+  const formId = nextId('prereq-form');
+  const handle = Modal.open({
+    title: `Môn tiên quyết của ${record.ma}`,
+    size: 'lg',
+    content: `<div class="modal-form">
+      <div data-prereq-list></div>
+      <form class="filter-bar" id="${formId}" novalidate>
+        <div class="field" data-prereq-select-slot></div>
+        ${Button.render({ label: 'Thêm', variant: 'primary', action: 'add-prereq' })}
+      </form>
+    </div>`,
+    footer: Button.render({ label: 'Đóng', variant: 'outline', action: 'close' }),
+  });
+  handle.element.querySelector('[data-action="close"]').addEventListener('click', handle.close);
 
-  if (message) {
-    Input.setError(input, message);
-    return false;
-  }
-  Input.clearError(input);
-  return true;
-}
+  const listEl = handle.element.querySelector('[data-prereq-list]');
+  const selectSlot = handle.element.querySelector('[data-prereq-select-slot]');
 
-/**
- * Không xóa môn đang có lớp học phần. Nếu không còn lớp nào thì mới hỏi xác nhận.
- * @param {string} id
- */
-async function confirmDelete(id) {
-  const record = state.rows.find((row) => row.id === id);
-  if (!record) return;
+  const reload = async () => {
+    const [prereqs, all] = await Promise.all([api.monHoc.tienQuyet(record.id), api.monHoc.getAll()]);
+    listEl.innerHTML = prereqs.length
+      ? `<ul class="todo-list">${prereqs
+          .map(
+            (item) => `<li class="todo-item">
+              <span class="todo-text">${escapeHtml(item.ma)} - ${escapeHtml(item.ten)}</span>
+              ${Button.render({ label: 'Bỏ', variant: 'ghost', size: 'sm', action: 'remove-prereq', id: `prereq-${item.id}` })}
+            </li>`,
+          )
+          .join('')}</ul>`
+      : '<p class="form-hint">Môn này chưa có môn tiên quyết.</p>';
 
-  try {
-    const classes = await api.classes.getAll();
-    const usedBy = classes.filter((item) => item.maMon === record.maMon).length;
-    if (usedBy > 0) {
-      Toast.warning(`Không thể xóa: môn ${record.maMon} còn ${usedBy} lớp học phần`);
+    const taken = new Set(prereqs.map((item) => item.id));
+    const options = all
+      .filter((item) => item.id !== record.id && !taken.has(item.id))
+      .map((item) => ({ value: item.id, label: `${item.ma} - ${item.ten}` }));
+    selectSlot.innerHTML = Select.render({ name: 'tienQuyetId', label: 'Chọn môn tiên quyết', options, placeholder: 'Chọn môn', value: '' });
+  };
+
+  listEl.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-action="remove-prereq"]');
+    if (!button) return;
+    const tienQuyetId = Number(button.id.replace('prereq-', ''));
+    try {
+      await api.monHoc.boTienQuyet(record.id, tienQuyetId);
+      Toast.success('Đã bỏ môn tiên quyết');
+      reload();
+    } catch (error) {
+      Toast.error(error.message);
+    }
+  });
+
+  handle.element.querySelector('[data-action="add-prereq"]').addEventListener('click', async () => {
+    const select = handle.element.querySelector('[name="tienQuyetId"]');
+    if (!select || select.value === '') {
+      Toast.warning('Chọn một môn tiên quyết trước khi thêm');
       return;
     }
-  } catch (error) {
-    Toast.error(error.message);
-    return;
-  }
+    try {
+      await api.monHoc.themTienQuyet(record.id, Number(select.value));
+      Toast.success('Đã thêm môn tiên quyết');
+      reload();
+    } catch (error) {
+      Toast.error(error.message);
+    }
+  });
 
+  try {
+    await reload();
+  } catch (error) {
+    listEl.innerHTML = `<p class="form-error">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+function confirmDelete(record) {
   Modal.confirm({
     title: 'Xóa môn học',
-    message: `Bạn có chắc muốn xóa môn ${record.tenMon} (${record.maMon})? Hành động này không thể hoàn tác.`,
+    message: `Bạn có chắc muốn xóa môn ${record.ten} (${record.ma})? Backend sẽ từ chối nếu môn đang được sử dụng.`,
     confirmText: 'Xóa',
     danger: true,
     onConfirm: async () => {
       try {
-        await api.courses.remove(id);
-        Toast.success(`Đã xóa môn ${record.maMon}`);
+        await api.monHoc.remove(record.id);
+        Toast.success(`Đã xóa môn ${record.ma}`);
         loadTable();
       } catch (error) {
         Toast.error(error.message);
@@ -229,18 +253,6 @@ async function confirmDelete(id) {
       }
     },
   }).catch(() => {});
-}
-
-function resetFilters(root) {
-  state.search = '';
-  state.khoa = '';
-  state.loaiMon = '';
-  state.page = 1;
-  root.querySelector('[name="q"]').value = '';
-  root.querySelector('[name="khoa"]').value = '';
-  root.querySelector('[name="loaiMon"]').value = '';
-  syncUrl();
-  loadTable();
 }
 
 function bindEvents(root) {
@@ -257,34 +269,26 @@ function bindEvents(root) {
     },
   });
 
-  Select.init(root, {
-    onChange: (element) => {
-      if (!['khoa', 'loaiMon'].includes(element.name)) return;
-      state[element.name] = element.value;
-      state.page = 1;
-      syncUrl();
-      loadTable();
-    },
-  });
-
   Button.init(root, {
     onAction: (action) => {
       if (action === 'add') openCourseForm({});
-      if (action === 'reset-filters') resetFilters(root);
+      if (action === 'reset-filters') {
+        state.search = '';
+        state.page = 1;
+        root.querySelector('[name="q"]').value = '';
+        syncUrl();
+        loadTable();
+      }
     },
   });
 
   Table.init(root, {
-    onSort: (key) => {
-      const dir = state.sort.key === key && state.sort.dir === 'asc' ? 'desc' : 'asc';
-      state.sort = { key, dir };
-      state.page = 1;
-      loadTable();
-    },
     onAction: (action, rowId) => {
-      const record = state.rows.find((row) => row.id === rowId);
-      if (action === 'edit' && record) openCourseForm({ record });
-      if (action === 'delete') confirmDelete(rowId);
+      const record = state.rows.find((row) => String(row.id) === String(rowId));
+      if (!record) return;
+      if (action === 'edit') openCourseForm({ record });
+      if (action === 'prerequisites') openPrerequisites(record);
+      if (action === 'delete') confirmDelete(record);
     },
   });
 
@@ -303,22 +307,14 @@ function bindEvents(root) {
  */
 export function mount(root, { query }) {
   state.search = query.q ?? '';
-  state.khoa = query.khoa ?? '';
-  state.loaiMon = query.loaiMon ?? '';
-
-  const khoaOptions = [{ value: '', label: 'Tất cả khoa' }, ...toOptions(KHOA_LIST)];
-  const loaiOptions = [{ value: '', label: 'Tất cả loại' }, ...toOptions(LOAI_MON_LIST)];
-
   root.innerHTML = `${renderPageHeader({
     title: 'Môn học',
-    description: 'Danh mục môn học và số tín chỉ',
+    description: 'Danh mục môn học, số tín chỉ và môn tiên quyết',
     actions: Button.render({ label: 'Thêm môn học', variant: 'primary', icon: 'plus', id: 'btn-add-course', action: 'add' }),
   })}
   <section class="card" aria-label="Danh sách môn học">
     <div class="filter-bar" role="search">
       ${Input.render({ id: 'filter-search', name: 'q', label: 'Tìm kiếm', value: state.search, placeholder: 'Mã môn hoặc tên môn', iconLeft: 'search' })}
-      ${Select.render({ id: 'filter-khoa', name: 'khoa', label: 'Khoa', options: khoaOptions, value: state.khoa })}
-      ${Select.render({ id: 'filter-loai', name: 'loaiMon', label: 'Loại môn', options: loaiOptions, value: state.loaiMon })}
       ${Button.render({ label: 'Đặt lại', variant: 'ghost', action: 'reset-filters' })}
     </div>
     <div class="card-body is-flush" id="table-container"></div>

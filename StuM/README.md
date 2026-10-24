@@ -1,36 +1,71 @@
-# StuM - Hệ thống Quản lý Sinh viên & Đào tạo
+# StuM - Giao diện Quản lý Sinh viên & Đào tạo
 
-Giao diện quản trị (enterprise dashboard) viết bằng HTML5, CSS3 thuần và Vanilla JavaScript ES6 Modules.
-Không framework, không build tool, không `node_modules`. Chỉ phụ thuộc Google Fonts (Inter) và Lucide Icons qua CDN.
+Frontend HTML5, CSS3 thuần và Vanilla JavaScript ES6 Modules, không framework và không build tool.
+Dữ liệu lấy trực tiếp từ backend **StudentManagement** (ASP.NET Core + SQL Server), không còn dữ liệu mẫu.
 
-## Chạy ứng dụng
+## Chạy hệ thống
 
-ES Modules không chạy khi mở `file://` trực tiếp (lỗi CORS), nên cần một web server tĩnh.
+Cần chạy **backend** trước, rồi **frontend**.
 
-**Cách 1 - Python (khuyến nghị):**
+### 1. Backend (thư mục gốc của repo)
+
+```bash
+dotnet run --launch-profile http
+```
+
+Backend chạy ở `http://localhost:5235`. Ở môi trường Development, backend tự migrate và seed dữ liệu vào SQL Server LocalDB
+(`StudentManagementDb`). Swagger: http://localhost:5235/swagger.
+
+### 2. Frontend (thư mục `StuM/`)
 
 ```bash
 cd StuM
 python -m http.server 8000
 ```
 
-Rồi mở `http://localhost:8000`.
+Mở `http://localhost:8000`. Cổng 8000 đã nằm trong `Cors:AllowedOrigins` của `appsettings.Development.json`.
+Nếu đổi cổng frontend, thêm origin mới vào file này rồi khởi động lại backend.
 
-**Cách 2 - VS Code:** cài extension *Live Server*, chuột phải `index.html` → *Open with Live Server*.
+Địa chỉ backend nằm trong `assets/js/core/config.js` (`API_BASE_URL`).
 
-Tài khoản demo: `admin` / `admin123`.
+### Đăng nhập
 
-## Các trang
+Tài khoản seed của backend (xem `README.md` ở thư mục gốc để có danh sách đầy đủ):
 
-| File | Nội dung |
-| --- | --- |
-| `index.html` | Đăng nhập (layout 2 cột trên desktop, chỉ form trên mobile) |
-| `dashboard.html` | 4 KPI, biểu đồ đường SVG vẽ thủ công, việc cần làm, sinh viên mới nhất |
-| `students.html` | CRUD sinh viên: tìm kiếm (debounce 300ms), lọc khoa/trạng thái, sắp xếp, phân trang, xem/sửa/xóa |
-| `courses.html` | CRUD môn học. Không cho xóa môn đang có lớp học phần |
-| `classes.html` | CRUD lớp học phần. Chọn môn từ danh sách, kiểm tra sĩ số |
-| `grades.html` | Xem điểm và nhập điểm nhanh (sửa trực tiếp QT/CK trên bảng) |
-| `ui-kit.html` | Showcase toàn bộ component ở cả light và dark theme |
+| Tài khoản | Mật khẩu | Vai trò |
+|---|---|---|
+| `admin` | `Admin@123` | Admin |
+| `pdt` | `Pdt@1234` | PhongDaoTao |
+
+Frontend dùng JWT của backend: access token 60 phút, refresh token 7 ngày. Khi access token hết hạn, frontend tự
+làm mới phiên một lần (các request đồng thời chờ cùng kết quả) rồi gửi lại. Phiên được lưu trong `localStorage`
+(khóa `stum:session`).
+
+## Các trang và API backend tương ứng
+
+| Trang | Dữ liệu | Endpoint chính |
+|---|---|---|
+| `index.html` | Đăng nhập | `POST /api/auth/login` |
+| `dashboard.html` | KPI, biểu đồ theo khoa, sinh viên mới, thông báo | `GET /api/bao-cao/tong-quan`, `GET /api/sinh-vien`, `GET /api/thong-bao` |
+| `students.html` | CRUD sinh viên, lọc theo khoa/trạng thái, bảo lưu, thôi học, quay lại học | `/api/sinh-vien`, `/api/sinh-vien/{id}/bao-luu`, `/thoi-hoc`, `/quay-lai-hoc` |
+| `courses.html` | CRUD môn học, môn tiên quyết | `/api/mon-hoc`, `/api/mon-hoc/{id}/tien-quyet` |
+| `classes.html` | CRUD lớp học phần, phân giảng viên, lịch học, bắt đầu/kết thúc/hủy lớp | `/api/lop-hoc-phan`, `/{id}/giang-vien`, `/{id}/lich-hoc`, `/{id}/bat-dau-hoc`... |
+| `grades.html` | Nhập điểm theo lớp, tính điểm, khóa điểm | `/api/diem/lop-hoc-phan/{id}`, `/tinh-diem`, `/khoa` |
+| `ui-kit.html` | Showcase component (không gọi API) | - |
+
+Danh mục dùng cho ô chọn (khoa, ngành, lớp hành chính, học kỳ, giảng viên, phòng) lấy từ các endpoint `GET` tương ứng.
+
+## Thay đổi so với bản dữ liệu mẫu
+
+- **Dashboard** dùng endpoint mới `GET /api/bao-cao/tong-quan` (mô tả trong Swagger, nhóm Reports): gom KPI, phân bố theo khoa,
+  GPA trung bình và học kỳ mốc trong một lần gọi. Thay cho biểu đồ theo tháng và danh sách việc cần làm (không có dữ liệu thật tương ứng),
+  dashboard hiện thông báo thật từ `/api/thong-bao`.
+- **Sinh viên** không còn cột GPA trong danh sách (backend không trả GPA trong DTO danh sách). Khoa lọc theo `KhoaId` phía server.
+- **Điểm** nhập theo lớp học phần, gồm điểm quá trình, giữa kỳ và cuối kỳ. Điểm tổng kết và điểm chữ do backend tính.
+  Lớp đã khóa điểm thì ô điểm bị vô hiệu hóa.
+- **Danh sách** (sinh viên, môn học, lớp, điểm) được lọc và phân trang phía server. Không còn sắp xếp theo cột vì
+  backend không hỗ trợ sắp xếp danh sách.
+- Mọi thông báo lỗi là thông báo từ backend (tiếng Việt), ví dụ sai mật khẩu hoặc môn đang được sử dụng nên không xóa được.
 
 ## Cấu trúc
 
@@ -38,40 +73,27 @@ Tài khoản demo: `admin` / `admin123`.
 StuM/
 ├── index.html, dashboard.html, students.html, courses.html, classes.html, grades.html, ui-kit.html
 ├── assets/
-│   ├── css/       tokens.css (design tokens), base.css (reset, typography, utilities),
-│   │              layout.css (sidebar, topbar), components.css (component), pages.css (riêng từng trang)
-│   ├── js/
-│   │   ├── core/        api.js (mock API), router.js, dom.js, format.js, storage.js, theme.js, async-view.js
-│   │   ├── components/  button, input, select, card, badge, table, pagination, dropdown,
-│   │   │                modal, toast, empty-state, skeleton, line-chart
-│   │   ├── layout/      sidebar.js, topbar.js, shell.js
-│   │   ├── pages/       login, dashboard, students (+ students-form), courses, classes, grades, ui-kit
-│   │   └── main.js      entry point: theme, bảo vệ route, dựng shell, nạp module trang
-│   └── img/
+│   ├── css/       tokens.css, base.css, layout.css, components.css, pages.css
+│   └── js/
+│       ├── core/        config.js (địa chỉ backend), http.js (JWT, làm mới phiên, ApiResponse),
+│       │                api.js (các hàm gọi endpoint), router.js, theme.js, async-view.js, dom.js, format.js, storage.js
+│       ├── components/  button, input, select, card, badge, table, pagination, dropdown, modal, toast,
+│       │                empty-state, skeleton, line-chart, bar-chart
+│       ├── layout/      sidebar.js, topbar.js, shell.js
+│       ├── pages/       login, dashboard, students (+ students-form), courses, classes (+ classes-modals), grades, ui-kit
+│       └── main.js      entry point: theme, bảo vệ route, dựng shell, nạp module trang
 └── README.md
 ```
 
-## Dữ liệu và trạng thái
-
-- Mock API (`assets/js/core/api.js`) trả về Promise sau 500ms. Dữ liệu được lưu trong `localStorage` với prefix `stum:`.
-- Xóa `localStorage` của trang để đưa dữ liệu về mẫu ban đầu.
-- Thêm `?error` vào URL (ví dụ `students.html?error=1`) để mọi request thất bại và kiểm tra trạng thái lỗi.
-- Điểm tổng kết = 50% quá trình + 50% cuối kỳ. Xếp loại: ≥9 Xuất sắc, ≥8 Giỏi, ≥6.5 Khá, ≥5 Trung bình, còn lại Yếu.
-
 ## Quy ước
 
-- Mọi màu lấy từ token `hsl(var(--...))`, không hardcode mã màu.
-- Mọi dữ liệu đưa vào HTML đi qua `escapeHtml()`.
-- Mỗi khu vực dữ liệu có đủ loading (skeleton), empty và error (`core/async-view.js`).
-- Xóa, khóa, hủy luôn qua `Modal.confirm()`. Không dùng `alert`, `confirm`, `prompt` của trình duyệt.
-- Phím tắt: `Tab` di chuyển focus, `Enter` gửi form, `Esc` đóng modal, drawer và menu. Mũi tên lên/xuống chọn mục trong menu.
-
-## Responsive
-
-- Dưới 768px: sidebar ẩn, mở bằng nút hamburger (drawer). Bảng chuyển thành danh sách card.
-- 768–1024px: sidebar thu gọn mặc định.
-- Trên 1024px: sidebar mở rộng.
+- Mọi màu lấy từ token `hsl(var(--...))`. Mọi dữ liệu đưa vào HTML đi qua `escapeHtml()`.
+- Mỗi khu vực dữ liệu có loading (skeleton), empty và error (`core/async-view.js`). Thêm `?error` vào URL để mọi request
+  báo lỗi máy chủ, dùng để kiểm thử trạng thái lỗi.
+- Xóa, khóa, hủy đều qua `Modal.confirm()`. Không dùng `alert`, `confirm`, `prompt` của trình duyệt.
 
 ## Kiểm thử
 
-Đã kiểm thử tự động bằng Playwright trên Microsoft Edge (headless): đăng nhập, lọc, thêm/sửa/xóa, lỗi 409, chặn xóa môn đang dùng, nhập điểm nhanh, đổi theme, drawer mobile, không tràn ngang ở 390px.
+Bộ kiểm thử tích hợp chạy Playwright trên Microsoft Edge với backend và DB thật: đăng nhập sai và đúng, dashboard, lọc và
+phân trang phía server, tạo rồi xóa sinh viên tạm (có bảo lưu và quay lại học), môn tiên quyết, phân giảng viên, khóa điểm,
+trạng thái lỗi, làm mới token tự động, đăng xuất. Mọi icon đều render được ở cả 5 trang.

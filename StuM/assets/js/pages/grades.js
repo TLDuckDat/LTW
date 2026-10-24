@@ -1,19 +1,18 @@
 /**
- * Trang Điểm: xem điểm và nhập điểm nhanh (inline edit).
- * Điểm quá trình và cuối kỳ sửa trực tiếp trên bảng; điểm tổng và xếp loại được tính lại sau khi lưu.
+ * Trang Điểm: nhập và xem điểm theo lớp học phần (GET/PUT /api/diem/lop-hoc-phan/{id}).
+ * Điểm được sửa trên bảng rồi lưu một lần; điểm tổng kết và điểm chữ do backend tính.
+ * Tính điểm và khóa điểm là hai nghiệp vụ riêng của backend (khóa xong thì không sửa được nữa).
  */
 
 import { api } from '../core/api.js';
 import { renderAsync } from '../core/async-view.js';
-import { debounce, escapeHtml } from '../core/dom.js';
+import { escapeHtml } from '../core/dom.js';
 import { formatNumber } from '../core/format.js';
-import { router } from '../core/router.js';
 import { Badge } from '../components/badge.js';
 import { Button } from '../components/button.js';
 import { EmptyState } from '../components/empty-state.js';
 import { Input } from '../components/input.js';
 import { Modal } from '../components/modal.js';
-import { Pagination } from '../components/pagination.js';
 import { Select } from '../components/select.js';
 import { Skeleton } from '../components/skeleton.js';
 import { Table } from '../components/table.js';
@@ -22,257 +21,231 @@ import { renderPageHeader } from '../layout/shell.js';
 
 const SCORE_MIN = 0;
 const SCORE_MAX = 10;
+const SCORE_FIELDS = ['diemQuaTrinh', 'diemGiuaKy', 'diemCuoiKy'];
+const SCORE_LABELS = { diemQuaTrinh: 'điểm quá trình', diemGiuaKy: 'điểm giữa kỳ', diemCuoiKy: 'điểm cuối kỳ' };
 
-const RANK_VARIANTS = {
-  'Xuất sắc': 'success',
-  Giỏi: 'primary',
-  Khá: 'info',
-  'Trung bình': 'warning',
-  Yếu: 'destructive',
+const state = {
+  lopHocPhanId: null,
+  rows: [],
+  original: new Map(),
+  edits: new Map(),
+  search: '',
 };
 
-const ROW_ACTIONS = [{ action: 'view', label: 'Xem chi tiết', icon: 'eye' }];
-
-const state = { search: '', maMon: '', page: 1, pageSize: 10, sort: { key: 'mssv', dir: 'asc' }, rows: [] };
-let studentNames = new Map();
-
 /**
- * @param {string} rank
- * @returns {string}
+ * Điểm đã sửa nhưng chưa lưu, theo dangKyHocPhanId.
+ * @returns {Array<{ dangKyHocPhanId: number, diemQuaTrinh: number, diemGiuaKy: number, diemCuoiKy: number }>}
  */
-function rankBadge(rank) {
-  return Badge.render({ label: rank, variant: RANK_VARIANTS[rank] ?? 'neutral' });
+function dirtyRows() {
+  return [...state.edits.entries()]
+    .filter(([id, values]) => SCORE_FIELDS.some((field) => values[field] !== state.original.get(id)[field]))
+    .map(([id, values]) => ({ dangKyHocPhanId: id, ...values }));
 }
 
-/**
- * Ô nhập điểm nội tuyến cho một cột điểm.
- * @param {'diemQT'|'diemCK'} name
- * @param {number} value
- * @param {{ mssv: string, maMon: string }} row
- * @returns {string}
- */
-function scoreInput(name, value, row) {
-  return `<input class="input inline-grade-input" type="number" name="${name}" data-grade="${name}" value="${escapeHtml(value)}" min="${SCORE_MIN}" max="${SCORE_MAX}" step="0.25" aria-label="${name === 'diemQT' ? 'Điểm quá trình' : 'Điểm cuối kỳ'} của ${escapeHtml(row.mssv)} môn ${escapeHtml(row.maMon)}">`;
+function updateSaveButton(root) {
+  const button = root.querySelector('[data-action="save-grades"]');
+  if (button) button.disabled = dirtyRows().length === 0;
+}
+
+function scoreInput(row, field) {
+  const value = row[field] ?? '';
+  const disabled = row.daKhoa ? ' disabled' : '';
+  return `<input class="input inline-grade-input" type="number" name="${field}" data-field="${field}" data-row-id="${row.dangKyHocPhanId}" value="${value}" min="${SCORE_MIN}" max="${SCORE_MAX}" step="0.25" aria-label="${SCORE_LABELS[field]} của ${escapeHtml(row.mssv)}"${disabled}>`;
 }
 
 const COLUMNS = [
-  { key: 'mssv', label: 'MSSV', sortable: true },
+  { key: 'mssv', label: 'MSSV' },
   { key: 'hoTen', label: 'Họ và tên', primary: true },
-  { key: 'maMon', label: 'Mã môn', sortable: true },
-  { key: 'diemQT', label: 'Điểm QT', align: 'right', render: (row) => scoreInput('diemQT', row.diemQT, row) },
-  { key: 'diemCK', label: 'Điểm CK', align: 'right', render: (row) => scoreInput('diemCK', row.diemCK, row) },
+  { key: 'loaiDangKy', label: 'Loại đăng ký' },
+  { key: 'diemQuaTrinh', label: 'Điểm QT', align: 'right', render: (row) => scoreInput(row, 'diemQuaTrinh') },
+  { key: 'diemGiuaKy', label: 'Điểm GK', align: 'right', render: (row) => scoreInput(row, 'diemGiuaKy') },
+  { key: 'diemCuoiKy', label: 'Điểm CK', align: 'right', render: (row) => scoreInput(row, 'diemCuoiKy') },
   {
-    key: 'diemTK',
+    key: 'diemTongKet',
     label: 'Điểm TK',
-    sortable: true,
     align: 'right',
-    render: (row) => `<span data-cell="tk">${formatNumber(row.diemTK, 2)}</span>`,
+    render: (row) => (row.diemTongKet === null || row.diemTongKet === undefined ? '—' : formatNumber(row.diemTongKet, 2)),
   },
-  { key: 'xepLoai', label: 'Xếp loại', render: (row) => `<span data-cell="xl">${rankBadge(row.xepLoai)}</span>` },
+  { key: 'diemChu', label: 'Điểm chữ', render: (row) => escapeHtml(row.diemChu ?? '—') },
+  {
+    key: 'daKhoa',
+    label: 'Trạng thái',
+    render: (row) => (row.daKhoa ? Badge.render({ label: 'Đã khóa', variant: 'info' }) : Badge.render({ label: 'Đang nhập', variant: 'neutral' })),
+  },
 ];
 
-function hasActiveFilters() {
-  return Boolean(state.search || state.maMon);
-}
-
-function syncUrl() {
-  router.setQuery({ q: state.search, maMon: state.maMon });
+function classOptions(classes) {
+  return classes.map((item) => ({ value: item.id, label: `${item.ma} - ${item.tenMonHoc}` }));
 }
 
 /**
- * Điền họ tên từ danh sách sinh viên đã tải. Mã không khớp sẽ hiện "Chưa có trong danh sách".
- * @param {object} result
+ * Bảng điểm đang hiển thị, theo ô tìm kiếm. Ô điểm lấy giá trị đang sửa (chưa lưu) nếu có.
+ * @param {object[]} rows
+ * @returns {string}
  */
-function enrichRows(result) {
-  result.data = result.data.map((row) => ({
-    ...row,
-    hoTen: studentNames.get(row.mssv) ?? 'Chưa có trong danh sách',
-  }));
-  return result;
-}
-
-function emptyMarkup() {
-  if (hasActiveFilters()) {
+function tableMarkup(rows) {
+  const search = state.search.toLowerCase();
+  const withEdits = rows.map((row) => ({ ...row, ...state.edits.get(row.dangKyHocPhanId) }));
+  const visible = withEdits.filter((row) => !search || row.mssv.toLowerCase().includes(search) || row.hoTen.toLowerCase().includes(search));
+  if (visible.length === 0) {
     return EmptyState.render({
       icon: 'search-x',
-      title: 'Không tìm thấy điểm phù hợp',
-      description: 'Thử thay đổi từ khóa hoặc môn học.',
-      actionText: 'Xóa bộ lọc',
-      actionId: 'btn-clear-filters',
-      action: 'reset-filters',
+      title: 'Không có sinh viên phù hợp',
+      description: 'Thử tìm theo MSSV hoặc họ tên khác.',
     });
   }
-  return EmptyState.render({
-    icon: 'clipboard-list',
-    title: 'Chưa có điểm nào',
-    description: 'Điểm sẽ hiển thị ở đây sau khi giảng viên nhập.',
-  });
+  return Table.render({ columns: COLUMNS, rows: visible, rowKey: 'dangKyHocPhanId', caption: 'Bảng điểm lớp học phần' });
 }
 
-function loadTable() {
-  return renderAsync(document.getElementById('table-container'), {
+/**
+ * Tải bảng điểm của lớp đang chọn và đổ vào vùng bảng.
+ * @param {HTMLElement} root
+ */
+function loadGrades(root) {
+  const container = root.querySelector('#grades-container');
+  if (state.lopHocPhanId === null) {
+    container.innerHTML = EmptyState.render({ icon: 'clipboard-list', title: 'Chọn một lớp học phần', description: 'Bảng điểm sẽ hiển thị sau khi bạn chọn lớp.' });
+    updateSaveButton(root);
+    return;
+  }
+
+  renderAsync(container, {
     load: async () => {
-      const [result, students] = await Promise.all([
-        api.grades.list({
-          search: state.search,
-          filters: { maMon: state.maMon },
-          sort: state.sort,
-          page: state.page,
-          pageSize: state.pageSize,
-        }),
-        api.students.getAll(),
-      ]);
-      studentNames = new Map(students.map((student) => [student.mssv, student.hoTen]));
-      const enriched = enrichRows(result);
-      state.rows = enriched.data;
-      return enriched;
+      const bang = await api.diem.bangDiem(state.lopHocPhanId);
+      state.rows = bang.danhSach;
+      state.original = new Map(bang.danhSach.map((row) => [row.dangKyHocPhanId, scoresOf(row)]));
+      state.edits = new Map(bang.danhSach.map((row) => [row.dangKyHocPhanId, scoresOf(row)]));
+      return bang;
     },
-    skeleton: () => Skeleton.table(5, 7),
-    isEmpty: (result) => result.total === 0,
-    empty: emptyMarkup,
-    render: (result) =>
-      Table.render({
-        columns: COLUMNS,
-        rows: result.data,
-        sort: state.sort,
-        actions: ROW_ACTIONS,
-        actionLabel: (row) => `Thao tác cho ${row.mssv}`,
-        caption: 'Bảng điểm',
-        footer: Pagination.render({ page: result.page, pageSize: result.pageSize, total: result.total }),
-      }),
+    skeleton: () => Skeleton.table(5, 8),
+    isEmpty: (bang) => bang.danhSach.length === 0,
+    empty: () => EmptyState.render({ icon: 'users', title: 'Lớp chưa có sinh viên đăng ký', description: 'Điểm sẽ hiển thị khi sinh viên đăng ký lớp.' }),
+    render: (bang) => tableMarkup(bang.danhSach),
+    afterRender: () => updateSaveButton(root),
     errorTitle: 'Không tải được bảng điểm',
   });
 }
 
+function scoresOf(row) {
+  return {
+    diemQuaTrinh: row.diemQuaTrinh ?? null,
+    diemGiuaKy: row.diemGiuaKy ?? null,
+    diemCuoiKy: row.diemCuoiKy ?? null,
+  };
+}
+
 /**
- * Lưu điểm khi người dùng rời ô nhập. Điểm ngoài khoảng 0-10 sẽ bị hoàn lại giá trị cũ.
- * @param {HTMLInputElement} input
+ * Kiểm tra toàn bộ điểm sắp lưu: đủ ba cột và trong khoảng 0-10.
+ * @param {Array<object>} rows
+ * @returns {string|null} thông báo lỗi đầu tiên, hoặc null nếu hợp lệ
  */
-async function saveScore(input) {
-  const row = input.closest('tr');
-  const record = state.rows.find((item) => item.id === row.dataset.rowId);
-  if (!record) return;
+function validateRows(rows) {
+  for (const row of rows) {
+    const student = state.rows.find((item) => item.dangKyHocPhanId === row.dangKyHocPhanId);
+    for (const field of SCORE_FIELDS) {
+      const value = row[field];
+      if (value === null || value === '' || Number.isNaN(value)) {
+        return `Thiếu ${SCORE_LABELS[field]} của ${student?.mssv ?? 'sinh viên'}`;
+      }
+      if (value < SCORE_MIN || value > SCORE_MAX) {
+        return `${SCORE_LABELS[field]} của ${student?.mssv ?? 'sinh viên'} phải trong khoảng ${SCORE_MIN} - ${SCORE_MAX}`;
+      }
+    }
+  }
+  return null;
+}
 
-  const qtInput = row.querySelector('[data-grade="diemQT"]');
-  const ckInput = row.querySelector('[data-grade="diemCK"]');
-  const inRange = (element) => element.value !== '' && Number(element.value) >= SCORE_MIN && Number(element.value) <= SCORE_MAX;
-
-  if (!inRange(input)) {
-    Toast.warning(`Điểm phải nằm trong khoảng ${SCORE_MIN} - ${SCORE_MAX}`);
-    input.value = record[input.dataset.grade];
+async function saveGrades(root, button) {
+  const rows = dirtyRows();
+  const error = validateRows(rows);
+  if (error) {
+    Toast.warning(error);
     return;
   }
 
-  const diemQT = Number(qtInput.value);
-  const diemCK = Number(ckInput.value);
-  if (diemQT === record.diemQT && diemCK === record.diemCK) return;
-
-  row.classList.add('grade-cell-saving');
-  qtInput.disabled = true;
-  ckInput.disabled = true;
+  Button.setLoading(button, true);
   try {
-    const updated = await api.updateGrade(record.id, { diemQT, diemCK });
-    Object.assign(record, updated);
-    row.querySelector('[data-cell="tk"]').textContent = formatNumber(updated.diemTK, 2);
-    row.querySelector('[data-cell="xl"]').innerHTML = rankBadge(updated.xepLoai);
-    Toast.success(`Đã lưu điểm ${record.mssv} - ${record.maMon}`);
+    const result = await api.diem.nhapDiem(state.lopHocPhanId, rows);
+    Toast.success(`Đã lưu điểm: ${result.soThemMoi} mới, ${result.soCapNhat} cập nhật`);
+    loadGrades(root);
   } catch (error) {
-    qtInput.value = record.diemQT;
-    ckInput.value = record.diemCK;
     Toast.error(error.message);
   } finally {
-    row.classList.remove('grade-cell-saving');
-    qtInput.disabled = false;
-    ckInput.disabled = false;
+    Button.setLoading(button, false);
+    updateSaveButton(root);
+  }
+}
+
+function confirmLock(root) {
+  Modal.confirm({
+    title: 'Khóa điểm lớp học phần',
+    message: 'Sau khi khóa, điểm của lớp không thể sửa nữa. Hãy chắc chắn đã tính điểm và nhập đủ.',
+    confirmText: 'Khóa điểm',
+    danger: true,
+    onConfirm: async () => {
+      try {
+        const result = await api.diem.khoaDiem(state.lopHocPhanId);
+        Toast.success(`Đã khóa điểm ${result.soMoiKhoa} sinh viên`);
+        loadGrades(root);
+      } catch (error) {
+        Toast.error(error.message);
+        throw error;
+      }
+    },
+  }).catch(() => {});
+}
+
+async function calculate(root) {
+  try {
+    const result = await api.diem.tinhDiem(state.lopHocPhanId);
+    Toast.success(`Đã tính điểm: ${result.soDaTinh} bản ghi, còn thiếu điểm ${result.soThieuDiem}`);
+    loadGrades(root);
+  } catch (error) {
+    Toast.error(error.message);
   }
 }
 
 /**
- * @param {string} action
- * @param {string} rowId
+ * Cập nhật giá trị đang sửa khi người dùng gõ vào ô điểm.
+ * @param {HTMLInputElement} input
+ * @param {HTMLElement} root
  */
-function handleRowAction(action, rowId) {
-  const record = state.rows.find((row) => row.id === rowId);
-  if (action !== 'view' || !record) return;
-
-  const content = `<dl class="detail-list">
-    <dt>MSSV</dt><dd>${escapeHtml(record.mssv)}</dd>
-    <dt>Họ và tên</dt><dd>${escapeHtml(record.hoTen)}</dd>
-    <dt>Mã môn</dt><dd>${escapeHtml(record.maMon)}</dd>
-    <dt>Điểm quá trình</dt><dd>${formatNumber(record.diemQT, 2)}</dd>
-    <dt>Điểm cuối kỳ</dt><dd>${formatNumber(record.diemCK, 2)}</dd>
-    <dt>Điểm tổng kết</dt><dd>${formatNumber(record.diemTK, 2)}</dd>
-    <dt>Xếp loại</dt><dd>${rankBadge(record.xepLoai)}</dd>
-  </dl>
-  <p class="form-hint mt-md">Điểm tổng kết = 50% điểm quá trình + 50% điểm cuối kỳ.</p>`;
-  const handle = Modal.open({
-    title: 'Chi tiết điểm',
-    content,
-    footer: Button.render({ label: 'Đóng', variant: 'primary', action: 'close' }),
-  });
-  handle.element.querySelector('[data-action="close"]').addEventListener('click', handle.close);
-}
-
-function resetFilters(root) {
-  state.search = '';
-  state.maMon = '';
-  state.page = 1;
-  root.querySelector('[name="q"]').value = '';
-  root.querySelector('[name="maMon"]').value = '';
-  syncUrl();
-  loadTable();
+function onScoreInput(input, root) {
+  const id = Number(input.dataset.rowId);
+  const field = input.dataset.field;
+  const values = state.edits.get(id);
+  if (!values) return;
+  values[field] = input.value === '' ? null : Number(input.value);
+  input.removeAttribute('aria-invalid');
+  if (values[field] !== null && (values[field] < SCORE_MIN || values[field] > SCORE_MAX)) {
+    input.setAttribute('aria-invalid', 'true');
+  }
+  updateSaveButton(root);
 }
 
 function bindEvents(root) {
-  const debouncedSearch = debounce(() => {
-    state.search = root.querySelector('[name="q"]').value.trim();
-    state.page = 1;
-    syncUrl();
-    loadTable();
-  }, 300);
-
-  Input.init(root, {
-    onInput: (input) => {
-      if (input.name === 'q') debouncedSearch();
+  Select.init(root, {
+    onChange: (element) => {
+      if (element.name !== 'lopHocPhanId') return;
+      state.lopHocPhanId = element.value === '' ? null : Number(element.value);
+      loadGrades(root);
     },
   });
 
-  Select.init(root, {
-    onChange: (element) => {
-      if (element.name === 'maMon') {
-        state.maMon = element.value;
-        state.page = 1;
-        syncUrl();
-        loadTable();
-      }
-    },
+  root.addEventListener('input', (event) => {
+    if (event.target.matches('.inline-grade-input')) onScoreInput(event.target, root);
+    if (event.target.matches('[name="q"]')) {
+      state.search = event.target.value.trim();
+      const container = root.querySelector('#grades-container');
+      if (state.rows.length > 0) container.innerHTML = tableMarkup(state.rows);
+    }
   });
 
   Button.init(root, {
-    onAction: (action) => {
-      if (action === 'reset-filters') resetFilters(root);
-    },
-  });
-
-  root.addEventListener('change', (event) => {
-    if (event.target.matches('[data-grade]')) saveScore(event.target);
-  });
-
-  Table.init(root, {
-    onSort: (key) => {
-      const dir = state.sort.key === key && state.sort.dir === 'asc' ? 'desc' : 'asc';
-      state.sort = { key, dir };
-      state.page = 1;
-      loadTable();
-    },
-    onAction: (action, rowId) => handleRowAction(action, rowId),
-  });
-
-  Pagination.init(root.querySelector('#table-container'), {
-    onChange: ({ page, pageSize }) => {
-      state.page = page;
-      state.pageSize = pageSize;
-      loadTable();
+    onAction: (action, button) => {
+      if (action === 'save-grades') saveGrades(root, button);
+      if (action === 'calculate') calculate(root);
+      if (action === 'lock') confirmLock(root);
     },
   });
 }
@@ -282,35 +255,38 @@ function bindEvents(root) {
  * @param {{ query: Record<string, string> }} context
  */
 export async function mount(root, { query }) {
-  state.search = query.q ?? '';
-  state.maMon = query.maMon ?? '';
-  const coursesReady = api.courses.getAll().catch(() => []);
+  state.lopHocPhanId = query.lopHocPhanId ? Number(query.lopHocPhanId) : null;
+  state.search = '';
 
   root.innerHTML = `${renderPageHeader({
     title: 'Điểm',
-    description: 'Nhập điểm nhanh: sửa trực tiếp điểm quá trình và cuối kỳ trên bảng (thang 0 - 10)',
+    description: 'Chọn lớp học phần, nhập điểm quá trình, giữa kỳ và cuối kỳ (thang 0 - 10). Điểm tổng kết do hệ thống tính.',
   })}
   <section class="card" aria-label="Bảng điểm">
     <div class="filter-bar" role="search">
-      ${Input.render({ id: 'filter-search', name: 'q', label: 'Tìm kiếm', value: state.search, placeholder: 'MSSV hoặc mã môn', iconLeft: 'search' })}
-      <div id="filter-course-slot"></div>
-      ${Button.render({ label: 'Đặt lại', variant: 'ghost', action: 'reset-filters' })}
+      <div id="class-select-slot"></div>
+      ${Input.render({ name: 'q', label: 'Tìm sinh viên', placeholder: 'MSSV hoặc họ tên', iconLeft: 'search' })}
     </div>
-    <div class="card-body is-flush" id="table-container"></div>
+    <div class="filter-bar">
+      ${Button.render({ label: 'Tính điểm', variant: 'outline', icon: 'calculator', action: 'calculate' })}
+      ${Button.render({ label: 'Khóa điểm', variant: 'destructive', icon: 'lock', action: 'lock' })}
+      ${Button.render({ label: 'Lưu thay đổi', variant: 'primary', icon: 'save', action: 'save-grades', disabled: true })}
+    </div>
+    <div class="card-body is-flush" id="grades-container"></div>
   </section>`;
 
   bindEvents(root);
-  const [courses] = await Promise.all([coursesReady, loadTable()]);
 
-  const courseOptions = [
-    { value: '', label: 'Tất cả môn' },
-    ...courses.map((course) => ({ value: course.maMon, label: `${course.maMon} - ${course.tenMon}` })),
-  ];
-  root.querySelector('#filter-course-slot').outerHTML = Select.render({
-    id: 'filter-course',
-    name: 'maMon',
-    label: 'Môn học',
-    options: courseOptions,
-    value: state.maMon,
+  const classes = await api.lopHocPhan.getAll().catch((error) => {
+    Toast.error(error.message);
+    return [];
   });
+  root.querySelector('#class-select-slot').outerHTML = Select.render({
+    name: 'lopHocPhanId',
+    label: 'Lớp học phần',
+    options: classOptions(classes),
+    value: state.lopHocPhanId ?? '',
+    placeholder: 'Chọn lớp học phần',
+  });
+  loadGrades(root);
 }

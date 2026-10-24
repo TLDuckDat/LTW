@@ -1,18 +1,18 @@
 /**
- * Topbar: breadcrumb, tìm kiếm toàn hệ thống, đổi theme, thông báo, menu tài khoản.
+ * Topbar: breadcrumb, tìm kiếm sinh viên, đổi theme, thông báo (từ backend), menu tài khoản.
  * - render({ breadcrumb, user }) -> HTML string
  * - init(topbarEl, { onToggleDrawer, onSettings }) -> gọi một lần sau khi render
  */
 
 import { api } from '../core/api.js';
 import { escapeHtml, refreshIcons } from '../core/dom.js';
+import { formatDate } from '../core/format.js';
 import { renderAsync } from '../core/async-view.js';
 import { router } from '../core/router.js';
 import { theme } from '../core/theme.js';
 import { Dropdown } from '../components/dropdown.js';
 import { EmptyState } from '../components/empty-state.js';
 import { Skeleton } from '../components/skeleton.js';
-import { Toast } from '../components/toast.js';
 
 /**
  * @param {Array<{ label: string, href?: string }>} items
@@ -57,13 +57,13 @@ function initialsOf(name) {
  * @returns {string}
  */
 function render({ breadcrumb, user }) {
-  const name = user?.name ?? 'Người dùng';
+  const name = user?.name ?? user?.tenDangNhap ?? 'Người dùng';
   const notifications = Dropdown.render({
     label: 'Thông báo',
     icon: 'bell',
     triggerHtml: '<i data-lucide="bell" class="btn-icon" aria-hidden="true"></i><span class="notification-dot" aria-hidden="true" hidden></span>',
     triggerClass: 'btn btn-ghost btn-sm btn-icon-only',
-    menuHtml: `<div class="dropdown-header">Thông báo</div><div data-notifications>${Skeleton.text(3)}</div>`,
+    menuHtml: `<div class="dropdown-header">Thông báo mới nhất</div><div data-notifications>${Skeleton.text(3)}</div>`,
     wide: true,
   });
   const userMenu = Dropdown.render({
@@ -71,7 +71,6 @@ function render({ breadcrumb, user }) {
     triggerHtml: `<span class="avatar" aria-hidden="true">${escapeHtml(initialsOf(name))}</span><span class="text-truncate">${escapeHtml(name)}</span>`,
     triggerClass: 'btn btn-ghost btn-sm topbar-user-trigger',
     items: [
-      { action: 'profile', label: 'Hồ sơ', icon: 'user' },
       { action: 'settings', label: 'Cài đặt', icon: 'settings' },
       { divider: true },
       { action: 'logout', label: 'Đăng xuất', icon: 'log-out', danger: true },
@@ -82,10 +81,10 @@ function render({ breadcrumb, user }) {
     <button type="button" class="btn btn-ghost btn-sm btn-icon-only topbar-menu-toggle" data-action="toggle-drawer" aria-controls="app-sidebar" aria-expanded="false" aria-label="Mở menu"><i data-lucide="menu" class="btn-icon" aria-hidden="true"></i></button>
     ${renderBreadcrumb(breadcrumb)}
     <form class="topbar-search" role="search" data-global-search>
-      <label class="sr-only" for="global-search">Tìm kiếm toàn hệ thống</label>
+      <label class="sr-only" for="global-search">Tìm sinh viên theo MSSV hoặc họ tên</label>
       <div class="input-wrap has-icon-left">
         <i data-lucide="search" class="input-icon input-icon-left" aria-hidden="true"></i>
-        <input class="input" id="global-search" type="search" name="globalSearch" placeholder="Tìm sinh viên, môn học, lớp..." autocomplete="off">
+        <input class="input" id="global-search" type="search" name="globalSearch" placeholder="Tìm sinh viên theo MSSV, họ tên..." autocomplete="off">
       </div>
     </form>
     <div class="topbar-actions">
@@ -109,6 +108,7 @@ function syncThemeButton(topbarEl, mode) {
 }
 
 /**
+ * Thông báo lấy từ backend (module Reports, ThongBao). Mục mới nhất hiển thị trước.
  * @param {HTMLElement} topbarEl
  */
 function loadNotifications(topbarEl) {
@@ -117,17 +117,17 @@ function loadNotifications(topbarEl) {
   if (!list) return;
 
   renderAsync(list, {
-    load: () => api.getNotifications(),
+    load: () => api.thongBao.list({ pageSize: 5 }),
     skeleton: () => Skeleton.text(3),
     empty: () => EmptyState.render({ icon: 'bell', title: 'Không có thông báo' }),
-    render: (items) =>
-      items
+    render: (result) =>
+      result.data
         .map(
-          (item) => `<div class="dropdown-notice" role="note"><span>${escapeHtml(item.title)}</span><span class="dropdown-notice-meta">${escapeHtml(item.time)}</span></div>`,
+          (item) => `<div class="dropdown-notice" role="note"><span>${escapeHtml(item.tieuDe)}</span><span class="dropdown-notice-meta">${escapeHtml(formatDate(item.ngayDang))}</span></div>`,
         )
         .join(''),
-    afterRender: (_, items) => {
-      if (dot) dot.hidden = items.length === 0;
+    afterRender: (_, result) => {
+      if (dot) dot.hidden = result.data.length === 0;
     },
     errorTitle: 'Không tải được thông báo',
   });
@@ -137,13 +137,11 @@ function loadNotifications(topbarEl) {
  * @param {string} action
  * @param {() => void} onSettings
  */
-function handleUserAction(action, onSettings) {
-  if (action === 'profile') {
-    Toast.info('Trang hồ sơ đang được phát triển');
-  } else if (action === 'settings') {
+async function handleUserAction(action, onSettings) {
+  if (action === 'settings') {
     onSettings();
   } else if (action === 'logout') {
-    api.logout();
+    await api.auth.logout();
     router.navigate('login');
   }
 }

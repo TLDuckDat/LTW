@@ -1,92 +1,119 @@
 /**
- * Trang Dashboard: 4 KPI, biểu đồ SVG thủ công, việc cần làm (checkbox), sinh viên mới nhất.
- * Mỗi khu vực có loading (skeleton), empty và error riêng, không làm hỏng các khu vực khác.
+ * Trang Dashboard: số liệu thật từ backend.
+ * - KPI và biểu đồ sinh viên theo khoa: GET /api/bao-cao/tong-quan (một lần gọi)
+ * - Sinh viên mới cập nhật: GET /api/sinh-vien
+ * - Thông báo: GET /api/thong-bao
+ * Mỗi khu vực có loading, empty và error riêng.
  */
 
 import { api } from '../core/api.js';
 import { renderAsync } from '../core/async-view.js';
 import { escapeHtml } from '../core/dom.js';
-import { formatNumber } from '../core/format.js';
+import { formatDate, formatNumber } from '../core/format.js';
+import { BarChart } from '../components/bar-chart.js';
 import { Card } from '../components/card.js';
 import { EmptyState } from '../components/empty-state.js';
-import { LineChart } from '../components/line-chart.js';
 import { Skeleton } from '../components/skeleton.js';
 import { Table } from '../components/table.js';
-import { Toast } from '../components/toast.js';
 import { renderPageHeader } from '../layout/shell.js';
 import { statusBadge } from './students-form.js';
-
-const KPI_META = [
-  { key: 'totalStudents', label: 'Tổng sinh viên', icon: 'users', format: (value) => formatNumber(value) },
-  { key: 'activeStudents', label: 'Sinh viên đang học', icon: 'graduation-cap', format: (value) => formatNumber(value) },
-  { key: 'graduationRate', label: 'Tỷ lệ tốt nghiệp', icon: 'award', format: (value) => `${formatNumber(value * 100, 1)}%` },
-  { key: 'averageGpa', label: 'GPA trung bình', icon: 'gauge', format: (value) => formatNumber(value, 2) },
-];
 
 const LATEST_COLUMNS = [
   { key: 'mssv', label: 'MSSV' },
   { key: 'hoTen', label: 'Họ và tên', primary: true },
-  { key: 'khoa', label: 'Khoa' },
-  { key: 'gpa', label: 'GPA', align: 'right', render: (row) => formatNumber(row.gpa, 2) },
+  { key: 'tenNganh', label: 'Ngành', render: (row) => escapeHtml(row.tenNganh ?? '—') },
   { key: 'trangThai', label: 'Trạng thái', render: (row) => statusBadge(row.trangThai) },
 ];
 
 /**
- * Tỷ lệ thay đổi so với kỳ trước, tính theo phần trăm.
- * @param {{ value: number, previous: number }} stat
- * @returns {number}
+ * @param {object} data TongQuanDto
+ * @returns {string}
  */
-function changeOf(stat) {
-  return ((stat.value - stat.previous) / stat.previous) * 100;
-}
-
-function deltaMarkup(change) {
-  const up = change >= 0;
-  const sign = up ? '+' : '−';
-  return `<span class="kpi-delta ${up ? 'is-up' : 'is-down'}"><i data-lucide="${up ? 'trending-up' : 'trending-down'}" aria-hidden="true"></i><span>${sign}${formatNumber(Math.abs(change), 1)}%</span><span class="kpi-delta-note">so với kỳ trước</span></span>`;
-}
-
 function renderKpis(data) {
-  return KPI_META.map((meta) => {
-    const stat = data[meta.key];
-    return `<article class="card kpi-card">
-      <div class="kpi-header">
-        <span class="kpi-label">${escapeHtml(meta.label)}</span>
-        <span class="kpi-icon" aria-hidden="true"><i data-lucide="${meta.icon}"></i></span>
-      </div>
-      <p class="kpi-value">${escapeHtml(meta.format(stat.value))}</p>
-      ${deltaMarkup(changeOf(stat))}
-    </article>`;
-  }).join('');
-}
+  const ratioDangHoc = data.tongSoSinhVien === 0 ? 0 : (data.soSinhVienDangHoc / data.tongSoSinhVien) * 100;
+  const kpis = [
+    { label: 'Tổng sinh viên', icon: 'users', value: formatNumber(data.tongSoSinhVien), note: 'Toàn trường' },
+    {
+      label: 'Sinh viên đang học',
+      icon: 'graduation-cap',
+      value: formatNumber(data.soSinhVienDangHoc),
+      note: `${formatNumber(ratioDangHoc, 1)}% tổng số`,
+    },
+    {
+      label: 'Tỷ lệ tốt nghiệp',
+      icon: 'award',
+      value: `${formatNumber(data.tyLeTotNghiep * 100, 1)}%`,
+      note: 'Trên tổng số sinh viên',
+    },
+    {
+      label: 'GPA trung bình',
+      icon: 'gauge',
+      value: data.gpaTrungBinh === null ? '—' : formatNumber(data.gpaTrungBinh, 2),
+      note: data.hocKyMoc ? `${data.hocKyMoc.ten} - ${data.hocKyMoc.tenNamHoc}` : 'Chưa có học kỳ',
+    },
+  ];
 
-function renderTodos(todos) {
-  const items = todos
+  return kpis
     .map(
-      (todo) => `<li class="todo-item${todo.done ? ' is-done' : ''}">
-        <input type="checkbox" id="todo-${escapeHtml(todo.id)}" data-todo="${escapeHtml(todo.id)}"${todo.done ? ' checked' : ''}>
-        <label class="todo-text" for="todo-${escapeHtml(todo.id)}">${escapeHtml(todo.text)}</label>
-      </li>`,
+      (kpi) => `<article class="card kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">${escapeHtml(kpi.label)}</span>
+          <span class="kpi-icon" aria-hidden="true"><i data-lucide="${kpi.icon}"></i></span>
+        </div>
+        <p class="kpi-value">${escapeHtml(kpi.value)}</p>
+        <span class="kpi-delta-note">${escapeHtml(kpi.note)}</span>
+      </article>`,
     )
     .join('');
-  return `<ul class="todo-list">${items}</ul>`;
 }
 
-function bindTodoEvents(root) {
-  root.addEventListener('change', async (event) => {
-    if (!event.target.matches('[data-todo]')) return;
-    const input = event.target;
-    const item = input.closest('.todo-item');
-    const done = input.checked;
-    item.classList.toggle('is-done', done);
+/**
+ * @param {HTMLElement} root
+ * @param {Promise<object>} tongQuanReady
+ */
+function renderSections(root, tongQuanReady) {
+  renderAsync(root.querySelector('#kpi-container'), {
+    load: () => tongQuanReady,
+    skeleton: () => Array.from({ length: 4 }, () => Skeleton.kpi()).join(''),
+    isEmpty: () => false,
+    render: renderKpis,
+    empty: () => '',
+    errorTitle: 'Không tải được chỉ số',
+  });
 
-    try {
-      await api.setTodoDone(input.dataset.todo, done);
-    } catch (error) {
-      input.checked = !done;
-      item.classList.toggle('is-done', !done);
-      Toast.error(error.message);
-    }
+  renderAsync(root.querySelector('#chart-container'), {
+    load: () => tongQuanReady,
+    skeleton: () => '<div class="skeleton" style="height:260px" role="status" aria-busy="true"><span class="sr-only">Đang tải biểu đồ</span></div>',
+    isEmpty: (data) => data.theoKhoa.every((item) => item.soLuong === 0),
+    empty: () => EmptyState.render({ icon: 'chart-column', title: 'Chưa có sinh viên theo khoa', description: 'Biểu đồ sẽ hiện khi có sinh viên thuộc một ngành.' }),
+    render: (data) => BarChart.render({ items: data.theoKhoa.map((item) => ({ label: item.ma, value: item.soLuong })), title: 'Sinh viên theo khoa' }),
+    errorTitle: 'Không tải được biểu đồ',
+  });
+
+  renderAsync(root.querySelector('#notice-container'), {
+    load: () => api.thongBao.list({ pageSize: 5 }),
+    skeleton: () => Skeleton.text(4),
+    isEmpty: (result) => result.data.length === 0,
+    empty: () => EmptyState.render({ icon: 'bell', title: 'Chưa có thông báo' }),
+    render: (result) =>
+      `<ul class="todo-list">${result.data
+        .map(
+          (item) => `<li class="todo-item">
+            <span class="todo-text">${escapeHtml(item.tieuDe)}</span>
+            <span class="dropdown-notice-meta">${escapeHtml(formatDate(item.ngayDang))}</span>
+          </li>`,
+        )
+        .join('')}</ul>`,
+    errorTitle: 'Không tải được thông báo',
+  });
+
+  renderAsync(root.querySelector('#students-container'), {
+    load: () => api.students.list({ page: 1, pageSize: 5 }),
+    skeleton: () => Skeleton.table(5, 4),
+    isEmpty: (result) => result.total === 0,
+    empty: () => EmptyState.render({ icon: 'users', title: 'Chưa có sinh viên nào' }),
+    render: (result) => Table.render({ columns: LATEST_COLUMNS, rows: result.data, caption: 'Sinh viên mới nhất' }),
+    errorTitle: 'Không tải được danh sách sinh viên',
   });
 }
 
@@ -96,26 +123,26 @@ function bindTodoEvents(root) {
 export function mount(root) {
   root.innerHTML = `${renderPageHeader({
     title: 'Dashboard',
-    description: 'Tổng quan đào tạo học kỳ HK1-2026',
+    description: 'Tổng quan sinh viên và đào tạo, số liệu lấy từ cơ sở dữ liệu',
   })}
   <div class="page-stack">
     <section aria-label="Chỉ số chính"><div class="kpi-grid" id="kpi-container"></div></section>
     <div class="dashboard-grid">
       <div class="dashboard-wide">${Card.render({
-        title: 'Sinh viên đăng ký theo tháng',
-        subtitle: 'Năm học 2026',
+        title: 'Sinh viên theo khoa',
+        subtitle: 'Số sinh viên thuộc mỗi khoa',
         titleTag: 'h2',
         body: '<div id="chart-container"></div>',
       })}</div>
       ${Card.render({
-        title: 'Việc cần làm',
-        subtitle: 'Công việc của bạn trong tuần này',
+        title: 'Thông báo mới nhất',
+        subtitle: 'Thông báo đăng gần đây',
         titleTag: 'h2',
-        body: '<div id="todo-container"></div>',
+        body: '<div id="notice-container"></div>',
       })}
       <div class="dashboard-wide">${Card.render({
-        title: 'Sinh viên mới nhất',
-        subtitle: '5 hồ sơ được cập nhật gần đây',
+        title: 'Sinh viên mới cập nhật',
+        subtitle: '5 hồ sơ sinh viên gần đây',
         titleTag: 'h2',
         flush: true,
         body: '<div id="students-container"></div>',
@@ -124,44 +151,5 @@ export function mount(root) {
     </div>
   </div>`;
 
-  const dashboardReady = api.getDashboard();
-
-  renderAsync(root.querySelector('#kpi-container'), {
-    load: () => dashboardReady,
-    skeleton: () => Array.from({ length: KPI_META.length }, () => Skeleton.kpi()).join(''),
-    isEmpty: () => false,
-    render: renderKpis,
-    empty: () => '',
-    errorTitle: 'Không tải được chỉ số',
-  });
-
-  renderAsync(root.querySelector('#chart-container'), {
-    load: () => dashboardReady,
-    skeleton: () => '<div class="skeleton" style="height:260px" role="status" aria-busy="true"><span class="sr-only">Đang tải biểu đồ</span></div>',
-    isEmpty: (data) => data.enrollmentByMonth.length === 0,
-    empty: () => EmptyState.render({ icon: 'chart-line', title: 'Chưa có dữ liệu đăng ký' }),
-    render: (data) => `${LineChart.render({ points: data.enrollmentByMonth, title: 'Số sinh viên đăng ký theo tháng' })}
-      <div class="chart-legend mt-sm"><span class="chart-legend-swatch" aria-hidden="true"></span>Sinh viên đăng ký</div>`,
-    errorTitle: 'Không tải được biểu đồ',
-  });
-
-  renderAsync(root.querySelector('#todo-container'), {
-    load: () => api.getTodos(),
-    skeleton: () => Skeleton.text(4),
-    isEmpty: (todos) => todos.length === 0,
-    empty: () => EmptyState.render({ icon: 'circle-check', title: 'Không còn việc cần làm' }),
-    render: renderTodos,
-    errorTitle: 'Không tải được danh sách việc cần làm',
-  });
-
-  renderAsync(root.querySelector('#students-container'), {
-    load: () => api.students.list({ page: 1, pageSize: 5, sort: { key: 'mssv', dir: 'desc' } }),
-    skeleton: () => Skeleton.table(5, 5),
-    isEmpty: (result) => result.total === 0,
-    empty: () => EmptyState.render({ icon: 'users', title: 'Chưa có sinh viên nào' }),
-    render: (result) => Table.render({ columns: LATEST_COLUMNS, rows: result.data, caption: 'Sinh viên mới nhất' }),
-    errorTitle: 'Không tải được danh sách sinh viên',
-  });
-
-  bindTodoEvents(root);
+  renderSections(root, api.baoCao.tongQuan());
 }
