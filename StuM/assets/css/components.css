@@ -465,35 +465,36 @@
 }
 
 .badge::before {
-  content: '';
+  content: "";
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background-color: var(--badge-color);
 }
 
+/* Nền và viền dùng đúng màu bảng (--x-soft); chữ giữ màu foreground nên luôn đọc được */
 .badge-success {
   --badge-color: hsl(var(--success));
-  background-color: hsl(var(--success) / 0.12);
-  border-color: hsl(var(--success) / 0.35);
+  background-color: hsl(var(--success-soft) / 0.3);
+  border-color: hsl(var(--success-soft) / 0.8);
 }
 
 .badge-warning {
   --badge-color: hsl(var(--warning));
-  background-color: hsl(var(--warning) / 0.12);
-  border-color: hsl(var(--warning) / 0.35);
+  background-color: hsl(var(--warning-soft) / 0.35);
+  border-color: hsl(var(--warning-soft));
 }
 
 .badge-destructive {
   --badge-color: hsl(var(--destructive));
-  background-color: hsl(var(--destructive) / 0.12);
-  border-color: hsl(var(--destructive) / 0.35);
+  background-color: hsl(var(--destructive-soft) / 0.3);
+  border-color: hsl(var(--destructive-soft) / 0.9);
 }
 
 .badge-info {
   --badge-color: hsl(var(--info));
-  background-color: hsl(var(--info) / 0.12);
-  border-color: hsl(var(--info) / 0.35);
+  background-color: hsl(var(--info-soft) / 0.6);
+  border-color: hsl(var(--info-soft));
 }
 
 .badge-primary {
@@ -1310,8 +1311,9 @@ body.modal-open {
   padding: 48px;
   background: linear-gradient(
     135deg,
-    hsl(var(--primary)) 0%,
-    hsl(var(--primary) / 0.75) 100%
+    hsl(var(--sidebar)) 0%,
+    hsl(var(--sidebar)) 45%,
+    hsl(var(--success-soft)) 100%
   );
   color: hsl(var(--primary-foreground));
 }
@@ -1387,8 +1389,9 @@ body.modal-open {
 }
 
 @media (min-width: 1024px) {
+  /* Phần giới thiệu 55%, phần form đăng nhập 45% */
   .auth-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 5.5fr) minmax(0, 4.5fr);
   }
 
   .auth-brand {

@@ -140,7 +140,7 @@ export function mount(root) {
         titleTag: 'h2',
         body: '<div id="notice-container"></div>',
       })}
-      <div class="dashboard-wide">${Card.render({
+      <div class="dashboard-full">${Card.render({
         title: 'Sinh viên mới cập nhật',
         subtitle: '5 hồ sơ sinh viên gần đây',
         titleTag: 'h2',

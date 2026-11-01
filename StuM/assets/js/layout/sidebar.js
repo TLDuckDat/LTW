@@ -52,6 +52,7 @@ function syncCollapsedState(shellEl) {
   if (toggle) {
     toggle.setAttribute('aria-expanded', String(!collapsed));
     toggle.setAttribute('aria-label', collapsed ? 'Mở rộng menu' : 'Thu gọn menu');
+    toggle.title = collapsed ? 'Mở rộng menu' : 'Thu gọn menu';
   }
 }
 
@@ -67,16 +68,14 @@ function render({ activePage, collapsed, vaiTro }) {
 
   return `<aside class="sidebar" id="app-sidebar" aria-label="Menu chính">
     <div class="sidebar-brand">
-      <span class="sidebar-brand-mark" aria-hidden="true">S</span>
+      <img class="sidebar-brand-mark" src="assets/img/logo.png" alt="" width="42" height="42">
       <span class="sidebar-brand-text">StuM</span>
     </div>
     <nav class="sidebar-nav" aria-label="Điều hướng">
       ${links}
       <button type="button" class="nav-link" data-action="settings"><i data-lucide="settings" aria-hidden="true"></i><span class="nav-label">Cài đặt</span></button>
     </nav>
-    <div class="sidebar-footer">
-      <button type="button" class="btn btn-ghost btn-sm btn-icon-only sidebar-collapse-toggle" data-action="toggle-collapse" aria-controls="app-sidebar" aria-expanded="${String(!collapsed)}" aria-label="${collapsed ? 'Mở rộng menu' : 'Thu gọn menu'}"><i data-lucide="panel-left-close" class="sidebar-collapse-icon btn-icon" aria-hidden="true"></i></button>
-    </div>
+    <button type="button" class="sidebar-collapse-toggle" data-action="toggle-collapse" aria-controls="app-sidebar" aria-expanded="${String(!collapsed)}" aria-label="${collapsed ? 'Mở rộng menu' : 'Thu gọn menu'}" title="${collapsed ? 'Mở rộng menu' : 'Thu gọn menu'}"><i data-lucide="chevrons-left" class="sidebar-collapse-icon" aria-hidden="true"></i></button>
   </aside>`;
 }
 

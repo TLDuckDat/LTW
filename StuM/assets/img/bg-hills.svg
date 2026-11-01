@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice">
+  <!-- Nền "Đồi xanh": nền trong suốt (lấy màu nền theme), mặt trời vàng, các lớp đồi xanh. Màu theo bảng của StuM. -->
+  <circle cx="1270" cy="250" r="150" fill="#DBD468" opacity="0.35"/>
+  <circle cx="1270" cy="250" r="95" fill="#DBD468" opacity="0.55"/>
+  <path d="M0 560 C 220 470 420 520 640 480 S 1080 380 1300 450 S 1520 500 1600 470 V900 H0Z" fill="#89B449" opacity="0.28"/>
+  <path d="M0 640 C 260 560 480 640 760 590 S 1220 520 1600 600 V900 H0Z" fill="#407F3E" opacity="0.22"/>
+  <path d="M0 720 C 300 660 560 740 860 700 S 1350 640 1600 700 V900 H0Z" fill="#89B449" opacity="0.45"/>
+  <path d="M0 800 C 340 750 700 830 1040 790 S 1440 760 1600 790 V900 H0Z" fill="#407F3E" opacity="0.5"/>
+</svg>

@@ -1,63 +1,93 @@
 /* ==========================================================================
    StuM - Design Tokens
    Giá trị dạng "H S% L%" để dùng với hsl(var(--token)) và hsl(var(--token) / alpha)
+
+   Bảng màu: #407F3E (xanh rừng), #89B449 (xanh lá), #DBD468 (vàng), #E7E0C4 (kem), #E68A8C (hồng).
+   Mỗi màu ngữ nghĩa có hai token:
+   - --x-soft: đúng màu trong bảng, dùng làm nền và viền (badge, thanh tiến độ, thẻ trạng thái);
+   - --x: cùng tông nhưng đậm hơn để chữ và icon đạt tương phản tối thiểu 4.5:1 trên nền sáng.
    ========================================================================== */
 
 :root {
-  /* Background & Surface */
-  --background: 210 40% 98%;
-  --foreground: 222 47% 11%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
+  /* Background & Surface: nền kem nhạt, thẻ trắng ngà */
+  --background: 48 45% 95%;
+  --foreground: 120 25% 12%;
+  --card: 45 50% 99%;
+  --card-foreground: 120 25% 12%;
 
-  /* Primary - Blue 600 */
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
+  /* Primary - #407F3E */
+  --primary: 118 34% 37%;
+  --primary-foreground: 48 60% 97%;
 
-  /* Secondary */
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222 47% 11%;
+  /* Secondary - #E7E0C4 */
+  --secondary: 48 42% 84%;
+  --secondary-foreground: 120 25% 12%;
 
-  /* Semantic */
-  --success: 142 71% 45%;
+  /* Semantic: chữ/icon (đậm) */
+  --success: 96 50% 26%;
   --success-foreground: 0 0% 100%;
-  --warning: 38 92% 50%;
+  --warning: 50 70% 28%;
   --warning-foreground: 0 0% 100%;
-  --destructive: 0 72% 51%;
+  --destructive: 359 55% 42%;
   --destructive-foreground: 0 0% 100%;
-  --info: 199 89% 48%;
+  --info: 118 34% 30%;
   --info-foreground: 0 0% 100%;
 
+  /* Semantic: nền/viền (đúng màu bảng) */
+  --success-soft: 84 42% 50%;
+  --warning-soft: 56 62% 63%;
+  --destructive-soft: 359 65% 72%;
+  --info-soft: 48 42% 84%;
+
+  /* Sidebar - nền #407F3E, điểm nhấn #DBD468 */
+  --sidebar: 118 34% 37%;
+  --sidebar-foreground: 48 50% 97%;
+  --sidebar-accent: 56 62% 63%;
+
   /* Border & Ring */
-  --border: 214 32% 91%;
-  --input: 215 16% 47%;
-  --ring: 221 83% 53%;
+  --border: 48 28% 82%;
+  --input: 100 10% 42%;
+  --ring: 118 34% 37%;
   --radius: 0.5rem;
 
-  /* Shadow */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  /* Shadow: ám xanh rừng thay vì đen thuần */
+  --shadow-sm: 0 1px 2px 0 rgb(32 64 31 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(32 64 31 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(32 64 31 / 0.12);
 
   color-scheme: light;
 }
 
-/* Dark theme: áp dụng khi <html class="dark"> */
+/* Dark theme: áp dụng khi <html class="dark">. Nền xanh rừng rất tối; các màu bảng đủ sáng để dùng trực tiếp làm chữ. */
 .dark {
-  --background: 224 71% 4%;
-  --foreground: 210 40% 98%;
-  --card: 222 47% 7%;
-  --card-foreground: 210 40% 98%;
+  --background: 120 18% 6%;
+  --foreground: 48 40% 92%;
+  --card: 120 15% 9%;
+  --card-foreground: 48 40% 92%;
 
-  --primary: 217 91% 60%;
-  --primary-foreground: 224 71% 4%;
+  /* Primary - #89B449 */
+  --primary: 84 42% 50%;
+  --primary-foreground: 120 30% 8%;
 
-  --secondary: 217 33% 17%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 120 12% 15%;
+  --secondary-foreground: 48 40% 92%;
 
-  --border: 217 33% 17%;
-  --input: 217 19% 45%;
-  --ring: 217 91% 60%;
+  --success: 84 42% 55%;
+  --success-foreground: 120 30% 8%;
+  --warning: 56 62% 63%;
+  --warning-foreground: 120 30% 8%;
+  --destructive: 359 65% 72%;
+  --destructive-foreground: 120 30% 8%;
+  --info: 48 42% 84%;
+  --info-foreground: 120 30% 8%;
+
+  --sidebar: 120 18% 9%;
+  --sidebar-foreground: 48 35% 86%;
+  --sidebar-accent: 84 42% 50%;
+
+  --border: 120 10% 18%;
+  --input: 48 10% 50%;
+  --ring: 84 42% 50%;
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5);

@@ -1,6 +1,7 @@
 /**
  * Trang Báo cáo (chỉ Admin và Phòng đào tạo, chỉ đọc): thống kê sinh viên, kết quả học tập theo học kỳ,
  * công nợ học phí và cảnh báo học vụ. Các số liệu lấy từ /api/bao-cao/* của backend.
+ * Mỗi báo cáo là một tab, chỉ tải khi mở; bộ lọc chỉ hiện các ô dùng cho tab đó.
  */
 
 import { api } from '../core/api.js';
@@ -23,6 +24,7 @@ const CANH_BAO = {
 };
 
 const state = {
+  tab: 'thongke',
   hocKyId: null,
   search: '',
   congNoPage: 1,
@@ -193,16 +195,53 @@ function loadCanhBao() {
   });
 }
 
-function refreshSemesterReports() {
-  loadKetQua();
-  renderCongNo();
-  loadCanhBao();
+/* ----- Tab ----- */
+
+/** filters: tên các ô lọc dùng cho tab; tab không có ô lọc nào thì ẩn cả thanh lọc. */
+const TABS = [
+  { key: 'thongke', label: 'Thống kê sinh viên', subtitle: 'Toàn trường theo khoa và trạng thái', load: loadThongKe, filters: [] },
+  { key: 'ketqua', label: 'Kết quả học tập', subtitle: 'Học kỳ đã chọn', load: loadKetQua, filters: ['hocKyId'] },
+  { key: 'congno', label: 'Công nợ học phí', subtitle: 'Học kỳ đã chọn', load: renderCongNo, filters: ['hocKyId', 'q'] },
+  { key: 'canhbao', label: 'Cảnh báo học vụ', subtitle: 'Học kỳ đã chọn', load: loadCanhBao, filters: ['hocKyId', 'q'] },
+];
+
+const activeTab = () => TABS.find((tab) => tab.key === state.tab);
+
+/** Chỉ tải báo cáo của tab đang mở; tab khác tải lại khi được mở nên luôn mới. */
+function refreshActiveTab() {
+  return activeTab().load();
 }
 
-function section(id, title, subtitle, body) {
-  return `<section class="card" aria-labelledby="${id}-title">
-    <header class="card-header"><div class="card-header-text"><h2 class="card-title" id="${id}-title">${escapeHtml(title)}</h2><p class="card-subtitle">${escapeHtml(subtitle)}</p></div></header>
-    <div class="card-body" id="${id}-container">${body}</div>
+function syncFilters(root) {
+  const filters = activeTab().filters;
+  const bar = root.querySelector('#report-filters');
+  bar.hidden = filters.length === 0;
+  bar.querySelectorAll('[name]').forEach((control) => {
+    const field = control.closest('.field');
+    if (field) field.hidden = !filters.includes(control.name);
+  });
+}
+
+function switchTab(root, key) {
+  state.tab = key;
+  root.querySelectorAll('[data-tab]').forEach((tab) => tab.setAttribute('aria-selected', String(tab.dataset.tab === key)));
+  TABS.forEach((tab) => {
+    root.querySelector(`#tab-${tab.key}`).hidden = tab.key !== key;
+  });
+  syncFilters(root);
+  refreshActiveTab();
+}
+
+function tabsMarkup() {
+  return `<nav class="tabs" role="tablist" aria-label="Báo cáo">
+    ${TABS.map((tab) => `<button type="button" class="tab" role="tab" data-tab="${tab.key}" aria-controls="tab-${tab.key}" aria-selected="${tab.key === state.tab}">${escapeHtml(tab.label)}</button>`).join('')}
+  </nav>`;
+}
+
+function section(tab) {
+  return `<section class="card" id="tab-${tab.key}" role="tabpanel" aria-labelledby="${tab.key}-title"${tab.key === state.tab ? '' : ' hidden'}>
+    <header class="card-header"><div class="card-header-text"><h2 class="card-title" id="${tab.key}-title">${escapeHtml(tab.label)}</h2><p class="card-subtitle">${escapeHtml(tab.subtitle)}</p></div></header>
+    <div class="card-body" id="${tab.key}-container"></div>
   </section>`;
 }
 
@@ -211,9 +250,13 @@ function bindEvents(root) {
     state.search = root.querySelector('[name="q"]').value.trim();
     state.congNoPage = 1;
     state.canhBaoPage = 1;
-    renderCongNo();
-    loadCanhBao();
+    refreshActiveTab();
   }, 300);
+
+  root.querySelector('.tabs').addEventListener('click', (event) => {
+    const tab = event.target.closest('[data-tab]');
+    if (tab && tab.dataset.tab !== state.tab) switchTab(root, tab.dataset.tab);
+  });
 
   Input.init(root, {
     onInput: (input) => {
@@ -227,7 +270,7 @@ function bindEvents(root) {
       state.hocKyId = Number(element.value);
       state.congNoPage = 1;
       state.canhBaoPage = 1;
-      refreshSemesterReports();
+      refreshActiveTab();
     },
   });
 
@@ -253,12 +296,10 @@ export async function mount(root) {
     title: 'Báo cáo',
     description: 'Thống kê sinh viên, kết quả học tập, công nợ học phí và cảnh báo học vụ theo học kỳ.',
   })}
+  ${tabsMarkup()}
   <div class="page-stack">
-    ${section('thongke', 'Thống kê sinh viên', 'Toàn trường theo khoa và trạng thái', '')}
     <div class="filter-bar" role="search" id="report-filters"></div>
-    ${section('ketqua', 'Kết quả học tập', 'Học kỳ đã chọn', '')}
-    ${section('congno', 'Công nợ học phí', 'Học kỳ đã chọn', '')}
-    ${section('canhbao', 'Cảnh báo học vụ', 'Học kỳ đã chọn', '')}
+    ${TABS.map(section).join('')}
   </div>`;
 
   const hocKys = await api.hocKy.getAll().catch(() => []);
@@ -269,10 +310,10 @@ export async function mount(root) {
     label: 'Học kỳ',
     options: hocKys.map((hk) => ({ value: hk.id, label: `${hk.ten} (${hk.tenNamHoc})` })),
     value: state.hocKyId ?? '',
-  })}${Input.render({ name: 'q', label: 'Tìm sinh viên (công nợ, cảnh báo)', placeholder: 'MSSV hoặc họ tên', iconLeft: 'search' })}`;
+  })}${Input.render({ name: 'q', label: 'Tìm sinh viên', placeholder: 'MSSV hoặc họ tên', iconLeft: 'search' })}`;
 
+  syncFilters(root);
   bindEvents(root);
-  await loadThongKe();
-  refreshSemesterReports();
+  await refreshActiveTab();
 }
 

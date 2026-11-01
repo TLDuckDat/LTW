@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="280" viewBox="0 0 280 280">
+  <!-- Nền "Học đường": họa tiết lặp sách, mũ tốt nghiệp, bút chì, lá cây, nét mảnh màu #407F3E. -->
+  <g fill="none" stroke="#407F3E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.18">
+    <!-- Sách mở -->
+    <g transform="translate(30 36) rotate(-8)">
+      <path d="M0 6 Q16 0 32 6 V40 Q16 34 0 40Z"/>
+      <path d="M32 6 Q48 0 64 6 V40 Q48 34 32 40"/>
+      <path d="M8 14 H24 M8 22 H24 M40 14 H56 M40 22 H56"/>
+    </g>
+    <!-- Mũ tốt nghiệp -->
+    <g transform="translate(170 40) rotate(10)">
+      <path d="M0 16 L34 0 L68 16 L34 32Z"/>
+      <path d="M14 23 V38 Q34 48 54 38 V23"/>
+      <path d="M68 16 V34"/>
+      <circle cx="68" cy="37" r="3"/>
+    </g>
+    <!-- Bút chì -->
+    <g transform="translate(40 180) rotate(-35)">
+      <path d="M0 0 H56 L68 7 L56 14 H0Z"/>
+      <path d="M10 0 V14 M56 0 V14"/>
+    </g>
+    <!-- Lá cây -->
+    <g transform="translate(190 170) rotate(25)">
+      <path d="M0 30 Q30 -10 60 30 Q30 70 0 30Z"/>
+      <path d="M0 30 H60 M20 30 L30 18 M35 30 L45 20 M20 30 L30 42 M35 30 L45 40"/>
+    </g>
+    <!-- Chấm trang trí -->
+    <circle cx="140" cy="130" r="3"/>
+    <circle cx="250" cy="120" r="2"/>
+    <circle cx="110" cy="250" r="2"/>
+  </g>
+  <g fill="#DBD468" opacity="0.3">
+    <circle cx="140" cy="130" r="2"/>
+    <circle cx="20" cy="140" r="4"/>
+  </g>
+</svg>

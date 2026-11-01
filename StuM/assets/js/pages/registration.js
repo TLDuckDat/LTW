@@ -3,6 +3,7 @@
  * - Nhân viên (Admin, PhongDaoTao): chọn sinh viên để đăng ký thay, quản lý đợt đăng ký và sĩ số lớp.
  * - Sinh viên: chỉ thao tác trên hồ sơ của mình (backend kiểm tra theo tài khoản).
  * Điều kiện đăng ký do backend tính; giao diện hiển thị đúng lý do khi lớp chưa đủ điều kiện.
+ * Mỗi phần là một tab, chỉ tải dữ liệu của tab đang mở; bộ lọc chỉ hiện các ô dùng cho tab đó.
  */
 
 import { api } from '../core/api.js';
@@ -54,6 +55,7 @@ const PERIOD_ACTIONS = [
 
 const state = {
   isStaff: false,
+  tab: 'lop',
   hocKyId: null,
   hocKys: [],
   sinhVienId: null,
@@ -202,7 +204,7 @@ function loadDaDangKy() {
     load: () => api.dangKy.daDangKy(state.sinhVienId, state.hocKyId),
     skeleton: () => Skeleton.table(3, 6),
     isEmpty: (data) => data.hocPhan.length === 0,
-    empty: () => EmptyState.render({ icon: 'clipboard-list', title: 'Chưa đăng ký học phần nào', description: 'Chọn lớp ở mục bên trên để đăng ký.' }),
+    empty: () => EmptyState.render({ icon: 'clipboard-list', title: 'Chưa đăng ký học phần nào', description: 'Chọn lớp ở tab Lớp mở đăng ký để đăng ký.' }),
     render: (data) =>
       `<p class="form-hint mb-sm">Tổng số tín chỉ: <strong>${data.tongSoTinChi}</strong></p>${Table.render({
         columns: [
@@ -295,8 +297,42 @@ function loadSiSo() {
   });
 }
 
+/* ----- Tab ----- */
+
+/** filters: tên các ô lọc dùng cho tab (ô khác bị ẩn khi mở tab này). */
+const TABS = [
+  { key: 'lop', label: 'Lớp mở đăng ký', subtitle: 'Điều kiện đăng ký do hệ thống kiểm tra (tiên quyết, sĩ số, trùng lịch, đợt đăng ký)', load: loadLopMo, filters: ['sinhVienId', 'hocKyId', 'monHocId', 'q', 'chiDuDieuKien'] },
+  { key: 'da', label: 'Đã đăng ký', subtitle: 'Học phần đã đăng ký trong học kỳ đã chọn', load: loadDaDangKy, filters: ['sinhVienId', 'hocKyId'] },
+  { key: 'tkb', label: 'Thời khóa biểu', subtitle: 'Lịch học của các học phần đã đăng ký', load: loadTkb, filters: ['sinhVienId', 'hocKyId'] },
+  { key: 'periods', label: 'Đợt đăng ký', subtitle: 'Đợt đang mở cho phép sinh viên đăng ký học phần', load: loadPeriods, filters: ['hocKyId'], staffOnly: true },
+  { key: 'siso', label: 'Sĩ số', subtitle: 'Sĩ số các lớp trong học kỳ', load: loadSiSo, filters: ['hocKyId', 'q'], staffOnly: true },
+];
+
+const visibleTabs = () => TABS.filter((tab) => state.isStaff || !tab.staffOnly);
+const activeTab = () => TABS.find((tab) => tab.key === state.tab);
+
+/** Dữ liệu chỉ tải cho tab đang mở; tab khác tải lại khi được mở nên luôn mới. */
 function refreshAll() {
-  return Promise.all([loadPeriods(), loadLopMo(), loadDaDangKy(), loadTkb(), loadSiSo()]);
+  return activeTab().load();
+}
+
+function syncFilters(root) {
+  const filters = activeTab().filters;
+  root.querySelectorAll('#filters-slot [name]').forEach((control) => {
+    const wrapper = control.closest('.field, .checkbox-row');
+    if (wrapper) wrapper.hidden = !filters.includes(control.name);
+  });
+}
+
+function switchTab(root, key) {
+  state.tab = key;
+  root.querySelectorAll('[data-tab]').forEach((tab) => tab.setAttribute('aria-selected', String(tab.dataset.tab === key)));
+  TABS.forEach((tab) => {
+    const panel = root.querySelector(`#tab-${tab.key}`);
+    if (panel) panel.hidden = tab.key !== key;
+  });
+  syncFilters(root);
+  refreshAll();
 }
 
 /* ----- Hành động ----- */
@@ -436,24 +472,36 @@ function filtersMarkup() {
   </div>`;
 }
 
-function sectionMarkup(id, title, subtitle, body, staffOnly = false) {
-  return `<section class="card"${staffOnly ? ' data-staff-only' : ''} aria-labelledby="${id}-title">
+function tabsMarkup() {
+  return `<nav class="tabs" role="tablist" aria-label="Đăng ký học phần">
+    ${visibleTabs()
+      .map((tab) => `<button type="button" class="tab" role="tab" data-tab="${tab.key}" aria-controls="tab-${tab.key}" aria-selected="${tab.key === state.tab}">${escapeHtml(tab.label)}</button>`)
+      .join('')}
+  </nav>`;
+}
+
+function sectionMarkup(tab) {
+  return `<section class="card" id="tab-${tab.key}" role="tabpanel" aria-labelledby="${tab.key}-title"${tab.key === state.tab ? '' : ' hidden'}>
     <header class="card-header">
       <div class="card-header-text">
-        <h2 class="card-title" id="${id}-title">${escapeHtml(title)}</h2>
-        ${subtitle ? `<p class="card-subtitle">${escapeHtml(subtitle)}</p>` : ''}
+        <h2 class="card-title" id="${tab.key}-title">${escapeHtml(tab.label)}</h2>
+        <p class="card-subtitle">${escapeHtml(tab.subtitle)}</p>
       </div>
     </header>
-    <div class="card-body is-flush" id="${id}-container">${body}</div>
+    <div class="card-body is-flush" id="${tab.key}-container"></div>
   </section>`;
 }
 
 function bindEvents(root) {
   const debouncedSearch = debounce(() => {
     state.search = root.querySelector('[name="q"]').value.trim();
-    loadLopMo();
-    if (state.isStaff) loadSiSo();
+    refreshAll();
   }, 300);
+
+  root.querySelector('.tabs').addEventListener('click', (event) => {
+    const tab = event.target.closest('[data-tab]');
+    if (tab && tab.dataset.tab !== state.tab) switchTab(root, tab.dataset.tab);
+  });
 
   Input.init(root, {
     onInput: (input) => {
@@ -473,7 +521,7 @@ function bindEvents(root) {
       }
       if (element.name === 'monHocId') {
         state.monHocId = element.value;
-        loadLopMo();
+        refreshAll();
       }
     },
   });
@@ -481,7 +529,7 @@ function bindEvents(root) {
   root.addEventListener('change', (event) => {
     if (event.target.matches('[name="chiDuDieuKien"]')) {
       state.chiDuDieuKien = event.target.checked;
-      loadLopMo();
+      refreshAll();
     }
   });
 
@@ -518,18 +566,9 @@ export async function mount(root) {
       ? 'Chọn sinh viên để đăng ký học phần thay, quản lý đợt đăng ký và sĩ số lớp.'
       : 'Đăng ký các lớp đang mở trong học kỳ và xem thời khóa biểu của bạn.',
   })}
+  ${tabsMarkup()}
   <div id="filters-slot"></div>
-  <div class="page-stack">
-    ${state.isStaff ? sectionMarkup('periods', 'Đợt đăng ký', 'Đợt đang mở cho phép sinh viên đăng ký học phần', '', true) : ''}
-    ${sectionMarkup('lop', 'Lớp học phần mở đăng ký', 'Điều kiện đăng ký do hệ thống kiểm tra (tiên quyết, sĩ số, trùng lịch, đợt đăng ký)', '')}
-    ${sectionMarkup('da', 'Học phần đã đăng ký', 'Trong học kỳ đã chọn', '')}
-    ${sectionMarkup('tkb', 'Thời khóa biểu', 'Lịch học của các học phần đã đăng ký', '')}
-    ${state.isStaff ? sectionMarkup('siso', 'Theo dõi sĩ số', 'Sĩ số các lớp trong học kỳ', '', true) : ''}
-  </div>`;
-
-  if (!state.isStaff) {
-    root.querySelectorAll('[data-staff-only]').forEach((node) => node.remove());
-  }
+  ${visibleTabs().map(sectionMarkup).join('')}`;
 
   const [hocKys, monHocs, students] = await Promise.all([
     api.hocKy.getAll(),
@@ -552,6 +591,7 @@ export async function mount(root) {
   }
 
   root.querySelector('#filters-slot').outerHTML = `<div id="filters-slot">${filtersMarkup()}</div>`;
+  syncFilters(root);
   bindEvents(root);
   await refreshAll();
 }

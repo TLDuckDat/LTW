@@ -20,8 +20,8 @@ import { Table } from '../components/table.js';
 import { Toast } from '../components/toast.js';
 import { renderPageHeader } from '../layout/shell.js';
 import { openDetailModal, openFormModal, openRecordDetailModal } from './graduation-forms.js';
+import { statusBadge } from './students-form.js';
 
-const yesNo = (value) => (value ? 'Có' : 'Không');
 const KET_LUAN = {
   DuDieuKien: ['success', 'Đủ điều kiện'],
   KhongDuDieuKien: ['destructive', 'Chưa đủ điều kiện'],
@@ -37,6 +37,116 @@ const TRANG_THAI_TT = {
   DaHuy: ['destructive', 'Đã hủy'],
   HoanThanh: ['success', 'Hoàn thành'],
 };
+
+/* ----- Chi tiết điều kiện tốt nghiệp của một sinh viên ----- */
+
+/** Trạng thái từng điều kiện: [lớp CSS, icon, nhãn]. Điều kiện chưa đạt xếp lên đầu để thấy ngay. */
+const DIEU_KIEN = {
+  ChuaDat: ['is-fail', 'x', 'Chưa đạt'],
+  ChuaXacDinh: ['is-unknown', 'circle-help', 'Chưa xác định'],
+  Dat: ['is-pass', 'check', 'Đạt'],
+};
+const THU_TU_DIEU_KIEN = ['ChuaDat', 'ChuaXacDinh', 'Dat'];
+const KET_LUAN_BANNER = {
+  DuDieuKien: ['is-pass', 'badge-check', 'Đủ điều kiện tốt nghiệp'],
+  KhongDuDieuKien: ['is-fail', 'circle-alert', 'Chưa đủ điều kiện tốt nghiệp'],
+  ChuaTheKetLuan: ['is-unknown', 'circle-help', 'Chưa thể kết luận'],
+};
+
+/**
+ * Một chỉ số có thanh tiến độ. marker: vị trí ngưỡng tối thiểu (0..1) vẽ thành vạch trên thanh.
+ * @param {{ label: string, value: string, ratio: number|null, note: string, done: boolean, marker?: number }} metric
+ */
+function metricMarkup({ label, value, ratio, note, done, marker }) {
+  const percent = ratio === null ? 0 : Math.round(Math.min(1, Math.max(0, ratio)) * 100);
+  return `<div class="elig-metric">
+    <span class="elig-metric-label">${escapeHtml(label)}</span>
+    <span class="elig-metric-value">${escapeHtml(value)}</span>
+    <div class="elig-bar${done ? ' is-done' : ''}" role="img" aria-label="${escapeHtml(`${label}: ${value}`)}">
+      <span class="elig-bar-fill" style="width:${percent}%"></span>
+      ${marker === undefined ? '' : `<span class="elig-bar-marker" style="left:${Math.round(marker * 100)}%"></span>`}
+    </div>
+    <span class="elig-metric-note">${escapeHtml(note)}</span>
+  </div>`;
+}
+
+function openDieuKienModal(d) {
+  const dieuKien = [...(d.danhSachDieuKien ?? [])]
+    .sort((a, b) => THU_TU_DIEU_KIEN.indexOf(a.trangThai) - THU_TU_DIEU_KIEN.indexOf(b.trangThai));
+  const soDat = dieuKien.filter((item) => item.trangThai === 'Dat').length;
+  const [bannerClass, bannerIcon, bannerText] = KET_LUAN_BANNER[d.ketLuan] ?? KET_LUAN_BANNER.ChuaTheKetLuan;
+
+  const tinChi = d.tongTinChiYeuCau
+    ? { value: `${d.tinChiTichLuy ?? 0} / ${d.tongTinChiYeuCau}`, ratio: (d.tinChiTichLuy ?? 0) / d.tongTinChiYeuCau }
+    : { value: `${d.tinChiTichLuy ?? 0}`, ratio: null };
+  const mon = d.monBatBuoc ?? { soMonBatBuoc: 0, soMonDaDat: 0, monConThieu: [] };
+  const monThieu = mon.monConThieu ?? [];
+  const metrics = [
+    {
+      label: 'Tín chỉ tích lũy',
+      ...tinChi,
+      done: !d.tinChiConThieu,
+      note: d.tongTinChiYeuCau ? (d.tinChiConThieu ? `Còn thiếu ${d.tinChiConThieu} tín chỉ` : 'Đã đủ tín chỉ') : 'Chưa có chương trình đào tạo',
+    },
+    {
+      label: 'CPA (thang 4)',
+      value: d.cpa === null ? '—' : formatNumber(d.cpa, 2),
+      ratio: d.cpa === null ? null : d.cpa / 4,
+      done: d.cpa !== null && d.cpaToiThieu !== null && d.cpa >= d.cpaToiThieu,
+      marker: d.cpaToiThieu === null ? undefined : d.cpaToiThieu / 4,
+      note: d.cpaToiThieu === null ? 'Chưa có mức tối thiểu' : `Tối thiểu ${formatNumber(d.cpaToiThieu, 2)}`,
+    },
+    {
+      label: 'Môn bắt buộc',
+      value: `${mon.soMonDaDat} / ${mon.soMonBatBuoc}`,
+      ratio: mon.soMonBatBuoc ? mon.soMonDaDat / mon.soMonBatBuoc : null,
+      done: monThieu.length === 0,
+      note: monThieu.length ? `Còn thiếu ${monThieu.length} môn` : 'Đã đạt tất cả',
+    },
+  ];
+
+  const checklist = dieuKien.map((item) => {
+    const [cls, icon, label] = DIEU_KIEN[item.trangThai] ?? DIEU_KIEN.ChuaXacDinh;
+    const chips = item.ma === 'MonBatBuoc' && monThieu.length
+      ? `<ul class="elig-chips" aria-label="Môn bắt buộc còn thiếu">${monThieu.map((m) => `<li>${escapeHtml(m)}</li>`).join('')}</ul>`
+      : '';
+    return `<li class="elig-item ${cls}">
+      <span class="elig-item-icon"><i data-lucide="${icon}" aria-hidden="true"></i></span>
+      <div class="elig-item-body">
+        <div class="elig-item-head"><span class="elig-item-title">${escapeHtml(item.ten)}</span><span class="elig-item-status">${label}</span></div>
+        <p class="elig-item-text">${chips ? `Còn thiếu ${monThieu.length}/${mon.soMonBatBuoc} môn bắt buộc:` : escapeHtml(item.giaiThich)}</p>
+        ${chips}
+      </div>
+    </li>`;
+  }).join('');
+
+  const handle = Modal.open({
+    title: `Điều kiện tốt nghiệp · ${d.maSinhVien}`,
+    size: 'lg',
+    content: `<div class="elig">
+      <div class="elig-banner ${bannerClass}">
+        <i data-lucide="${bannerIcon}" aria-hidden="true"></i>
+        <div>
+          <p class="elig-banner-title">${bannerText}</p>
+          <p class="elig-banner-sub">Đạt ${soDat}/${dieuKien.length} điều kiện</p>
+        </div>
+      </div>
+      <dl class="elig-profile">
+        <div><dt>Họ và tên</dt><dd>${escapeHtml(d.hoTen)}</dd></div>
+        <div><dt>Trạng thái</dt><dd>${statusBadge(d.trangThaiSinhVien)}</dd></div>
+        <div><dt>Chương trình</dt><dd>${escapeHtml(d.tenChuongTrinhDaoTao ?? '—')}</dd></div>
+        <div><dt>Xếp loại dự kiến</dt><dd>${escapeHtml(d.xepLoaiTotNghiep ?? '—')}</dd></div>
+      </dl>
+      <div class="elig-metrics">${metrics.map(metricMarkup).join('')}</div>
+      <section aria-labelledby="elig-list-title">
+        <h3 class="elig-section-title" id="elig-list-title">Các điều kiện</h3>
+        <ul class="elig-list">${checklist}</ul>
+      </section>
+    </div>`,
+    footer: Button.render({ label: 'Đóng', variant: 'primary', action: 'close' }),
+  });
+  handle.element.querySelector('[data-action="close"]').addEventListener('click', handle.close);
+}
 
 const badgeOf = (map, key) => {
   const [variant, label] = map[key] ?? ['neutral', key ?? '—'];
@@ -71,26 +181,11 @@ const TABS = {
     ],
     onAction: async (action, row) => {
       if (action === 'detail') {
-        const d = await api.totNghiep.dieuKienCuaSinhVien(row.sinhVienId);
-        const thucTap = d.thucTap ? `${yesNo(d.thucTap.batBuoc)}, ${d.thucTap.soBanGhi} bản ghi, điểm ${d.thucTap.diem ?? '—'}` : '—';
-        const khoaLuan = d.khoaLuan ? `${yesNo(d.khoaLuan.batBuoc)}, điểm ${d.khoaLuan.diem ?? '—'} (tối thiểu ${d.khoaLuan.diemToiThieu ?? '—'})` : '—';
-        const monThieu = d.monBatBuoc ? (d.monBatBuoc.monConThieu ?? []).map((m) => m.tenMonHoc ?? m.maMonHoc ?? JSON.stringify(m)).join(', ') || 'Không' : '—';
-        const dieuKien = (d.danhSachDieuKien ?? []).map((item) => `<li>${escapeHtml(Object.values(item).join(' - '))}</li>`).join('');
-        openDetailModal({
-          title: `Điều kiện của ${d.maSinhVien}`,
-          rows: [
-            ['Họ và tên', escapeHtml(d.hoTen)],
-            ['Trạng thái sinh viên', escapeHtml(d.trangThaiSinhVien ?? '—')],
-            ['Chương trình', escapeHtml(d.tenChuongTrinhDaoTao ?? '—')],
-            ['Tín chỉ tích lũy', `${d.tinChiTichLuy}/${d.tongTinChiYeuCau} (còn thiếu ${d.tinChiConThieu})`],
-            ['CPA', `${formatNumber(d.cpa, 2)} (tối thiểu ${formatNumber(d.cpaToiThieu, 2)})`],
-            ['Thực tập', escapeHtml(thucTap)],
-            ['Khóa luận', escapeHtml(khoaLuan)],
-            ['Môn bắt buộc', `${d.monBatBuoc?.soMonDaDat ?? 0}/${d.monBatBuoc?.soMonBatBuoc ?? 0} đạt; thiếu: ${escapeHtml(monThieu)}`],
-            ['Kết luận', badgeOf(KET_LUAN, d.ketLuan)],
-          ],
-          extra: dieuKien ? `<p class="form-hint">Chi tiết từng điều kiện:</p><ul>${dieuKien}</ul>` : '',
-        });
+        try {
+          openDieuKienModal(await api.totNghiep.dieuKienCuaSinhVien(row.sinhVienId));
+        } catch (error) {
+          Toast.error(error.message);
+        }
       }
       if (action === 'xet') confirmXet(row);
     },

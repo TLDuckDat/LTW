@@ -35,7 +35,7 @@ function validateInput(input) {
 function brandMarkup() {
   return `<aside class="auth-brand" aria-label="Giới thiệu StuM">
     <div class="auth-brand-head sidebar-brand">
-      <span class="auth-brand-mark" aria-hidden="true">S</span>
+      <img class="auth-brand-mark" src="assets/img/logo.png" alt="" width="64" height="64">
       <span>StuM</span>
     </div>
     <div class="page-stack">
