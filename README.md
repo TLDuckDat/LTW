@@ -58,7 +58,7 @@ Seed chỉ chạy khi CSDL còn trống; muốn seed lại thì xóa CSDL (`dotn
 - **Nhật ký** (`GET /api/auth/activity-logs`, chỉ Admin): đăng nhập, làm mới phiên, đăng xuất và **mọi thao tác ghi**
   (POST/PUT/PATCH/DELETE) của người đã đăng nhập, kể cả bị từ chối (403) hay lỗi (500): người thực hiện, hành động
   (`SinhVien.Delete`...), đường dẫn, tham số, mã phản hồi, IP, chi tiết nghiệp vụ. Không lưu body request (mật khẩu).
-  Lọc theo `taiKhoanId`, `hanhDong` (tiền tố, ví dụ `HocPhi.`), `thanhCong`, `tuNgay`, `denNgay`, `search`.
+  Lọc theo `taiKhoanId`, `hanhDong` (tiền tố, ví dụ `HocPhi.`), `thanhCong`, `tuNgay`, `denNgay` (ngày `yyyy-MM-dd` theo giờ Việt Nam, lấy cả ngày đầu và cuối), `search`.
   Service ghi thêm chi tiết qua `NhatKyContext.Ghi("...")` (ví dụ "vai trò SinhVien -> GiangVien").
 
 ## 2. Migration

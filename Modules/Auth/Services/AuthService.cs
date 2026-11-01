@@ -254,8 +254,11 @@ public class AuthService(
             throw AppException.BadRequest("Mật khẩu không được vượt quá 72 byte UTF-8.");
 
         var account = await _db.Set<TaiKhoan>().FirstOrDefaultAsync(x => x.Id == taiKhoanId);
-        if (account is null || account.DaKhoa || !VerifyPassword(request.MatKhauCu, account.MatKhauHash))
-            throw AppException.Unauthorized("Mật khẩu hiện tại không chính xác.");
+        if (account is null || account.DaKhoa)
+            throw AppException.Unauthorized(PhienKhongHopLe);
+        // 400 chứ không phải 401: frontend hiểu 401 là phiên hết hạn và sẽ làm mới phiên hoặc đăng xuất
+        if (!VerifyPassword(request.MatKhauCu, account.MatKhauHash))
+            throw AppException.BadRequest("Mật khẩu hiện tại không chính xác.");
 
         if (VerifyPassword(request.MatKhauMoi, account.MatKhauHash))
             throw AppException.BadRequest("Mật khẩu mới phải khác mật khẩu hiện tại.");
@@ -313,8 +316,17 @@ public class AuthService(
             logs = logs.Where(x => x.HanhDong.StartsWith(hanhDong));
         }
         if (query.ThanhCong is bool thanhCong) logs = logs.Where(x => x.ThanhCong == thanhCong);
-        if (query.TuNgay is { } tuNgay) logs = logs.Where(x => x.CreatedAt >= tuNgay);
-        if (query.DenNgay is { } denNgay) logs = logs.Where(x => x.CreatedAt <= denNgay);
+        // Ngày theo giờ Việt Nam, lấy trọn cả ngày DenNgay: đổi ra khoảng [đầu TuNgay, đầu ngày sau DenNgay) theo UTC
+        if (query.TuNgay is { } tuNgay)
+        {
+            var tu = ThoiGian.VeUtc(tuNgay.ToDateTime(TimeOnly.MinValue));
+            logs = logs.Where(x => x.CreatedAt >= tu);
+        }
+        if (query.DenNgay is { } denNgay)
+        {
+            var den = ThoiGian.VeUtc(denNgay.AddDays(1).ToDateTime(TimeOnly.MinValue));
+            logs = logs.Where(x => x.CreatedAt < den);
+        }
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var search = query.Search.Trim();

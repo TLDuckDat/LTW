@@ -79,12 +79,15 @@ public record ActivityLogDto(
     string? UserAgent,
     DateTime ThoiGian);
 
-/// <summary>Lọc nhật ký; HanhDong lọc theo tiền tố (ví dụ "SinhVien." hoặc "Login"), thời gian theo UTC.</summary>
+/// <summary>
+/// Lọc nhật ký; HanhDong lọc theo tiền tố (ví dụ "SinhVien." hoặc "Login").
+/// TuNgay/DenNgay là ngày theo giờ Việt Nam (yyyy-MM-dd), lấy cả hai ngày đầu cuối.
+/// </summary>
 public class ActivityLogQuery : StudentManagement.Common.PagedQuery
 {
     public int? TaiKhoanId { get; set; }
     public string? HanhDong { get; set; }
     public bool? ThanhCong { get; set; }
-    public DateTime? TuNgay { get; set; }
-    public DateTime? DenNgay { get; set; }
+    public DateOnly? TuNgay { get; set; }
+    public DateOnly? DenNgay { get; set; }
 }

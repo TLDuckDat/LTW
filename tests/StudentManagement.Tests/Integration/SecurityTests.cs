@@ -249,6 +249,40 @@ public class SecurityTests(ApiFactory factory)
     }
 
     [Fact]
+    public async Task DoiMatKhau_SaiMatKhauCu_Tra400_KhongPhai401()
+    {
+        var admin = await factory.AdminAsync();
+        var (ten, _) = await TaoTaiKhoanAsync(admin);
+        var client = await factory.LoginAsync(ten, MatKhau);
+
+        var (status, body) = await client.PostAsync("/api/auth/change-password",
+            new { matKhauCu = "SaiMatKhau@1", matKhauMoi = "BiMat@98765" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.Contains("Mật khẩu hiện tại không chính xác", body.Message());
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/auth/me")).Status);
+    }
+
+    [Fact]
+    public async Task LocNhatKyTheoNgay_LayTronNgayTheoGioVietNam()
+    {
+        var admin = await factory.AdminAsync();
+        var (ten, _) = await TaoTaiKhoanAsync(admin);
+        await DangNhapAsync(ten, MatKhau);
+        var homNay = StudentManagement.Common.ThoiGian.HomNay().ToString("yyyy-MM-dd");
+        var homQua = StudentManagement.Common.ThoiGian.HomNay().AddDays(-1).ToString("yyyy-MM-dd");
+
+        // Từ ngày = đến ngày = hôm nay phải ra lần đăng nhập vừa rồi
+        var trongNgay = await admin.DataAsync(HttpMethod.Get,
+            $"/api/auth/activity-logs?hanhDong=Login&search={ten}&tuNgay={homNay}&denNgay={homNay}");
+        Assert.Single(trongNgay.Items());
+
+        var homQuaLog = await admin.DataAsync(HttpMethod.Get,
+            $"/api/auth/activity-logs?hanhDong=Login&search={ten}&denNgay={homQua}");
+        Assert.Empty(homQuaLog.Items());
+    }
+
+    [Fact]
     public async Task DangNhapSai_VaBiChan_DuocGhiNhatKy()
     {
         var admin = await factory.AdminAsync();
