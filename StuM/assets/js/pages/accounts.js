@@ -40,6 +40,14 @@ const ROW_ACTIONS = [
   { action: 'unlock', label: 'Mở khóa tài khoản', icon: 'lock-open' },
 ];
 
+/** Admin không được tự đổi vai trò, tự khóa hay gắn hồ sơ cho chính tài khoản đang đăng nhập (backend cũng chặn). */
+const SELF_BLOCKED = new Set(['role', 'link-student', 'link-lecturer', 'lock', 'unlock']);
+const SELF_ACTIONS = ROW_ACTIONS.filter((item) => !SELF_BLOCKED.has(item.action)).filter(
+  (item, index, list) => !(item.divider && (index === 0 || index === list.length - 1 || list[index - 1].divider)),
+);
+
+const isSelf = (record) => record?.id === api.auth.getSession()?.taiKhoanId;
+
 const TABS = [
   { key: 'accounts', label: 'Tài khoản' },
   { key: 'logs', label: 'Nhật ký hoạt động' },
@@ -53,7 +61,12 @@ const badgeVaiTro = (vaiTro) => Badge.render({ label: VAI_TRO[vaiTro] ?? vaiTro,
 function accountsTable(result) {
   return Table.render({
     columns: [
-      { key: 'tenDangNhap', label: 'Tên đăng nhập', primary: true },
+      {
+        key: 'tenDangNhap',
+        label: 'Tên đăng nhập',
+        primary: true,
+        render: (row) => `${escapeHtml(row.tenDangNhap)}${isSelf(row) ? ' <span class="form-hint">(bạn)</span>' : ''}`,
+      },
       { key: 'hoTen', label: 'Họ và tên' },
       { key: 'vaiTro', label: 'Vai trò', render: (row) => badgeVaiTro(row.vaiTro) },
       {
@@ -69,7 +82,7 @@ function accountsTable(result) {
       { key: 'ngayTao', label: 'Ngày tạo', render: (row) => escapeHtml(formatDate(row.ngayTao)) },
     ],
     rows: result.data,
-    actions: ROW_ACTIONS,
+    actions: (row) => (isSelf(row) ? SELF_ACTIONS : ROW_ACTIONS),
     actionLabel: (row) => `Thao tác cho ${row.tenDangNhap}`,
     caption: 'Danh sách tài khoản',
     footer: Pagination.render({ page: result.page, pageSize: result.pageSize, total: result.total }),
@@ -133,6 +146,10 @@ function loadLogs(root) {
 function handleRowAction(action, rowId) {
   const record = state.accounts.find((row) => String(row.id) === rowId);
   if (!record) return;
+  if (isSelf(record) && SELF_BLOCKED.has(action)) {
+    Toast.warning('Không thể đổi vai trò, khóa hay liên kết hồ sơ cho chính tài khoản đang đăng nhập.');
+    return;
+  }
 
   if (action === 'detail') {
     openRecordDetailModal({

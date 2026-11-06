@@ -52,13 +52,15 @@ function renderCell(column, row) {
 function renderRow(row, { columns, rowKey, actions, actionLabel }) {
   const id = row[rowKey];
   const cells = columns.map((column) => renderCell(column, row)).join('');
+  const items = typeof actions === 'function' ? actions(row) : actions;
+  const hasActionColumn = typeof actions === 'function' || actions.length > 0;
   const actionCell =
-    actions.length > 0
-      ? `<td class="col-actions" data-label="Thao tác">${Dropdown.render({
+    hasActionColumn
+      ? `<td class="col-actions" data-label="Thao tác">${items.length > 0 ? Dropdown.render({
           label: actionLabel ? actionLabel(row) : 'Thao tác',
-          items: actions,
+          items,
           rowId: id,
-        })}</td>`
+        }) : ''}</td>`
       : '';
   return `<tr data-row-id="${escapeHtml(id)}">${cells}${actionCell}</tr>`;
 }
@@ -69,7 +71,8 @@ function renderRow(row, { columns, rowKey, actions, actionLabel }) {
  *   rows: object[],
  *   rowKey?: string,
  *   sort?: { key: string, dir: string } | null,
- *   actions?: Array<{ action: string, label: string, icon?: string, danger?: boolean, divider?: boolean }>,
+ *   actions?: Array<{ action: string, label: string, icon?: string, danger?: boolean, divider?: boolean }>
+ *     | ((row: object) => Array<{ action: string, label: string, icon?: string, danger?: boolean, divider?: boolean }>),
  *   actionLabel?: (row: object) => string,
  *   caption?: string,
  *   footer?: string
@@ -90,7 +93,7 @@ function render({
   const bodyHtml = rows.map((row) => renderRow(row, { columns, rowKey, actions, actionLabel })).join('');
 
   return `<div class="table-wrap">
-    <table class="table">${captionHtml}${renderHeader(columns, sort, actions.length > 0)}<tbody>${bodyHtml}</tbody></table>
+    <table class="table">${captionHtml}${renderHeader(columns, sort, typeof actions === 'function' || actions.length > 0)}<tbody>${bodyHtml}</tbody></table>
     ${footer}
   </div>`;
 }

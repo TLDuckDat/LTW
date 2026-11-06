@@ -336,7 +336,7 @@
   height: auto;
   padding: 0;
   border-bottom: none;
-  color: hsl(var(--primary-foreground));
+  color: hsl(var(--sidebar-foreground));
 }
 
 .auth-brand-mark {
@@ -344,7 +344,7 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px hsl(var(--primary-foreground) / 0.7), var(--shadow-md);
+  box-shadow: 0 0 0 2px hsl(var(--sidebar-foreground) / 0.7), var(--shadow-md);
   object-fit: cover;
 }
 

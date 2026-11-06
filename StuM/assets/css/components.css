@@ -526,6 +526,8 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
   animation: fade-in 0.12s ease-out;
+  /* Menu dài được giới hạn chiều cao (dropdown.js): cuộn tới cuối menu không kéo theo trang */
+  overscroll-behavior: contain;
 }
 
 .dropdown-menu.align-left {
@@ -1276,6 +1278,20 @@ body.modal-open {
   border-bottom: 1px solid hsl(var(--border));
 }
 
+.todo-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Dòng có nút thao tác (bỏ môn tiên quyết, sửa/xóa lịch học): nút căn giữa theo dòng chữ, dồn về bên phải */
+.todo-item:has(> .btn) {
+  align-items: center;
+}
+
+.todo-item > .btn {
+  flex-shrink: 0;
+}
+
 .todo-item:last-child {
   border-bottom: none;
 }
@@ -1315,7 +1331,18 @@ body.modal-open {
     hsl(var(--sidebar)) 45%,
     hsl(var(--success-soft)) 100%
   );
-  color: hsl(var(--primary-foreground));
+  /* sidebar-foreground luôn là màu sáng trên nền sidebar ở cả hai theme
+     (primary-foreground ở theme tối là màu tối, chữ sẽ chìm vào nền) */
+  color: hsl(var(--sidebar-foreground));
+}
+
+.dark .auth-brand {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--sidebar)) 0%,
+    hsl(var(--sidebar)) 45%,
+    hsl(118 34% 24%) 100%
+  );
 }
 
 .auth-brand-illustration {

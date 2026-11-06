@@ -44,6 +44,13 @@ const LOP_STATUS = {
   DaHuy: { label: 'Đã hủy', variant: 'destructive' },
 };
 
+/** Tình trạng sĩ số do backend trả về (TinhTrangSiSo). */
+const SISO_STATUS = {
+  ConCho: { label: 'Còn chỗ', variant: 'success' },
+  GanDay: { label: 'Gần đầy', variant: 'warning' },
+  Day: { label: 'Đã đầy', variant: 'destructive' },
+};
+
 const PERIOD_ACTIONS = [
   { action: 'detail', label: 'Xem chi tiết', icon: 'eye' },
   { action: 'open', label: 'Mở đợt', icon: 'door-open' },
@@ -285,7 +292,7 @@ function loadSiSo() {
           { key: 'trangThaiLop', label: 'Trạng thái', render: (row) => badge(LOP_STATUS, row.trangThaiLop) },
           { key: 'siSo', label: 'Đăng ký / tối đa', align: 'right', render: (row) => `${row.daDangKy}/${row.siSoToiDa}` },
           { key: 'conCho', label: 'Còn chỗ', align: 'right' },
-          { key: 'tinhTrang', label: 'Tình trạng', render: (row) => escapeHtml(row.tinhTrang ?? '—') },
+          { key: 'tinhTrang', label: 'Tình trạng', render: (row) => badge(SISO_STATUS, row.tinhTrang) },
         ],
         rows,
         rowKey: 'lopHocPhanId',

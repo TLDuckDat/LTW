@@ -233,6 +233,24 @@ public class SecurityTests(ApiFactory factory)
     }
 
     [Fact]
+    public async Task Admin_KhongTuHaVaiTroHayTuKhoaChinhMinh_KeCaKhiConAdminKhac()
+    {
+        var admin = await factory.AdminAsync();
+        var (ten, _) = await TaoTaiKhoanAsync(admin, vaiTro: 0);
+        var adminPhu = await factory.LoginAsync(ten, MatKhau);
+        var me = await adminPhu.DataAsync(HttpMethod.Get, "/api/auth/me");
+        var id = me.Id();
+
+        foreach (var vaiTro in new[] { 1, 2, 3 })
+            Assert.Equal(HttpStatusCode.Conflict, (await adminPhu.PutAsync($"/api/auth/accounts/{id}/role", new { vaiTro })).Status);
+        Assert.Equal(HttpStatusCode.Conflict, (await adminPhu.PostAsync($"/api/auth/accounts/{id}/lock")).Status);
+
+        var sau = await adminPhu.DataAsync(HttpMethod.Get, "/api/auth/me");
+        Assert.Equal("Admin", sau.GetProperty("vaiTro").GetString());
+        Assert.False(sau.GetProperty("daKhoa").GetBoolean());
+    }
+
+    [Fact]
     public async Task DoiMatKhau_KhongLuuMatKhauVaoNhatKy()
     {
         var admin = await factory.AdminAsync();

@@ -89,8 +89,13 @@ function render({
   </div>`;
 }
 
+/** Chiều cao tối thiểu của menu khi phải thu nhỏ để vừa màn hình (phần còn lại cuộn trong menu). */
+const MIN_MENU_HEIGHT = 120;
+
 /**
- * Định vị menu theo nút mở (tọa độ khung nhìn). Lật lên trên nếu không đủ chỗ bên dưới.
+ * Định vị menu theo nút mở (tọa độ khung nhìn).
+ * Mở xuống nếu bên dưới đủ chỗ; nếu không thì mở về phía còn nhiều chỗ hơn. Khi cả hai phía đều thiếu chỗ,
+ * menu được giới hạn chiều cao bằng phần không gian còn lại và cuộn được bên trong, nên mọi mục đều bấm được.
  * @param {HTMLElement} menu
  * @param {HTMLElement} trigger
  */
@@ -106,12 +111,26 @@ function position(menu, trigger) {
     menu.style.right = `${Math.max(window.innerWidth - rect.right, VIEWPORT_PADDING)}px`;
   }
 
-  menu.style.top = `${rect.bottom + MENU_GAP}px`;
+  // Đo chiều cao tự nhiên (bỏ giới hạn của lần định vị trước)
+  menu.style.maxHeight = '';
+  menu.style.overflowY = '';
   const menuHeight = menu.getBoundingClientRect().height;
-  const overflowsBelow = rect.bottom + MENU_GAP + menuHeight > window.innerHeight - VIEWPORT_PADDING;
-  if (overflowsBelow && rect.top > menuHeight + MENU_GAP) {
-    menu.style.top = `${rect.top - menuHeight - MENU_GAP}px`;
+
+  const spaceBelow = window.innerHeight - rect.bottom - MENU_GAP - VIEWPORT_PADDING;
+  const spaceAbove = rect.top - MENU_GAP - VIEWPORT_PADDING;
+  const openUp = menuHeight > spaceBelow && spaceAbove > spaceBelow;
+  const available = Math.max(openUp ? spaceAbove : spaceBelow, MIN_MENU_HEIGHT);
+
+  if (menuHeight > available) {
+    menu.style.maxHeight = `${available}px`;
+    menu.style.overflowY = 'auto';
   }
+  const shownHeight = Math.min(menuHeight, available);
+  let top = openUp ? rect.top - MENU_GAP - shownHeight : rect.bottom + MENU_GAP;
+  // Nút mở quá sát mép (khoảng trống < MIN_MENU_HEIGHT): đẩy menu vào trong màn hình
+  top = Math.min(top, window.innerHeight - VIEWPORT_PADDING - shownHeight);
+  top = Math.max(top, VIEWPORT_PADDING);
+  menu.style.top = `${top}px`;
 }
 
 /**
@@ -145,6 +164,9 @@ function closeAll({ restoreFocus = false } = {}) {
   menu.style.top = '';
   menu.style.left = '';
   menu.style.right = '';
+  menu.style.maxHeight = '';
+  menu.style.overflowY = '';
+  menu.scrollTop = 0;
   returnHome(menu);
   trigger.setAttribute('aria-expanded', 'false');
   if (restoreFocus) trigger.focus();
@@ -235,8 +257,10 @@ function initGlobal() {
   // chỉ đóng khi nút mở đã cuộn ra khỏi màn hình.
   document.addEventListener(
     'scroll',
-    () => {
+    (event) => {
       if (!openMenu) return;
+      // Cuộn bên trong menu (menu dài có thanh cuộn riêng) không cần định vị lại
+      if (event.target instanceof Node && openMenu.contains(event.target)) return;
       const rect = openTrigger.getBoundingClientRect();
       if (rect.bottom < 0 || rect.top > window.innerHeight) {
         closeAll();
