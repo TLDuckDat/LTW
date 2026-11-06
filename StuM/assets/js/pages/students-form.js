@@ -32,6 +32,25 @@ export function statusBadge(status) {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const NAME_PATTERN = /^[\p{L}\s'.-]{2,100}$/u;
+const PHONE_PATTERN = /^0\d{9}$/;
+
+/** Tuổi tính đến hôm nay từ ngày dạng yyyy-MM-dd. */
+function tinhTuoi(isoDate) {
+  const [namSinh, thangSinh, ngaySinh] = isoDate.split('-').map(Number);
+  const now = new Date();
+  const thang = now.getMonth() + 1;
+  const tuoi = now.getFullYear() - namSinh;
+  const chuaToiSinhNhat = thang < thangSinh || (thang === thangSinh && now.getDate() < ngaySinh);
+  return chuaToiSinhNhat ? tuoi - 1 : tuoi;
+}
+
+/** Ngày sinh muộn nhất để đủ 15 tuổi, dạng yyyy-MM-dd. */
+function ngaySinhToiDa() {
+  const han = new Date();
+  han.setFullYear(han.getFullYear() - 15);
+  return han.toLocaleDateString('sv-SE');
+}
 
 /**
  * Kiểm tra một ô theo tên trường. Trường không có quy tắc được xem là hợp lệ.
@@ -45,6 +64,15 @@ function validateInput(input) {
   if (input.name === 'hoTen' && value === '') message = 'Vui lòng nhập họ và tên';
   if (input.name === 'ngaySinh' && value === '') message = 'Vui lòng chọn ngày sinh';
   if (input.name === 'email' && value !== '' && !EMAIL_PATTERN.test(value)) message = 'Email không đúng định dạng';
+  if (input.name === 'mssv' && value !== '' && !/^\d{10}$/.test(value)) message = 'MSSV gồm đúng 10 chữ số';
+  if (input.name === 'hoTen' && value !== '' && !NAME_PATTERN.test(value)) message = 'Họ tên chỉ gồm chữ cái và khoảng trắng';
+  if (input.name === 'ngaySinh' && value !== '') {
+    const tuoi = tinhTuoi(value);
+    if (tuoi < 15) message = 'Sinh viên phải đủ 15 tuổi';
+    else if (tuoi > 80) message = 'Ngày sinh không hợp lệ';
+  }
+  if (input.name === 'soDienThoai' && value !== '' && !PHONE_PATTERN.test(value)) message = 'Số điện thoại gồm 10 chữ số, bắt đầu bằng 0';
+  if (input.name === 'cccd' && value !== '' && !/^\d{12}$/.test(value)) message = 'CCCD gồm đúng 12 chữ số';
 
   if (message) {
     Input.setError(input, message);
@@ -70,7 +98,7 @@ function buildFormHtml(record, lists, formId) {
     <div class="form-grid">
       ${Input.render({ name: 'mssv', label: 'Mã số sinh viên (MSSV)', value: record?.mssv ?? '', placeholder: '2025000001', required: true, disabled: isEdit, hint: isEdit ? 'MSSV không đổi sau khi tạo' : undefined })}
       ${Input.render({ name: 'hoTen', label: 'Họ và tên', value: record?.hoTen ?? '', placeholder: 'Nguyễn Văn A', required: true })}
-      ${Input.render({ name: 'ngaySinh', type: 'date', label: 'Ngày sinh', value: record?.ngaySinh ?? '', required: true })}
+      ${Input.render({ name: 'ngaySinh', type: 'date', label: 'Ngày sinh', value: record?.ngaySinh ?? '', required: true, max: ngaySinhToiDa() })}
       ${Select.render({ name: 'gioiTinh', label: 'Giới tính', value: record?.gioiTinh ?? '', options: gioiTinhOptions })}
       ${Input.render({ name: 'email', type: 'email', label: 'Email', value: record?.email ?? '', placeholder: 'sv@example.com', iconLeft: 'mail' })}
       ${Input.render({ name: 'soDienThoai', label: 'Số điện thoại', value: record?.soDienThoai ?? '' })}

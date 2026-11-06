@@ -157,6 +157,8 @@ public class SinhVienService(AppDbContext db, NhatKyContext nhatKy) : ISinhVienS
         if (request.LopHanhChinhId.HasValue && !await _db.Set<LopHanhChinh>().AnyAsync(x => x.Id == request.LopHanhChinhId.Value))
             throw AppException.Conflict($"Lớp hành chính với Id {request.LopHanhChinhId.Value} không tồn tại.");
 
+        await KiemTraThongTinAsync(null, request.NgaySinh, request.CCCD, request.Email, request.NganhId, request.ChuyenNganhId, request.LopHanhChinhId);
+
         var sv = new SinhVien
         {
             MSSV = request.MSSV.Trim(),
@@ -179,6 +181,29 @@ public class SinhVienService(AppDbContext db, NhatKyContext nhatKy) : ISinhVienS
         return await ToDtoAsync(sv);
     }
 
+    // Ràng buộc nghiệp vụ của thông tin sinh viên (id: sinh viên đang sửa, null khi thêm mới)
+    private async Task KiemTraThongTinAsync(int? id, DateOnly ngaySinh, string? cccd, string? email,
+        int nganhId, int? chuyenNganhId, int? lopHanhChinhId)
+    {
+        var homNay = DateOnly.FromDateTime(DateTime.Today);
+        if (ngaySinh > homNay.AddYears(-15)) throw AppException.BadRequest("Sinh viên phải đủ 15 tuổi.");
+        if (ngaySinh < homNay.AddYears(-80)) throw AppException.BadRequest("Ngày sinh không hợp lệ.");
+
+        var cccdTrim = cccd?.Trim();
+        if (!string.IsNullOrEmpty(cccdTrim) && await _db.Set<SinhVien>().AnyAsync(x => x.CCCD == cccdTrim && x.Id != id))
+            throw AppException.Conflict($"CCCD '{cccdTrim}' đã được dùng cho sinh viên khác.");
+
+        var emailTrim = email?.Trim();
+        if (!string.IsNullOrEmpty(emailTrim) && await _db.Set<SinhVien>().AnyAsync(x => x.Email == emailTrim && x.Id != id))
+            throw AppException.Conflict($"Email '{emailTrim}' đã được dùng cho sinh viên khác.");
+
+        if (chuyenNganhId.HasValue && !await _db.Set<ChuyenNganh>().AnyAsync(x => x.Id == chuyenNganhId.Value && x.NganhId == nganhId))
+            throw AppException.Conflict("Chuyên ngành không thuộc ngành đã chọn.");
+
+        if (lopHanhChinhId.HasValue && !await _db.Set<LopHanhChinh>().AnyAsync(x => x.Id == lopHanhChinhId.Value && x.NganhId == nganhId))
+            throw AppException.Conflict("Lớp hành chính không thuộc ngành đã chọn.");
+    }
+
     // STU-01: Cập nhật thông tin sinh viên
     public async Task<SinhVienDto> UpdateAsync(int id, UpdateSinhVienRequest request)
     {
@@ -193,6 +218,8 @@ public class SinhVienService(AppDbContext db, NhatKyContext nhatKy) : ISinhVienS
 
         if (request.LopHanhChinhId.HasValue && !await _db.Set<LopHanhChinh>().AnyAsync(x => x.Id == request.LopHanhChinhId.Value))
             throw AppException.Conflict($"Lớp hành chính với Id {request.LopHanhChinhId.Value} không tồn tại.");
+
+        await KiemTraThongTinAsync(id, request.NgaySinh, request.CCCD, request.Email, request.NganhId, request.ChuyenNganhId, request.LopHanhChinhId);
 
         sv.HoTen = request.HoTen.Trim();
         sv.NgaySinh = request.NgaySinh;

@@ -54,33 +54,37 @@ public record CreateSinhVienRequest
 {
     [Required(ErrorMessage = "MSSV là bắt buộc.")]
     [MaxLength(20, ErrorMessage = "MSSV tối đa 20 ký tự.")]
+    [RegularExpression(@"^\d{10}$", ErrorMessage = "MSSV gồm đúng 10 chữ số.")]
     public string MSSV { get; init; } = string.Empty;
 
     [Required(ErrorMessage = "Họ tên là bắt buộc.")]
     [MaxLength(100, ErrorMessage = "Họ tên tối đa 100 ký tự.")]
+    [RegularExpression(@"^[\p{L}\s'.-]{2,100}$", ErrorMessage = "Họ tên chỉ gồm chữ cái và khoảng trắng.")]
     public string HoTen { get; init; } = string.Empty;
 
     [Required(ErrorMessage = "Ngày sinh là bắt buộc.")]
     public DateOnly NgaySinh { get; init; }
 
     [MaxLength(10)]
+    [RegularExpression("^(Nam|Nữ|Khác)$", ErrorMessage = "Giới tính phải là Nam, Nữ hoặc Khác.")]
     public string? GioiTinh { get; init; }
 
     [MaxLength(20)]
+    [RegularExpression(@"^\d{12}$", ErrorMessage = "CCCD gồm đúng 12 chữ số.")]
     public string? CCCD { get; init; }
 
     [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
     [MaxLength(100)]
     public string? Email { get; init; }
 
-    [Phone(ErrorMessage = "Số điện thoại không hợp lệ.")]
+    [RegularExpression(@"^0\d{9}$", ErrorMessage = "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.")]
     [MaxLength(20)]
     public string? SoDienThoai { get; init; }
 
     [MaxLength(250)]
     public string? DiaChi { get; init; }
 
-    [Required(ErrorMessage = "Ngành đào tạo là bắt buộc.")]
+    [Range(1, int.MaxValue, ErrorMessage = "Ngành đào tạo là bắt buộc.")]
     public int NganhId { get; init; }
 
     public int? ChuyenNganhId { get; init; }
@@ -93,29 +97,32 @@ public record UpdateSinhVienRequest
 {
     [Required(ErrorMessage = "Họ tên là bắt buộc.")]
     [MaxLength(100, ErrorMessage = "Họ tên tối đa 100 ký tự.")]
+    [RegularExpression(@"^[\p{L}\s'.-]{2,100}$", ErrorMessage = "Họ tên chỉ gồm chữ cái và khoảng trắng.")]
     public string HoTen { get; init; } = string.Empty;
 
     [Required(ErrorMessage = "Ngày sinh là bắt buộc.")]
     public DateOnly NgaySinh { get; init; }
 
     [MaxLength(10)]
+    [RegularExpression("^(Nam|Nữ|Khác)$", ErrorMessage = "Giới tính phải là Nam, Nữ hoặc Khác.")]
     public string? GioiTinh { get; init; }
 
     [MaxLength(20)]
+    [RegularExpression(@"^\d{12}$", ErrorMessage = "CCCD gồm đúng 12 chữ số.")]
     public string? CCCD { get; init; }
 
     [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
     [MaxLength(100)]
     public string? Email { get; init; }
 
-    [Phone(ErrorMessage = "Số điện thoại không hợp lệ.")]
+    [RegularExpression(@"^0\d{9}$", ErrorMessage = "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.")]
     [MaxLength(20)]
     public string? SoDienThoai { get; init; }
 
     [MaxLength(250)]
     public string? DiaChi { get; init; }
 
-    [Required(ErrorMessage = "Ngành đào tạo là bắt buộc.")]
+    [Range(1, int.MaxValue, ErrorMessage = "Ngành đào tạo là bắt buộc.")]
     public int NganhId { get; init; }
 
     public int? ChuyenNganhId { get; init; }
