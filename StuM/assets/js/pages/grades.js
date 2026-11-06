@@ -74,8 +74,13 @@ const COLUMNS = [
   },
 ];
 
+/** Chỉ lớp đang học hoặc đã kết thúc mới nhập được điểm (xem DiemService.KiemTraLopDuocNhapDiem ở backend). */
+const NHAP_DIEM_TRANG_THAI = { DangHoc: 'Đang học', DaKetThuc: 'Đã kết thúc' };
+
 function classOptions(classes) {
-  return classes.map((item) => ({ value: item.id, label: `${item.ma} - ${item.tenMonHoc}` }));
+  return classes
+    .filter((item) => NHAP_DIEM_TRANG_THAI[item.trangThai])
+    .map((item) => ({ value: item.id, label: `${item.ma} - ${item.tenMonHoc} (${NHAP_DIEM_TRANG_THAI[item.trangThai]})` }));
 }
 
 /**
@@ -281,12 +286,23 @@ export async function mount(root, { query }) {
     Toast.error(error.message);
     return [];
   });
+  const options = classOptions(classes);
+  if (!options.some((option) => String(option.value) === String(state.lopHocPhanId))) state.lopHocPhanId = null;
   root.querySelector('#class-select-slot').outerHTML = Select.render({
     name: 'lopHocPhanId',
     label: 'Lớp học phần',
-    options: classOptions(classes),
+    options,
     value: state.lopHocPhanId ?? '',
     placeholder: 'Chọn lớp học phần',
   });
-  loadGrades(root);
+  if (options.length === 0) {
+    root.querySelector('#grades-container').innerHTML = EmptyState.render({
+      icon: 'clipboard-list',
+      title: 'Chưa có lớp để nhập điểm',
+      description: 'Chỉ lớp đang học hoặc đã kết thúc mới nhập được điểm.',
+    });
+    updateSaveButton(root);
+  } else {
+    loadGrades(root);
+  }
 }
