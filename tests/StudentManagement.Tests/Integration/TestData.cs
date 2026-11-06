@@ -13,7 +13,7 @@ public static class TestData
         var tag = Tag();
         var nganhId = (await admin.DataAsync(HttpMethod.Get, "/api/nganh")).Items().First().Id();
         var sv = await admin.DataAsync(HttpMethod.Post, "/api/sinh-vien",
-            new { mssv = "T" + tag, hoTen = "Sinh viên test " + tag, ngaySinh = "2006-01-01", nganhId }, HttpStatusCode.Created);
+            new { mssv = "1" + Random.Shared.Next(100000000, 999999999), hoTen = "Sinh viên test", ngaySinh = "2006-01-01", nganhId }, HttpStatusCode.Created);
         await admin.DataAsync(HttpMethod.Post, "/api/auth/accounts",
             new { tenDangNhap = "t" + tag, matKhau = "Matkhau@1", hoTen = "SV " + tag, vaiTro = 3, sinhVienId = sv.Id() },
             HttpStatusCode.Created);
