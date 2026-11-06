@@ -33,7 +33,7 @@ public class CoSoThucTapService(AppDbContext db) : ICoSoThucTapService
 
     public async Task<CoSoThucTapDto> CreateAsync(CoSoThucTapRequest request)
     {
-        var ma = request.Ma.Trim();
+        var ma = request.Ma.Trim().ToUpperInvariant();
         if (await _db.Set<CoSoThucTap>().AnyAsync(x => x.Ma == ma))
             throw AppException.Conflict(MaDaTonTai);
 
@@ -47,7 +47,7 @@ public class CoSoThucTapService(AppDbContext db) : ICoSoThucTapService
     public async Task<CoSoThucTapDto> UpdateAsync(int id, CoSoThucTapRequest request)
     {
         var item = await FindAsync(id);
-        var ma = request.Ma.Trim();
+        var ma = request.Ma.Trim().ToUpperInvariant();
         if (await _db.Set<CoSoThucTap>().AnyAsync(x => x.Ma == ma && x.Id != id))
             throw AppException.Conflict(MaDaTonTai);
 
@@ -93,7 +93,7 @@ public class CoSoThucTapService(AppDbContext db) : ICoSoThucTapService
 
     private static void Fill(CoSoThucTap item, CoSoThucTapRequest request)
     {
-        item.Ma = request.Ma.Trim();
+        item.Ma = request.Ma.Trim().ToUpperInvariant();
         item.Ten = request.Ten.Trim();
         item.DiaChi = request.DiaChi?.Trim();
         item.SoDienThoai = request.SoDienThoai?.Trim();

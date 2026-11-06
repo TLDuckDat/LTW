@@ -70,10 +70,15 @@ export function openFormModal({ title, fields, initial = {}, submitText = 'Lưu'
     let valid = true;
     fields.forEach((field) => {
       const input = form.elements.namedItem(field.name);
-      const empty = field.required && String(rawValueOf(input, field)).trim() === '';
+      const raw = String(rawValueOf(input, field)).trim();
+      const empty = field.required && raw === '';
+      const problem = raw !== '' && field.validate?.(raw);
       if (empty) {
         if (field.kind === 'select') input.focus();
         Input.setError(input, 'Vui lòng nhập hoặc chọn thông tin này');
+        valid = false;
+      } else if (problem) {
+        Input.setError(input, problem);
         valid = false;
       } else {
         Input.clearError(input);
@@ -117,6 +122,9 @@ export function openDetailModal({ title, rows, extra = '' }) {
   return handle;
 }
 
+/** Khóa kỹ thuật, không hiện trong chi tiết khi chưa có nhãn. */
+const TECHNICAL_KEY = /^id$|Id$|^createdAt$|^updatedAt$/;
+
 /** Giá trị hiển thị trong chi tiết: ngày theo dd/MM/yyyy, có/không cho đúng-sai, "—" khi trống. */
 function displayValue(value) {
   if (value === null || value === undefined || value === '') return '—';
@@ -127,14 +135,19 @@ function displayValue(value) {
 
 /**
  * Chi tiết một bản ghi lấy từ máy chủ. Chỉ hiện trường đơn (bỏ mảng và đối tượng lồng nhau).
- * @param {{ title: string, load: () => Promise<object>, labels?: Record<string, string> }} options
+ * @param {{ title: string, load: () => Promise<object>, labels?: Record<string, string>, formatters?: Record<string, (value: unknown, record: object) => string> }} options
  */
-export async function openRecordDetailModal({ title, load, labels = {} }) {
+export async function openRecordDetailModal({ title, load, labels = {}, formatters = {} }) {
   try {
     const record = await load();
-    const rows = Object.entries(record)
-      .filter(([key, value]) => key !== 'id' && (value === null || typeof value !== 'object'))
-      .map(([key, value]) => [labels[key] ?? key, escapeHtml(displayValue(value))]);
+    // Có labels thì chỉ hiện các trường đã đặt nhãn, theo thứ tự nhãn; không có thì bỏ các khóa kỹ thuật
+    const keys = Object.keys(labels).length > 0 ? Object.keys(labels) : Object.keys(record).filter((key) => !TECHNICAL_KEY.test(key));
+    const rows = keys
+      .filter((key) => key in record && (record[key] === null || typeof record[key] !== 'object'))
+      .map((key) => {
+        const text = formatters[key] ? formatters[key](record[key], record) : displayValue(record[key]);
+        return [labels[key] ?? key, escapeHtml(text)];
+      });
     openDetailModal({ title, rows });
   } catch (error) {
     Toast.error(error.message);

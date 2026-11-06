@@ -288,7 +288,22 @@ const TABS = {
       }),
     onAction: async (action, row) => {
       if (action === 'detail') {
-        openRecordDetailModal({ title: `Thực tập của ${row.mssv ?? row.id}`, load: () => api.totNghiep.thucTap.get(row.id) });
+        openRecordDetailModal({
+          title: `Thực tập của ${row.mssv ?? row.id}`,
+          load: () => api.totNghiep.thucTap.get(row.id),
+          labels: {
+            maSinhVien: 'MSSV',
+            hoTenSinhVien: 'Họ và tên',
+            hocKy: 'Học kỳ',
+            tenCoSoThucTap: 'Cơ sở thực tập',
+            giangVienHuongDan: 'GV hướng dẫn',
+            trangThai: 'Trạng thái',
+            diem: 'Điểm',
+            nhanXet: 'Nhận xét',
+            ngayGhiNhanKetQua: 'Ngày ghi nhận kết quả',
+          },
+          formatters: { trangThai: (value) => TRANG_THAI_TT[value]?.[1] ?? value, giangVienHuongDan: (value) => value ?? 'Chưa phân công' },
+        });
       }
       if (action === 'edit') {
         openFormModal({
@@ -399,7 +414,12 @@ const TABS = {
         openRecordDetailModal({
           title: `Đề tài ${row.tenDeTai}`,
           load: () => api.totNghiep.deTai.get(row.id),
-          labels: { tenDeTai: 'Tên đề tài', maSinhVien: 'MSSV', hoTenSinhVien: 'Họ và tên sinh viên', giangVienHuongDan: 'Giảng viên hướng dẫn' },
+          labels: { tenDeTai: 'Tên đề tài', maSinhVien: 'MSSV', hoTenSinhVien: 'Họ và tên sinh viên', giangVienHuongDan: 'Giảng viên hướng dẫn', createdAt: 'Ngày tạo' },
+          formatters: {
+            maSinhVien: (value) => value ?? 'Chưa có',
+            hoTenSinhVien: (value) => value ?? 'Chưa có',
+            giangVienHuongDan: (value) => value ?? 'Chưa phân công',
+          },
         });
       }
       if (action === 'edit') deTaiForm(row);
@@ -529,18 +549,27 @@ function removeRecord(row, title, run) {
   }).catch(() => {});
 }
 
+/** Quy tắc giống CoSoThucTapRequest ở backend. */
+const COSO_RULES = {
+  ma: [/^[A-Za-z0-9_-]{2,30}$/, 'Mã chỉ gồm chữ, số, "-" hoặc "_" (2-30 ký tự)'],
+  soDienThoai: [/^(0\d{9,10}|1[89]00\d{4,6})$/, 'Số điện thoại không hợp lệ'],
+  email: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Email không đúng định dạng'],
+  nguoiLienHe: [/^[\p{L}\s'.-]{2,100}$/u, 'Người liên hệ chỉ gồm chữ cái'],
+};
+const checkCoSo = (name) => (value) => (COSO_RULES[name][0].test(value) ? null : COSO_RULES[name][1]);
+
 function coSoForm(record) {
   openFormModal({
     title: record ? 'Chỉnh sửa cơ sở thực tập' : 'Thêm cơ sở thực tập',
     size: 'lg',
     initial: record ?? {},
     fields: [
-      { name: 'ma', label: 'Mã', kind: 'text', required: true },
-      { name: 'ten', label: 'Tên cơ sở', kind: 'text', required: true },
+      { name: 'ma', label: 'Mã', kind: 'text', required: true, validate: checkCoSo('ma') },
+      { name: 'ten', label: 'Tên cơ sở', kind: 'text', required: true, validate: (value) => (value.length >= 2 ? null : 'Tên cơ sở tối thiểu 2 ký tự') },
       { name: 'diaChi', label: 'Địa chỉ', kind: 'text' },
-      { name: 'soDienThoai', label: 'Điện thoại', kind: 'text' },
-      { name: 'email', label: 'Email', kind: 'text' },
-      { name: 'nguoiLienHe', label: 'Người liên hệ', kind: 'text' },
+      { name: 'soDienThoai', label: 'Điện thoại', kind: 'text', validate: checkCoSo('soDienThoai') },
+      { name: 'email', label: 'Email', kind: 'text', validate: checkCoSo('email') },
+      { name: 'nguoiLienHe', label: 'Người liên hệ', kind: 'text', validate: checkCoSo('nguoiLienHe') },
     ],
     onSubmit: (payload) => (record ? api.totNghiep.coSo.update(record.id, payload) : api.totNghiep.coSo.create(payload)),
     onDone: () => loadTab(),
