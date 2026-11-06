@@ -34,7 +34,8 @@ const ROW_ACTIONS = [
   { action: 'delete', label: 'Xóa', icon: 'trash-2', danger: true },
 ];
 
-const MA_MON_PATTERN = /^[A-Z]{2,4}\d{4}$/i;
+/** 2-4 chữ cái và 3-4 chữ số, khớp dữ liệu sẵn có (IT001) lẫn dạng INT1001. */
+const MA_MON_PATTERN = /^[A-Z]{2,4}\d{3,4}$/i;
 const state = { search: '', page: 1, pageSize: 10, rows: [] };
 
 function syncUrl() {
@@ -94,7 +95,7 @@ function validateCourseInput(input) {
   let message = '';
   if (input.name === 'ma') {
     if (!value) message = 'Vui lòng nhập mã môn';
-    else if (!MA_MON_PATTERN.test(value)) message = 'Mã môn dạng 2-4 chữ cái và 4 chữ số, ví dụ INT1001';
+    else if (!MA_MON_PATTERN.test(value)) message = 'Mã môn dạng 2-4 chữ cái và 3-4 chữ số, ví dụ IT001 hoặc INT1001';
   } else if (input.name === 'ten' && !value) {
     message = 'Vui lòng nhập tên môn';
   } else if (input.name === 'soTinChi') {
@@ -120,7 +121,7 @@ function openCourseForm({ record = null }) {
     title: isEdit ? 'Chỉnh sửa môn học' : 'Thêm môn học',
     content: `<form class="modal-form" id="${formId}" novalidate>
       <div class="form-grid">
-        ${Input.render({ name: 'ma', label: 'Mã môn', value: record?.ma ?? '', placeholder: 'INT1001', required: true, hint: '2-4 chữ cái và 4 chữ số' })}
+        ${Input.render({ name: 'ma', label: 'Mã môn', value: record?.ma ?? '', placeholder: 'INT1001', required: true, hint: '2-4 chữ cái và 3-4 chữ số' })}
         ${Input.render({ name: 'ten', label: 'Tên môn', value: record?.ten ?? '', placeholder: 'Lập trình Web', required: true })}
         ${Input.render({ name: 'soTinChi', type: 'number', label: 'Số tín chỉ', value: record?.soTinChi ?? 3, min: 1, max: 6, step: 1, required: true })}
       </div>

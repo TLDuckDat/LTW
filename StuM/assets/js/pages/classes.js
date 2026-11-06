@@ -45,7 +45,8 @@ const ROW_ACTIONS = [
   { action: 'delete', label: 'Xóa', icon: 'trash-2', danger: true },
 ];
 
-const MA_LOP_PATTERN = /^[A-Z]{2,4}\d{4}-\d{2}$/i;
+/** Mã môn (2-4 chữ cái, 3-4 chữ số) kèm số nhóm, có thể thêm năm: IT002-01, INT1001-01, IT001-01-2025. */
+const MA_LOP_PATTERN = /^[A-Z]{2,4}\d{3,4}-\d{2}(-\d{4})?$/i;
 const state = { search: '', hocKyId: '', monHocId: '', trangThai: '', page: 1, pageSize: 10, rows: [] };
 let refs = { hocKys: [], monHocs: [], giangViens: [], phongs: [] };
 let hocKyLabel = new Map();
@@ -142,7 +143,7 @@ function validateClassInput(input) {
   let message = '';
   if (input.name === 'ma') {
     if (!value) message = 'Vui lòng nhập mã lớp';
-    else if (!MA_LOP_PATTERN.test(value)) message = 'Mã lớp dạng mã môn kèm số nhóm, ví dụ INT1001-01';
+    else if (!MA_LOP_PATTERN.test(value)) message = 'Mã lớp dạng mã môn kèm số nhóm, ví dụ IT002-01 hoặc INT1001-01';
   } else if (input.name === 'siSoToiDa' && Number(value) < 1) {
     message = 'Sĩ số tối đa phải từ 1 trở lên';
   }
