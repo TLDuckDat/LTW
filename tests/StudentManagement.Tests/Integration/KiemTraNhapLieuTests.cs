@@ -64,7 +64,9 @@ public class KiemTraNhapLieuTests(ApiFactory factory)
     {
         var admin = await factory.AdminAsync();
         var lopId = await TestData.TaoLopAsync(admin, "IT003");
-        var phongId = (await admin.DataAsync(HttpMethod.Get, "/api/phong-hoc?pageSize=1")).Items().First().Id();
+        // Phòng riêng của test: phòng có sẵn trong seed đã kín lịch nhiều ca, dùng chung sẽ bị chặn trùng phòng
+        var phongId = (await admin.DataAsync(HttpMethod.Post, "/api/phong-hoc",
+            new { ma = "P" + TestData.Tag(), sucChua = 60 }, HttpStatusCode.Created)).Id();
         var url = $"/api/lop-hoc-phan/{lopId}/lich-hoc";
 
         await admin.DataAsync(HttpMethod.Post, url, new { thu = 5, tietBatDau = 1, soTiet = 3, phongHocId = phongId }, HttpStatusCode.Created);

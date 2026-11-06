@@ -19,8 +19,10 @@ namespace StudentManagement.Data;
 /// - Năm học trước, học kỳ 2: lớp IT001 đã kết thúc, điểm đã khóa (SV1 đạt, SV2 trượt).
 /// - Học kỳ hiện tại: đợt đăng ký đang mở; lớp IT002 (tiên quyết IT001), IT001 (học lại), IT003.
 /// Tài khoản mẫu (xem README): admin, pdt, gv001, sv001, sv002.
+/// Dữ liệu demo bổ sung (Khoa Khoa học cơ bản, giảng viên gv002-gv016, sinh viên sv003-sv052, môn, lớp, lịch, đăng ký)
+/// nằm trong DbSeeder.Demo.cs.
 /// </summary>
-public static class DbSeeder
+public static partial class DbSeeder
 {
     public const string MatKhauAdmin = "Admin@123";
     public const string MatKhauPhongDaoTao = "Pdt@1234";
@@ -184,7 +186,84 @@ public static class DbSeeder
             NgayDang = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
+
+        await SeedDuLieuDemoAsync(db, hocKyNay, lop);
         await transaction.CommitAsync();
+    }
+
+    /// <summary>
+    /// Dữ liệu demo cho học kỳ hiện tại: khoa/bộ môn, giảng viên, phòng, môn và tiên quyết, lớp học phần có lịch rải
+    /// đều thứ 2-7, sinh viên của lớp hành chính gốc và các lượt đăng ký. Dữ liệu nằm trong DbSeeder.Demo.cs.
+    /// </summary>
+    private static async Task SeedDuLieuDemoAsync(AppDbContext db, HocKy hocKy, LopHanhChinh lopHanhChinh)
+    {
+        var khoa = await db.Set<Khoa>().ToDictionaryAsync(x => x.Ma);
+        foreach (var (ma, ten, moTa) in DemoKhoa)
+            db.Add(khoa[ma] = new Khoa { Ma = ma, Ten = ten, MoTa = moTa });
+        foreach (var (ma, sucChua) in DemoPhong)
+            db.Add(new PhongHoc { Ma = ma, SucChua = sucChua });
+        foreach (var (ma, ten, soTinChi) in DemoMonHoc)
+            db.Add(new MonHoc { Ma = ma, Ten = ten, SoTinChi = soTinChi });
+        await db.SaveChangesAsync();
+
+        var boMon = await db.Set<BoMon>().ToDictionaryAsync(x => x.Ma);
+        foreach (var (ma, ten, maKhoa) in DemoBoMon)
+            db.Add(boMon[ma] = new BoMon { Ma = ma, Ten = ten, KhoaId = khoa[maKhoa].Id });
+        await db.SaveChangesAsync();
+
+        foreach (var (ma, hoTen, hocVi, email, soDienThoai, maBoMon) in DemoGiangVien)
+            db.Add(new GiangVien { Ma = ma, HoTen = hoTen, HocVi = hocVi, Email = email, SoDienThoai = soDienThoai, BoMonId = boMon[maBoMon].Id });
+        await db.SaveChangesAsync();
+
+        var mon = await db.Set<MonHoc>().ToDictionaryAsync(x => x.Ma);
+        var phong = await db.Set<PhongHoc>().ToDictionaryAsync(x => x.Ma);
+        var giangVien = await db.Set<GiangVien>().ToDictionaryAsync(x => x.Ma);
+        foreach (var (maMon, maTienQuyet) in DemoTienQuyet)
+            db.Add(new MonHocTienQuyet { MonHocId = mon[maMon].Id, TienQuyetId = mon[maTienQuyet].Id });
+
+        // Lớp gốc của học kỳ đã có (IT001-02, IT002-01, IT003-01): chỉ cập nhật giảng viên và sĩ số
+        var lop = await db.Set<LopHocPhan>().Where(x => x.HocKyId == hocKy.Id).ToDictionaryAsync(x => x.Ma);
+        foreach (var (ma, maMon, siSoToiDa, maGiangVien) in DemoLopHocPhan)
+        {
+            if (!lop.TryGetValue(ma, out var l))
+                db.Add(lop[ma] = l = new LopHocPhan { Ma = ma, HocKyId = hocKy.Id, MonHocId = mon[maMon].Id });
+            l.SiSoToiDa = siSoToiDa;
+            l.GiangVienId = maGiangVien is null ? null : giangVien[maGiangVien].Id;
+        }
+        await db.SaveChangesAsync();
+
+        foreach (var (maLop, thu, tietBatDau, soTiet, maPhong) in DemoLichHoc)
+            db.Add(new LichHoc { LopHocPhanId = lop[maLop].Id, Thu = thu, TietBatDau = tietBatDau, SoTiet = soTiet, PhongHocId = phong[maPhong].Id });
+
+        // MSSV và ngày sinh tính theo khóa tuyển của lớp hành chính, giống sinh viên gốc
+        var sinhVienMoi = new List<SinhVien>();
+        foreach (var (stt, hoTen, thang, ngay, gioiTinh, cccd, email, soDienThoai, diaChi) in DemoSinhVien)
+        {
+            var sv = new SinhVien
+            {
+                MSSV = $"{lopHanhChinh.KhoaTuyen}{stt:D6}", HoTen = hoTen,
+                NgaySinh = new DateOnly(lopHanhChinh.KhoaTuyen - 18, thang, ngay), GioiTinh = gioiTinh, CCCD = cccd,
+                Email = email, SoDienThoai = soDienThoai, DiaChi = diaChi,
+                NganhId = lopHanhChinh.NganhId, LopHanhChinhId = lopHanhChinh.Id
+            };
+            sinhVienMoi.Add(sv);
+            db.Add(sv);
+        }
+        await db.SaveChangesAsync();
+
+        // Mỗi mật khẩu băm một lần cho mọi tài khoản demo (BCrypt chậm có chủ đích, băm 65 lần làm seed rất lâu)
+        var hashGiangVien = BCrypt.Net.BCrypt.HashPassword(MatKhauGiangVien);
+        var hashSinhVien = BCrypt.Net.BCrypt.HashPassword(MatKhauSinhVien);
+        foreach (var (ma, hoTen, _, _, _, _) in DemoGiangVien)
+            db.Add(new TaiKhoan { TenDangNhap = ma.ToLowerInvariant(), MatKhauHash = hashGiangVien, HoTen = hoTen, VaiTro = VaiTro.GiangVien, GiangVienId = giangVien[ma].Id });
+        foreach (var sv in sinhVienMoi)
+            db.Add(new TaiKhoan { TenDangNhap = $"sv{int.Parse(sv.MSSV[^6..]):D3}", MatKhauHash = hashSinhVien, HoTen = sv.HoTen, VaiTro = VaiTro.SinhVien, SinhVienId = sv.Id });
+
+        var sinhVienTheoStt = await db.Set<SinhVien>().Where(x => x.LopHanhChinhId == lopHanhChinh.Id)
+            .ToDictionaryAsync(x => int.Parse(x.MSSV.Substring(x.MSSV.Length - 6)));
+        foreach (var (stt, maLop, loai) in DemoDangKy)
+            db.Add(new DangKyHocPhan { SinhVienId = sinhVienTheoStt[stt].Id, LopHocPhanId = lop[maLop].Id, LoaiDangKy = loai });
+        await db.SaveChangesAsync();
     }
 
     private static NamHoc TaoNamHoc(int namBatDau) => new()
