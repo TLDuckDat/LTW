@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { escapeHtml, nextId } from '../core/dom.js';
+import { escapeHtml, nextId, refreshIcons } from '../core/dom.js';
 import { formatNumber } from '../core/format.js';
 import { Badge } from '../components/badge.js';
 import { Button } from '../components/button.js';
@@ -70,6 +70,7 @@ export async function openClassRoster({ record, onDone }) {
           caption: 'Sinh viên trong lớp',
         })
       : '<p class="form-hint">Lớp chưa có sinh viên.</p>';
+    refreshIcons();
     return result.data;
   };
 

@@ -18,8 +18,9 @@ public class LichHocService(AppDbContext db, IXungDotLichService xungDot) : ILic
     {
         if (!await _db.Set<LopHocPhan>().AnyAsync(x => x.Id == lopHocPhanId)) throw AppException.NotFound("lớp học phần");
 
-        return await ProjectToDto(_db.Set<LichHoc>().AsNoTracking().Where(x => x.LopHocPhanId == lopHocPhanId))
-            .OrderBy(x => x.Thu).ThenBy(x => x.TietBatDau)
+        return await ProjectToDto(_db.Set<LichHoc>().AsNoTracking()
+                .Where(x => x.LopHocPhanId == lopHocPhanId)
+                .OrderBy(x => x.Thu).ThenBy(x => x.TietBatDau))
             .ToListAsync();
     }
 
