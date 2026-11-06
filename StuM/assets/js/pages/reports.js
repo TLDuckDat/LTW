@@ -42,7 +42,7 @@ function loadThongKe() {
     skeleton: () => Skeleton.table(4, 3),
     isEmpty: (data) => data.tongSoSinhVien === 0,
     empty: () => EmptyState.render({ icon: 'users', title: 'Chưa có sinh viên' }),
-    render: (data) => `${kpiGrid([['Tổng sinh viên', formatNumber(data.tongSoSinhVien)]])}
+    render: (data) => `<div class="page-stack">${kpiGrid([['Tổng sinh viên', formatNumber(data.tongSoSinhVien)]])}
       <div class="page-stack">
         ${Table.render({
           columns: [
@@ -62,6 +62,7 @@ function loadThongKe() {
           rowKey: 'ma',
           caption: 'Sinh viên theo trạng thái',
         })}
+      </div>
       </div>`,
     errorTitle: 'Không tải được thống kê sinh viên',
   });
@@ -76,7 +77,7 @@ function loadKetQua() {
     skeleton: () => Skeleton.table(4, 4),
     isEmpty: (data) => data.soSinhVien === 0,
     empty: () => EmptyState.render({ icon: 'clipboard-list', title: 'Học kỳ chưa có sinh viên đăng ký' }),
-    render: (data) => `${kpiGrid([
+    render: (data) => `<div class="page-stack">${kpiGrid([
       ['Sinh viên đăng ký', formatNumber(data.soSinhVien)],
       ['Có GPA chính thức', formatNumber(data.soSinhVienCoGpa)],
       ['Chưa đủ kết quả', formatNumber(data.soSinhVienChuaDuKetQua)],
@@ -114,6 +115,7 @@ function loadKetQua() {
           rowKey: 'monHocId',
           caption: 'Kết quả theo môn',
         })}
+      </div>
       </div>`,
     errorTitle: 'Không tải được kết quả học tập',
   });
@@ -130,7 +132,7 @@ async function renderCongNo() {
     const data = await api.baoCao.congNo(state.hocKyId, { page: state.congNoPage, pageSize: 10, search: state.search });
     const list = data.danhSachConNo ?? { items: [], total: 0, page: 1, pageSize: 10 };
     container.removeAttribute('aria-busy');
-    container.innerHTML = `${kpiGrid([
+    container.innerHTML = `<div class="page-stack">${kpiGrid([
       ['Khoản học phí', formatNumber(data.soKhoanHocPhi)],
       ['Sinh viên còn nợ', formatNumber(data.soSinhVienConNo)],
       ['Chưa tính học phí', formatNumber(data.soSinhVienChuaTinhHocPhi)],
@@ -152,7 +154,8 @@ async function renderCongNo() {
             rowKey: 'hocPhiId',
             caption: 'Sinh viên còn nợ học phí',
             footer: Pagination.render({ page: list.page, pageSize: list.pageSize, total: list.totalCount ?? list.total }),
-          })}`;
+          })}
+    </div>`;
   } catch (error) {
     container.removeAttribute('aria-busy');
     container.innerHTML = `<p class="form-error">${escapeHtml(error.message)}</p>`;
