@@ -6,7 +6,7 @@
 
 import { api } from '../core/api.js';
 import { renderAsync } from '../core/async-view.js';
-import { debounce, escapeHtml, nextId } from '../core/dom.js';
+import { debounce, escapeHtml, nextId, refreshIcons } from '../core/dom.js';
 import { Badge } from '../components/badge.js';
 import { Button } from '../components/button.js';
 import { EmptyState } from '../components/empty-state.js';
@@ -252,9 +252,10 @@ async function openCtdtSubjects(ctdt) {
   const form = handle.element.querySelector(`#${formId}`);
   handle.element.querySelector('[data-action="close"]').addEventListener('click', handle.close);
 
+  let currentItems = [];
   const reload = async () => {
-    const items = await api.chuongTrinhDaoTao.monHoc(ctdt.id);
-    listEl.innerHTML = items.length
+    currentItems = await api.chuongTrinhDaoTao.monHoc(ctdt.id);
+    listEl.innerHTML = currentItems.length
       ? Table.render({
           columns: [
             { key: 'maMonHoc', label: 'Mã', primary: true },
@@ -263,7 +264,7 @@ async function openCtdtSubjects(ctdt) {
             { key: 'hocKyGoiY', label: 'HK gợi ý', align: 'right' },
             { key: 'batBuoc', label: 'Loại', render: (row) => Badge.render({ label: row.batBuoc ? 'Bắt buộc' : 'Tự chọn', variant: row.batBuoc ? 'primary' : 'neutral' }) },
           ],
-          rows: items,
+          rows: currentItems,
           rowKey: 'monHocId',
           actions: [
             { action: 'edit-subject', label: 'Sửa', icon: 'pencil' },
@@ -273,26 +274,31 @@ async function openCtdtSubjects(ctdt) {
           caption: 'Môn học trong chương trình',
         })
       : '<p class="form-hint">Chương trình chưa có môn học nào.</p>';
-    return items;
+    refreshIcons();
+    return currentItems;
   };
 
   handle.element.addEventListener('click', async (event) => {
     const button = event.target.closest('[data-action="add-subject"]');
     if (!button) return;
     const field = (name) => form.elements.namedItem(name).value;
-    if (field('monHocId') === '') {
+    // Ô chọn môn có tìm kiếm chứa nhãn, nên đổi về id theo danh sách môn
+    const monHocId = Select.getValue(form.elements.namedItem('monHocId'), refs.monHoc);
+    if (monHocId === '') {
       Toast.warning('Chọn môn học trước khi thêm');
       return;
     }
     try {
       await api.chuongTrinhDaoTao.themMonHoc(ctdt.id, {
-        monHocId: Number(field('monHocId')),
+        monHocId: Number(monHocId),
         hocKyGoiY: field('hocKyGoiY') === '' ? null : Number(field('hocKyGoiY')),
         batBuoc: field('batBuoc') === 'true',
         ghiChu: field('ghiChu').trim() || null,
       });
       Toast.success('Đã thêm môn vào chương trình');
-      reload();
+      form.elements.namedItem('monHocId').value = '';
+      form.elements.namedItem('ghiChu').value = '';
+      await reload();
     } catch (error) {
       Toast.error(error.message);
     }
@@ -300,17 +306,25 @@ async function openCtdtSubjects(ctdt) {
 
   Table.init(listEl, {
     onAction: async (action, rowId) => {
-      const row = (await api.chuongTrinhDaoTao.monHoc(ctdt.id)).find((item) => String(item.monHocId) === rowId);
+      const row = currentItems.find((item) => String(item.monHocId) === rowId);
       if (!row) return;
       if (action === 'edit-subject') editCtdtSubject(ctdt, row, reload);
       if (action === 'remove-subject') {
-        try {
-          await api.chuongTrinhDaoTao.boMonHoc(ctdt.id, row.monHocId);
-          Toast.success('Đã bỏ môn khỏi chương trình');
-          reload();
-        } catch (error) {
-          Toast.error(error.message);
-        }
+        Modal.confirm({
+          title: 'Bỏ môn khỏi chương trình',
+          message: `Bỏ ${row.maMonHoc} - ${row.tenMonHoc} khỏi ${ctdt.ma}?`,
+          confirmText: 'Bỏ môn',
+          danger: true,
+          onConfirm: async () => {
+            try {
+              await api.chuongTrinhDaoTao.boMonHoc(ctdt.id, row.monHocId);
+              Toast.success('Đã bỏ môn khỏi chương trình');
+              await reload();
+            } catch (error) {
+              Toast.error(error.message);
+            }
+          },
+        }).catch(() => {});
       }
     },
   });
@@ -426,7 +440,7 @@ function openAssignAdvisor(lop) {
 
 /** Chi tiết một bản ghi danh mục, lấy từ GET /{id}. Nhãn lấy từ cột và trường của cấu hình. */
 function openRecordDetail(def, record) {
-  const labels = Object.fromEntries([...def.columns, ...def.fields].map((item) => [item.key ?? item.name, item.label]));
+  const labels = { createdAt: 'Ngày tạo', updatedAt: 'Cập nhật lần cuối', ...Object.fromEntries([...def.columns, ...def.fields].map((item) => [item.key ?? item.name, item.label])) };
   openRecordDetailModal({ title: def.title, load: () => def.api().get(record.id), labels });
 }
 
