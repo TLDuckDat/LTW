@@ -390,7 +390,9 @@ function khenThuongForm(record) {
       { name: 'ngayQuyetDinh', label: 'Ngày quyết định', kind: 'date', required: true },
       { name: 'noiDung', label: 'Nội dung', kind: 'text', required: true },
     ],
-    onSubmit: (payload) => (record ? api.congTacSinhVien.khenThuongKyLuat.update(record.id, payload) : api.congTacSinhVien.khenThuongKyLuat.create(payload)),
+    onSubmit: (payload) => (record
+      ? api.congTacSinhVien.khenThuongKyLuat.update(record.id, { ...payload, sinhVienId: record.sinhVienId })
+      : api.congTacSinhVien.khenThuongKyLuat.create(payload)),
     onDone: () => loadTab(),
   });
 }
