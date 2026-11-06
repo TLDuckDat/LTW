@@ -77,6 +77,15 @@ export function openPeriodForm({ period = null, hocKys, hocKyId, onSaved }) {
       Input.setError(form.elements.namedItem('ngayKetThuc'), 'Thời điểm kết thúc phải sau thời điểm bắt đầu');
       return;
     }
+    if (new Date(field('ngayKetThuc')) <= new Date()) {
+      Input.setError(form.elements.namedItem('ngayKetThuc'), 'Thời điểm kết thúc phải sau thời điểm hiện tại');
+      return;
+    }
+    // Dung sai 5 phút để bù độ trễ khi người dùng vừa mở form (khớp với backend)
+    if (!isEdit && new Date(field('ngayBatDau')) < new Date(Date.now() - 5 * 60 * 1000)) {
+      Input.setError(form.elements.namedItem('ngayBatDau'), 'Thời điểm bắt đầu không được sớm hơn hiện tại');
+      return;
+    }
 
     const payload = {
       ten: field('ten'),

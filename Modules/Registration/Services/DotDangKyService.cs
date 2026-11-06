@@ -13,6 +13,8 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
 
     public async Task<PagedResult<DotDangKyDto>> GetPagedAsync(DotDangKyQuery query)
     {
+        await CapNhatTrangThaiTheoThoiGianAsync();
+
         var q = _db.Set<DotDangKy>().AsNoTracking().AsQueryable();
 
         if (query.HocKyId is not null) q = q.Where(x => x.HocKyId == query.HocKyId);
@@ -36,6 +38,8 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
 
     public async Task<DotDangKyDto> GetByIdAsync(int id)
     {
+        await CapNhatTrangThaiTheoThoiGianAsync();
+
         var entity = await _db.Set<DotDangKy>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         return entity is null ? throw AppException.NotFound("đợt đăng ký") : ToDto(entity);
     }
@@ -44,6 +48,8 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
     public async Task<DotDangKyDto> CreateAsync(DotDangKyRequest request)
     {
         var (batDau, ketThuc) = KiemTraThoiGian(request.NgayBatDau, request.NgayKetThuc);
+        if (batDau < DateTime.UtcNow.AddMinutes(-5))
+            throw AppException.BadRequest("Thời điểm bắt đầu không được sớm hơn hiện tại.");
         if (!await _db.Set<HocKy>().AnyAsync(x => x.Id == request.HocKyId))
             throw AppException.Conflict("Học kỳ không tồn tại.");
 
@@ -67,6 +73,9 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
         if (entity.TrangThai == TrangThaiDotDangKy.DaDong)
             throw AppException.Conflict("Đợt đăng ký đã đóng, không thể chỉnh sửa.");
         var (batDau, ketThuc) = KiemTraThoiGian(request.NgayBatDau, request.NgayKetThuc);
+        // Chỉ kiểm tra khi đổi mốc bắt đầu, để sửa tên hoặc mốc kết thúc không bị chặn bởi mốc cũ đã qua
+        if (entity.TrangThai == TrangThaiDotDangKy.ChuaMo && batDau != entity.NgayBatDau && batDau < DateTime.UtcNow.AddMinutes(-5))
+            throw AppException.BadRequest("Thời điểm bắt đầu không được sớm hơn hiện tại.");
 
         entity.Ten = request.Ten.Trim();
         entity.NgayBatDau = batDau;
@@ -91,6 +100,8 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
     // Mỗi học kỳ chỉ có một đợt đang mở tại một thời điểm
     public async Task<DotDangKyDto> MoAsync(int id)
     {
+        await CapNhatTrangThaiTheoThoiGianAsync();
+
         var entity = await _db.Set<DotDangKy>().FindAsync(id);
         if (entity is null) throw AppException.NotFound("đợt đăng ký");
 
@@ -107,6 +118,8 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
 
     public async Task<DotDangKyDto> DongAsync(int id)
     {
+        await CapNhatTrangThaiTheoThoiGianAsync();
+
         var entity = await _db.Set<DotDangKy>().FindAsync(id);
         if (entity is null) throw AppException.NotFound("đợt đăng ký");
 
@@ -125,7 +138,39 @@ public class DotDangKyService(AppDbContext db) : IDotDangKyService
         ketThuc = ThoiGian.VeUtc(ketThuc);
         if (ketThuc <= batDau)
             throw AppException.Conflict("Thời điểm kết thúc phải sau thời điểm bắt đầu.");
+        if (ketThuc <= DateTime.UtcNow)
+            throw AppException.BadRequest("Thời điểm kết thúc phải sau thời điểm hiện tại.");
         return (batDau, ketThuc);
+    }
+
+    // Trạng thái theo thời gian: đợt đang mở đã hết hạn thì đóng; đợt chưa mở đến giờ thì mở (mỗi học kỳ một đợt đang mở).
+    // Đợt đã đóng bằng tay không tự mở lại, vì chỉ đợt ChuaMo mới được xét mở.
+    private async Task CapNhatTrangThaiTheoThoiGianAsync()
+    {
+        var now = DateTime.UtcNow;
+
+        var hetHan = await _db.Set<DotDangKy>()
+            .Where(x => x.TrangThai != TrangThaiDotDangKy.DaDong && x.NgayKetThuc <= now)
+            .ToListAsync();
+        foreach (var dot in hetHan) dot.TrangThai = TrangThaiDotDangKy.DaDong;
+
+        var hocKyDangMo = await _db.Set<DotDangKy>()
+            .Where(x => x.TrangThai == TrangThaiDotDangKy.DangMo && x.NgayKetThuc > now)
+            .Select(x => x.HocKyId)
+            .ToListAsync();
+
+        var choMo = await _db.Set<DotDangKy>()
+            .Where(x => x.TrangThai == TrangThaiDotDangKy.ChuaMo && x.NgayBatDau <= now && now < x.NgayKetThuc)
+            .OrderBy(x => x.NgayBatDau)
+            .ToListAsync();
+        foreach (var dot in choMo)
+        {
+            if (hocKyDangMo.Contains(dot.HocKyId)) continue;
+            dot.TrangThai = TrangThaiDotDangKy.DangMo;
+            hocKyDangMo.Add(dot.HocKyId);
+        }
+
+        if (_db.ChangeTracker.HasChanges()) await _db.SaveChangesAsync();
     }
 
     private static DotDangKyDto ToDto(DotDangKy x) =>
